@@ -300,7 +300,7 @@ export function WidgetGrid({
                   onEdit={isEditing ? () => onEditWidget(widget) : undefined}
                   onDelete={isEditing ? () => onDeleteWidget(widget.id) : undefined}
                   onAddLink={isEditing && widget.type === 'links' && onAddLink ? () => onAddLink(widget) : undefined}
-                  onResize={isEditing && onResizeWidget ? (h) => onResizeWidget(widget.id, h) : undefined}
+                  onResize={isEditing && onResizeWidget && (widget.type === 'links' || widget.type === 'todo') ? (h) => onResizeWidget(widget.id, h) : undefined}
                 >
                   <WidgetContent
                     widget={widget}

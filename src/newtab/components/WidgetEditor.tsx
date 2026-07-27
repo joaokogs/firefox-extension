@@ -137,19 +137,21 @@ export function WidgetEditor({ widget, initialColumn = 0, linksOnly = false, onS
                     min={0}
                   />
                 </label>
-                <label className="widget-editor__field widget-editor__field--small">
-                  <span>Altura (px)</span>
-                  <input
-                    type="number"
-                    value={height}
-                    onChange={(e) => {
-                      const val = (e.target as HTMLInputElement).value;
-                      setHeight(val === '' ? '' : Number(val));
-                    }}
-                    placeholder="Auto"
-                    min={120}
-                  />
-                </label>
+                {(widget?.type === 'links' || widget?.type === 'todo') && (
+                  <label className="widget-editor__field widget-editor__field--small">
+                    <span>Altura (px)</span>
+                    <input
+                      type="number"
+                      value={height}
+                      onChange={(e) => {
+                        const val = (e.target as HTMLInputElement).value;
+                        setHeight(val === '' ? '' : Number(val));
+                      }}
+                      placeholder="Auto"
+                      min={120}
+                    />
+                  </label>
+                )}
               </>
             )}
           </div>
