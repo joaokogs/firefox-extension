@@ -316,9 +316,9 @@ export function WidgetGrid({
                     onToggleTodo={onToggleTodo}
                     onUpdateTodo={onUpdateTodo}
                     onDeleteTodo={onDeleteTodo}
-                    onTodoDragStart={isEditing ? (e, todoId) => handleTodoDragStart(e, todoId, widget.id) : undefined}
-                    onTodoDragEnd={isEditing ? handleTodoDragEnd : undefined}
-                    onTodoDrop={isEditing ? (widgetId, targetTodoId, position) => handleTodoDrop(widgetId, targetTodoId, position) : undefined}
+                    onTodoDragStart={(e, todoId) => handleTodoDragStart(e, todoId, widget.id)}
+                    onTodoDragEnd={handleTodoDragEnd}
+                    onTodoDrop={(widgetId, targetTodoId, position) => handleTodoDrop(widgetId, targetTodoId, position)}
                   />
                 </WidgetCard>
                 {isTarget && drag.position === 'after' && <DropIndicator />}
