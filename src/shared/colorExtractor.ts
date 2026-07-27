@@ -152,6 +152,7 @@ export function computeThemeVariables(theme: ThemeConfig, isDark: boolean): Reco
 
   const boardRgb = getRgbString(theme.boardColor);
   const boardSolid = theme.boardColor;
+  const useLightText = isDark || isDarkColor(boardSolid);
 
   return {
     '--accent': theme.primaryColor,
@@ -164,6 +165,9 @@ export function computeThemeVariables(theme: ThemeConfig, isDark: boolean): Reco
     '--bg-active': `rgba(${boardRgb}, ${isDark ? 0.12 : 0.18})`,
     '--border': `rgba(${boardRgb}, ${isDark ? 0.12 : 0.2})`,
     '--surface-blur': `${theme.boardBlur}px`,
-    '--shadow-accent': `rgba(${primaryRgb}, 0.15)`
+    '--shadow-accent': `rgba(${primaryRgb}, 0.15)`,
+    '--text-primary': useLightText ? '#f8fafc' : '#1e293b',
+    '--text-secondary': useLightText ? '#cbd5e1' : '#475569',
+    '--text-muted': useLightText ? '#94a3b8' : '#64748b'
   };
 }

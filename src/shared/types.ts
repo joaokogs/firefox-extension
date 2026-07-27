@@ -73,8 +73,8 @@ export interface ThemeConfig {
 }
 
 export const DEFAULT_THEME: ThemeConfig = {
-  primaryColor: '#4f46e5',
-  boardColor: '#ffffff',
+  primaryColor: '#4a90e2',
+  boardColor: '#eef6fb',
   boardOpacity: 0.78,
   boardBlur: 16,
   derivedFromWallpaper: true
@@ -153,32 +153,42 @@ export const INITIAL_SAMPLE_BOARDS: Board[] = [
     createdAt: Date.now(),
     updatedAt: Date.now(),
     widgets: [
-      { id: generateId('widget'), type: 'links', title: 'Work', colSpan: 1, order: 0, col: 0, items: [] },
-      { id: generateId('widget'), type: 'links', title: 'Social', colSpan: 1, order: 0, col: 1, items: [] },
-      { id: generateId('widget'), type: 'links', title: 'Learn', colSpan: 1, order: 0, col: 2, items: [] },
-      { id: generateId('widget'), type: 'calendar', title: 'Calendar', colSpan: 1, order: 0, col: 3 }
+      {
+        id: generateId('widget'),
+        type: 'todo',
+        title: 'Bloco de Notas',
+        colSpan: 1,
+        order: 0,
+        items: [],
+        height: 381,
+        col: 2
+      },
+      {
+        id: generateId('widget'),
+        type: 'calendar',
+        title: 'Calendar',
+        colSpan: 1,
+        order: 0,
+        col: 3
+      },
+      {
+        id: generateId('widget'),
+        type: 'links',
+        title: 'Luma',
+        colSpan: 1,
+        order: 1,
+        items: [
+          {
+            id: generateId('link'),
+            title: 'Luma',
+            url: 'https://luma-page-sooty.vercel.app/',
+            icon: 'fa:heart'
+          }
+        ],
+        col: 0,
+        height: 120
+      }
     ]
-  },
-  {
-    id: 'board-personal',
-    title: 'Personal',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    widgets: []
-  },
-  {
-    id: 'board-learning',
-    title: 'Learning',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    widgets: []
-  },
-  {
-    id: 'board-projects',
-    title: 'Projects',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    widgets: []
   }
 ];
 
@@ -186,14 +196,16 @@ export function getDefaultData(): AppData {
   return {
     boards: INITIAL_SAMPLE_BOARDS,
     settings: {
-      theme: 'system',
+      theme: 'light',
       wallpaper: DEFAULT_WALLPAPERS[0],
       topWidgets: [
         { type: 'weather', city: 'New York' },
-        { type: 'clock' }
+        { type: 'clock' },
+        { type: 'search' }
       ],
       editMode: true,
-      openInNewTab: true
+      openInNewTab: true,
+      lastBoardId: 'board-home'
     },
     installedAt: Date.now()
   };
