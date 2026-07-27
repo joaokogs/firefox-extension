@@ -169,7 +169,7 @@ export function WidgetCard({
                       Adicionar link
                     </button>
                   )}
-                  {onEdit && (
+                  {onEdit && widget.type !== 'clock' && widget.type !== 'calendar' && (
                     <button
                       className="widget-card__menu-item"
                       onClick={handleAction(onEdit)}

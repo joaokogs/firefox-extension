@@ -183,10 +183,16 @@ export const INITIAL_SAMPLE_BOARDS: Board[] = [
             title: 'Luma',
             url: 'https://luma-page-sooty.vercel.app/',
             icon: 'fa:heart'
+          },
+          {
+            id: generateId('link'),
+            title: 'Luma Repository',
+            url: 'https://github.com/joaokogs/luma-extension',
+            icon: 'fab:github'
           }
         ],
         col: 0,
-        height: 120
+        height: 163
       }
     ]
   }

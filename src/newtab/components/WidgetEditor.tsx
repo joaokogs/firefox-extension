@@ -15,18 +15,15 @@ const WIDGET_TYPES: { type: WidgetType; label: string; icon: LucideIcon }[] = [
 
 interface WidgetEditorProps {
   widget?: Widget | null;
-  initialColumn?: number;
   linksOnly?: boolean;
   onSave: (widget: Widget) => void;
   onClose: () => void;
 }
 
-export function WidgetEditor({ widget, initialColumn = 0, linksOnly = false, onSave, onClose }: WidgetEditorProps) {
+export function WidgetEditor({ widget, linksOnly = false, onSave, onClose }: WidgetEditorProps) {
   const isEdit = !!widget;
   const [type, setType] = useState<WidgetType>(widget?.type || 'links');
   const [title, setTitle] = useState(widget?.title || '');
-  const [colSpan, setColSpan] = useState(widget?.colSpan || 1);
-  const [col, setCol] = useState(widget?.col ?? initialColumn);
   const [height, setHeight] = useState<number | ''>(widget?.height ?? '');
   const [city, setCity] = useState((widget?.type === 'weather' && widget.city) || '');
   const [timezone, setTimezone] = useState((widget?.type === 'clock' && widget.timezone) || '');
@@ -60,8 +57,6 @@ export function WidgetEditor({ widget, initialColumn = 0, linksOnly = false, onS
     const updated: Widget = {
       ...base,
       title: title.trim() || base.title,
-      colSpan: Math.min(Math.max(Number(colSpan) || 1, 1), 2),
-      col: Math.max(Number(col) || 0, 0),
       height: height !== '' ? Math.max(Number(height), 120) : undefined
     } as Widget;
 
@@ -117,42 +112,20 @@ export function WidgetEditor({ widget, initialColumn = 0, linksOnly = false, onS
                 />
               </label>
             )}
-            {!linksOnly && (
+            {isEdit && (widget?.type === 'links' || widget?.type === 'todo') && (
               <label className="widget-editor__field widget-editor__field--small">
-                <span>Largura</span>
-                <select value={colSpan} onChange={(e) => setColSpan(Number((e.target as HTMLSelectElement).value))}>
-                  <option value={1}>1 coluna</option>
-                  <option value={2}>2 colunas</option>
-                </select>
+                <span>Altura (px)</span>
+                <input
+                  type="number"
+                  value={height}
+                  onChange={(e) => {
+                    const val = (e.target as HTMLInputElement).value;
+                    setHeight(val === '' ? '' : Number(val));
+                  }}
+                  placeholder="Auto"
+                  min={120}
+                />
               </label>
-            )}
-            {isEdit && (
-              <>
-                <label className="widget-editor__field widget-editor__field--small">
-                  <span>Coluna</span>
-                  <input
-                    type="number"
-                    value={col}
-                    onChange={(e) => setCol(Math.max(Number((e.target as HTMLInputElement).value) || 0, 0))}
-                    min={0}
-                  />
-                </label>
-                {(widget?.type === 'links' || widget?.type === 'todo') && (
-                  <label className="widget-editor__field widget-editor__field--small">
-                    <span>Altura (px)</span>
-                    <input
-                      type="number"
-                      value={height}
-                      onChange={(e) => {
-                        const val = (e.target as HTMLInputElement).value;
-                        setHeight(val === '' ? '' : Number(val));
-                      }}
-                      placeholder="Auto"
-                      min={120}
-                    />
-                  </label>
-                )}
-              </>
             )}
           </div>
 

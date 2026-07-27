@@ -76,7 +76,6 @@ export function App() {
   const [showBackground, setShowBackground] = useState(false);
   const [showWidgetToolbar, setShowWidgetToolbar] = useState(false);
   const [isAddingWidget, setIsAddingWidget] = useState(false);
-  const [newWidgetColumn, setNewWidgetColumn] = useState(0);
   const [editingWidget, setEditingWidget] = useState<Widget | null>(null);
   const [addingLinkWidget, setAddingLinkWidget] = useState<Widget | null>(null);
   const [editingLink, setEditingLink] = useState<{ widgetId: string; linkId: string } | null>(null);
@@ -246,8 +245,7 @@ export function App() {
     setIsAddingWidget(false);
   };
 
-  const handleStartAddWidget = (column: number) => {
-    setNewWidgetColumn(column);
+  const handleStartAddWidget = () => {
     setIsAddingWidget(true);
   };
 
@@ -577,7 +575,6 @@ export function App() {
 
       {isAddingWidget && (
         <WidgetEditor
-          initialColumn={newWidgetColumn}
           linksOnly
           onSave={handleAddWidget}
           onClose={() => setIsAddingWidget(false)}

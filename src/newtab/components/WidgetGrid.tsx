@@ -18,7 +18,7 @@ interface WidgetGridProps {
   onEditLink?: (widgetId: string, linkId: string) => void;
   onAddLink?: (widget: Widget) => void;
   onResizeWidget?: (widgetId: string, height: number) => void;
-  onAddWidget?: (column: number) => void;
+  onAddWidget?: () => void;
   onMoveLink?: (fromWidgetId: string, toWidgetId: string, linkId: string, toIndex: number) => void;
   onAddTodo?: (widgetId: string, text: string) => void;
   onToggleTodo?: (widgetId: string, todoId: string) => void;
@@ -328,7 +328,7 @@ export function WidgetGrid({
           {isEditing && onAddWidget && (
             <button
               className="widgets-column__add"
-              onClick={() => onAddWidget(colIndex)}
+              onClick={() => onAddWidget?.()}
               aria-label={`Adicionar widget na coluna ${colIndex + 1}`}
               title="Adicionar widgets"
             >
