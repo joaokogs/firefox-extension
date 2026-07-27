@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { TodoItem, TodoWidget } from '@shared/types';
 import { Check, Plus, Pencil, Trash2, X, GripVertical } from 'lucide-preact';
+import { useI18n } from '@shared/i18n';
 
 export interface TodoDragState {
   todoId: string | null;
@@ -39,6 +40,7 @@ export function TodoWidgetView({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const editInputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -174,14 +176,14 @@ export function TodoWidgetView({
             value={newText}
             onChange={(e) => setNewText((e.target as HTMLInputElement).value)}
             onKeyDown={handleKeyDown}
-            placeholder="Nova nota..."
-            aria-label="Nova nota"
+            placeholder={t('todo.newNote')}
+            aria-label={t('todo.newNoteLabel')}
           />
           <button
             className="todo-widget__add-btn"
             onClick={handleAdd}
             disabled={!newText.trim()}
-            aria-label="Adicionar nota"
+            aria-label={t('todo.addNote')}
           >
             <Plus size={16} strokeWidth={2} />
           </button>
@@ -214,7 +216,7 @@ export function TodoWidgetView({
             <button
               className="todo-widget__checkbox"
               onClick={() => onToggleTodo?.(todo.id)}
-              aria-label={todo.done ? 'Marcar como pendente' : 'Marcar como concluído'}
+              aria-label={todo.done ? t('todo.markPending') : t('todo.markDone')}
             >
               {todo.done && <Check size={12} strokeWidth={3} />}
             </button>
@@ -228,19 +230,19 @@ export function TodoWidgetView({
                   value={editText}
                   onChange={(e) => setEditText((e.target as HTMLInputElement).value)}
                   onKeyDown={(e) => handleEditKeyDown(e, todo.id)}
-                  aria-label="Editar nota"
+                  aria-label={t('todo.editNote')}
                 />
                 <button
                   className="todo-widget__edit-confirm"
                   onClick={() => saveEdit(todo.id)}
-                  aria-label="Salvar"
+                  aria-label={t('todo.save')}
                 >
                   <Check size={14} strokeWidth={2} />
                 </button>
                 <button
                   className="todo-widget__edit-cancel"
                   onClick={cancelEdit}
-                  aria-label="Cancelar"
+                  aria-label={t('todo.cancel')}
                 >
                   <X size={14} strokeWidth={2} />
                 </button>
@@ -257,14 +259,14 @@ export function TodoWidgetView({
                   <button
                     className="todo-widget__action-btn"
                     onClick={() => startEdit(todo)}
-                    aria-label="Editar nota"
+                    aria-label={t('todo.editNote')}
                   >
                     <Pencil size={12} strokeWidth={2} />
                   </button>
                   <button
                     className="todo-widget__action-btn todo-widget__action-btn--danger"
                     onClick={() => onDeleteTodo?.(todo.id)}
-                    aria-label="Excluir nota"
+                    aria-label={t('todo.deleteNote')}
                   >
                     <Trash2 size={12} strokeWidth={2} />
                   </button>
@@ -277,7 +279,7 @@ export function TodoWidgetView({
 
       {widget.items.length > 0 && (
         <div className="todo-widget__footer">
-          {completedCount}/{widget.items.length} notas concluídas
+          {t('todo.completed', { done: completedCount, total: widget.items.length })}
         </div>
       )}
     </div>

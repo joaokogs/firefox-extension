@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'preact/hooks';
-
-const WEEKDAYS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+import { useI18n } from '@shared/i18n';
 
 export function ClockWidgetView({ timezone, label }: { timezone?: string; label?: string }) {
+  const { t } = useI18n();
+  const WEEKDAYS = t('clock.days').split(',');
+  const MONTHS = t('clock.months').split(',');
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -27,7 +28,7 @@ export function ClockWidgetView({ timezone, label }: { timezone?: string; label?
     hour12: false
   };
 
-  const timeStr = timezone ? now.toLocaleTimeString('pt-BR', options) : formatTime(now);
+  const timeStr = timezone ? now.toLocaleTimeString('en', options) : formatTime(now);
   const weekday = WEEKDAYS[now.getDay()];
   const month = MONTHS[now.getMonth()];
   const day = now.getDate();

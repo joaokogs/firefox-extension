@@ -16,6 +16,7 @@ import {
   getFaviconUrl
 } from '@shared/storage';
 import { queryActiveTab } from '@shared/browser';
+import { useI18n } from '@shared/i18n';
 import { Menu, Settings, Plus, ExternalLink, Pencil, Trash2 } from 'lucide-preact';
 import { LinkDialog } from './LinkDialog';
 import { WidgetDialog } from './WidgetDialog';
@@ -29,6 +30,7 @@ export function Popup() {
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [dialog, setDialog] = useState<DialogMode | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const { t } = useI18n();
 
   useEffect(() => {
     loadData().then((loaded) => {
@@ -143,7 +145,7 @@ export function Popup() {
   }, [dialog, selectedWidget]);
 
   if (!data) {
-    return <div className="popup popup--loading">Carregando...</div>;
+    return <div className="popup popup--loading">{t('popup.loading')}</div>;
   }
 
   const editModeEnabled = data.settings.editMode !== false;
@@ -152,9 +154,9 @@ export function Popup() {
     return (
       <div className="popup">
         <div className="popup__header">
-          <h1>Boards</h1>
+          <h1>{t('popup.board')}</h1>
         </div>
-        <p className="popup__hint">Não foi possível ler a aba atual.</p>
+        <p className="popup__hint">{t('popup.couldNotReadTab')}</p>
       </div>
     );
   }
@@ -165,8 +167,8 @@ export function Popup() {
         <button
           className={`popup__menu-btn ${menuOpen ? 'popup__menu-btn--open' : ''}`}
           onClick={() => setMenuOpen((v) => !v)}
-          aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
-          title={menuOpen ? 'Fechar menu' : 'Abrir menu'}
+          aria-label={menuOpen ? t('popup.closeMenu') : t('popup.openMenu')}
+          title={menuOpen ? t('popup.closeMenu') : t('popup.openMenu')}
         >
           <Menu size={22} strokeWidth={2} />
         </button>
@@ -179,11 +181,11 @@ export function Popup() {
         </div>
 
         <label className="popup__field">
-          <span>Board</span>
+          <span>{t('popup.board')}</span>
           <select
             value={activeBoardId}
             onChange={(e) => setActiveBoardId((e.target as HTMLSelectElement).value)}
-            aria-label="Selecionar board"
+            aria-label={t('popup.selectBoard')}
           >
             {data.boards.map((board) => (
               <option key={board.id} value={board.id}>
@@ -194,13 +196,13 @@ export function Popup() {
         </label>
 
         <label className="popup__field">
-          <span>Widget de links</span>
+          <span>{t('popup.linkWidget')}</span>
           <select
             value={selectedWidgetId}
             onChange={(e) => setSelectedWidgetId((e.target as HTMLSelectElement).value)}
-            aria-label="Selecionar widget"
+            aria-label={t('popup.selectWidget')}
           >
-            {linkWidgets.length === 0 && <option value="">Novo widget</option>}
+            {linkWidgets.length === 0 && <option value="">{t('popup.newWidget')}</option>}
             {linkWidgets.map((w) => (
               <option key={w.id} value={w.id}>
                 {w.title}
@@ -217,8 +219,8 @@ export function Popup() {
                 <button
                   className="popup__icon-btn popup__icon-btn--small"
                   onClick={() => setDialog('widget')}
-                  aria-label="Editar bloco"
-                  title="Editar bloco"
+                  aria-label={t('popup.editBlock')}
+                  title={t('popup.editBlock')}
                 >
                   <Settings size={14} strokeWidth={2} />
                 </button>
@@ -232,11 +234,11 @@ export function Popup() {
             <button
               className="popup__add-link-btn"
               onClick={() => setDialog('add-link')}
-              aria-label="Adicionar link"
-              title="Adicionar link"
+              aria-label={t('popup.addLink')}
+              title={t('popup.addLink')}
             >
               <Plus size={18} strokeWidth={2} />
-              Adicionar link
+              {t('popup.addLink')}
             </button>
           </div>
         )}
@@ -256,11 +258,11 @@ export function Popup() {
         )}
 
         {selectedWidget && selectedWidget.items.length === 0 && (
-          <p className="popup__empty">Nenhum link ainda.</p>
+          <p className="popup__empty">{t('popup.noLinksYet')}</p>
         )}
 
         {!selectedWidget && (
-          <p className="popup__empty">Nenhum bloco de links. Adicione um link para criar um.</p>
+          <p className="popup__empty">{t('popup.noLinkBlocks')}</p>
         )}
 
         <div className="popup__divider" />
@@ -272,11 +274,11 @@ export function Popup() {
             disabled={status === 'saving' || status === 'saved'}
             aria-live="polite"
           >
-            {status === 'saved' ? 'Salvo!' : status === 'saving' ? 'Salvando...' : `Salvar aba em ${activeBoard?.title}`}
+            {status === 'saved' ? t('popup.saved') : status === 'saving' ? t('popup.saving') : t('popup.saveTabIn', { board: activeBoard?.title ?? '' })}
           </button>
         )}
 
-        <p className="popup__hint">Abra uma nova aba para ver seus boards.</p>
+        <p className="popup__hint">{t('popup.openNewTab')}</p>
       </div>
 
       {dialog === 'add-link' && (
@@ -317,6 +319,7 @@ function LinkRow({
   onEdit?: () => void;
   onDelete?: () => void;
 }) {
+  const { t } = useI18n();
   const [imageError, setImageError] = useState(false);
   const favicon = link.favicon && !imageError ? link.favicon : getFaviconUrl(link.url);
 
@@ -353,8 +356,8 @@ function LinkRow({
             <button
               className="popup__icon-btn popup__icon-btn--action"
               onClick={(e) => { e.stopPropagation(); onEdit(); }}
-              aria-label={`Editar ${link.title}`}
-              title="Editar"
+              aria-label={t('popup.editItem', { title: link.title })}
+              title={t('popup.edit')}
             >
               <Pencil size={15} strokeWidth={2} />
             </button>
@@ -363,8 +366,8 @@ function LinkRow({
             <button
               className="popup__icon-btn popup__icon-btn--action popup__icon-btn--danger"
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              aria-label={`Excluir ${link.title}`}
-              title="Excluir"
+              aria-label={t('popup.deleteItem', { title: link.title })}
+              title={t('popup.delete')}
             >
               <Trash2 size={15} strokeWidth={2} />
             </button>

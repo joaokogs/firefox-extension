@@ -1,4 +1,5 @@
 import { useState } from 'preact/hooks';
+import { useI18n } from '@shared/i18n';
 import { ICON_PICKER_LIST, getLucideIcon, getFaIconDef } from './AnyIcon';
 
 interface IconPickerProps {
@@ -7,6 +8,7 @@ interface IconPickerProps {
 }
 
 export function IconPicker({ selected, onSelect }: IconPickerProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
 
@@ -20,8 +22,8 @@ export function IconPicker({ selected, onSelect }: IconPickerProps) {
         type="button"
         className="icon-picker__trigger"
         onClick={() => setOpen((o) => !o)}
-        aria-label="Selecionar ícone"
-        title="Ícone do link"
+        aria-label={t('iconPicker.selectIcon')}
+        title={t('iconPicker.linkIcon')}
       >
         {selected ? <PickerIcon name={selected} size={18} /> : <span className="icon-picker__placeholder">+</span>}
       </button>
@@ -30,7 +32,7 @@ export function IconPicker({ selected, onSelect }: IconPickerProps) {
           <input
             type="text"
             className="icon-picker__search"
-            placeholder="Pesquisar ícone..."
+            placeholder={t('iconPicker.searchIcon')}
             value={query}
             onInput={(e) => setQuery((e.target as HTMLInputElement).value)}
             autoFocus
@@ -58,8 +60,8 @@ export function IconPicker({ selected, onSelect }: IconPickerProps) {
                 setOpen(false);
                 setQuery('');
               }}
-              aria-label="Sem ícone"
-              title="Sem ícone (usar favicon)"
+              aria-label={t('iconPicker.noIcon')}
+              title={t('iconPicker.noIconFavicon')}
             >
               <span style={{ fontSize: 18, lineHeight: 1 }}>✕</span>
             </button>

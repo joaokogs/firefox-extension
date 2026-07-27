@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Settings, Menu, Plus, Palette } from 'lucide-preact';
 import type { AppData, Widget, WidgetType, TopWidgetConfig, SearchEngine } from '@shared/types';
 import { SEARCH_ENGINES } from '@shared/types';
+import { useI18n, setLocale as setI18nLocale } from '@shared/i18n';
 import {
   loadData,
   saveData,
@@ -69,6 +70,7 @@ interface ConfirmState {
 }
 
 export function App() {
+  const { t } = useI18n();
   const [data, setData] = useState<AppData | null>(null);
   const [activeBoardId, setActiveBoardId] = useState<string | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
@@ -90,6 +92,9 @@ export function App() {
       if (!mounted) return;
       setData(loaded);
       setActiveBoardId(getInitialBoardId(loaded));
+      if (loaded.settings.locale) {
+        setI18nLocale(loaded.settings.locale as any);
+      }
     });
     return () => {
       mounted = false;
@@ -197,7 +202,7 @@ export function App() {
   );
 
   if (!data || !activeBoard) {
-    return <div className="app-loading" aria-label="Carregando Boards" />;
+    return <div className="app-loading" aria-label={t('app.loading')} />;
   }
 
   const editModeEnabled = data.settings.editMode !== false;
@@ -223,10 +228,10 @@ export function App() {
 
   const handleDeleteBoard = (id: string, boardTitle: string) => {
     setConfirmState({
-      title: 'Excluir aba',
-      message: `Tem certeza que deseja excluir a aba "${boardTitle}"? Todos os widgets e links serão perdidos.`,
+      title: t('app.deleteBoard'),
+      message: t('app.deleteBoardConfirm', { title: boardTitle }),
       danger: true,
-      confirmLabel: 'Excluir',
+      confirmLabel: t('app.delete'),
       onConfirm: () => {
         setData((prev) => {
           if (!prev) return prev;
@@ -261,10 +266,10 @@ export function App() {
 
   const handleDeleteWidget = (widgetId: string) => {
     setConfirmState({
-      title: 'Excluir widget',
-      message: 'Tem certeza que deseja excluir este widget?',
+      title: t('app.deleteWidgetTitle'),
+      message: t('app.deleteWidgetConfirm'),
       danger: true,
-      confirmLabel: 'Excluir',
+      confirmLabel: t('app.delete'),
       onConfirm: () => {
         if (activeBoardId) {
           setData((prev) => (prev && activeBoardId ? deleteWidget(prev, activeBoardId, widgetId) : prev));
@@ -324,7 +329,7 @@ export function App() {
     setData((prev) =>
       prev && activeBoardId
         ? updateLink(prev, activeBoardId, widgetId, linkId, {
-            title: title.trim() || 'Link sem título',
+            title: title.trim() || t('defaults.newLink'),
             url,
             icon: icon || undefined
           })
@@ -419,7 +424,7 @@ export function App() {
       saveData(imported);
       setActiveBoardId(getInitialBoardId(imported));
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Erro ao importar');
+      alert(err instanceof Error ? err.message : t('app.importError'));
     }
   };
 
@@ -440,10 +445,10 @@ export function App() {
 
   const handleClearRecentSearches = () => {
     setConfirmState({
-      title: 'Limpar histórico',
-      message: 'Tem certeza que deseja limpar todo o histórico de buscas recentes?',
+      title: t('app.clearHistoryTitle'),
+      message: t('app.clearHistoryConfirm'),
       danger: true,
-      confirmLabel: 'Limpar',
+      confirmLabel: t('app.clear'),
       onConfirm: () => {
         setData((prev) => (prev ? clearRecentSearches(prev) : prev));
         setConfirmState(null);
@@ -512,8 +517,8 @@ export function App() {
         <button
           className={`app-fab-bar__btn app-fab-bar__btn--menu ${menuOpen ? 'app-fab-bar__btn--active' : ''}`}
           onClick={() => setMenuOpen((s) => !s)}
-          aria-label={menuOpen ? 'Fechar menu' : 'Abrir menu'}
-          title={menuOpen ? 'Fechar menu' : 'Menu'}
+          aria-label={menuOpen ? t('app.closeMenu') : t('app.openMenu')}
+          title={menuOpen ? t('app.closeMenu') : t('app.menu')}
         >
           <Menu size={22} strokeWidth={2} />
         </button>
@@ -522,29 +527,29 @@ export function App() {
             <button
               className="app-fab-menu__item"
               onClick={() => { setShowWidgetToolbar(true); setMenuOpen(false); }}
-              aria-label="Adicionar widgets"
-              title="Adicionar widgets"
+              aria-label={t('app.addWidgets')}
+              title={t('app.addWidgets')}
             >
               <Plus size={18} strokeWidth={2} />
-              <span>Widgets</span>
+              <span>{t('app.widgets')}</span>
             </button>
           <button
             className="app-fab-menu__item"
             onClick={() => { setShowBackground(true); setMenuOpen(false); }}
-            aria-label="Personalizar aparência"
-            title="Personalizar aparência"
+            aria-label={t('app.customizeAppearance')}
+            title={t('app.customizeAppearance')}
           >
             <Palette size={18} strokeWidth={2} />
-            <span>Aparência</span>
+            <span>{t('app.appearance')}</span>
           </button>
           <button
             className="app-fab-menu__item"
             onClick={() => { setShowSettings(true); setMenuOpen(false); }}
-            aria-label="Configurações"
-            title="Configurações"
+            aria-label={t('app.settings')}
+            title={t('app.settings')}
           >
             <Settings size={18} strokeWidth={2} aria-hidden="true" />
-            <span>Configurações</span>
+            <span>{t('app.settings')}</span>
           </button>
         </div>
       </div>

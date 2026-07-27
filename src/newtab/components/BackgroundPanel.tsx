@@ -2,6 +2,7 @@ import { useRef, useState, useEffect, useCallback } from 'preact/hooks';
 import { HexColorPicker } from 'react-colorful';
 import type { AppSettings, WallpaperSetting } from '@shared/types';
 import { DEFAULT_WALLPAPERS } from '@shared/types';
+import { useI18n } from '@shared/i18n';
 import { useThemeStore } from '../store/useThemeStore';
 import { X, Sun, Moon, Upload, Trash2 } from 'lucide-preact';
 
@@ -14,6 +15,7 @@ interface BackgroundPanelProps {
 }
 
 export function BackgroundPanel({ settings, onChange, onClose }: BackgroundPanelProps) {
+  const { t } = useI18n();
   const [applying, setApplying] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -150,45 +152,45 @@ export function BackgroundPanel({ settings, onChange, onClose }: BackgroundPanel
   const canUpload = uploadedBackgrounds.length < MAX_UPLOADS;
 
   return (
-    <div className="settings-panel" ref={panelRef} role="dialog" aria-label="Personalizar aparência">
+    <div className="settings-panel" ref={panelRef} role="dialog" aria-label={t('background.title')}>
       <div className="settings-panel__header">
-        <h3>Aparência</h3>
-        <button className="settings-panel__close" onClick={onClose} aria-label="Fechar">
+        <h3>{t('background.title')}</h3>
+        <button className="settings-panel__close" onClick={onClose} aria-label={t('background.close')}>
           <X size={18} />
         </button>
       </div>
 
       <div className="settings-panel__section">
-        <label className="settings-panel__label">Tema</label>
+        <label className="settings-panel__label">{t('background.theme')}</label>
         <div className="theme-toggle">
           <button
             className={settings.theme === 'light' ? 'active' : ''}
             onClick={() => onChange({ theme: 'light' })}
-            aria-label="Tema claro"
+            aria-label={t('background.lightLabel')}
           >
             <Sun size={16} strokeWidth={2} />
-            <span>Claro</span>
+            <span>{t('background.light')}</span>
           </button>
           <button
             className={settings.theme === 'dark' ? 'active' : ''}
             onClick={() => onChange({ theme: 'dark' })}
-            aria-label="Tema escuro"
+            aria-label={t('background.darkLabel')}
           >
             <Moon size={16} strokeWidth={2} />
-            <span>Escuro</span>
+            <span>{t('background.dark')}</span>
           </button>
           <button
             className={settings.theme === 'system' ? 'active' : ''}
             onClick={() => onChange({ theme: 'system' })}
-            aria-label="Tema do sistema"
+            aria-label={t('background.systemLabel')}
           >
-            <span>Sistema</span>
+            <span>{t('background.system')}</span>
           </button>
         </div>
       </div>
 
       <div className="settings-panel__section">
-        <label className="settings-panel__label">Papel de parede</label>
+        <label className="settings-panel__label">{t('background.wallpaper')}</label>
         <div className="wallpaper-grid">
           {DEFAULT_WALLPAPERS.map((wp, index) => (
             <button
@@ -197,8 +199,8 @@ export function BackgroundPanel({ settings, onChange, onClose }: BackgroundPanel
               style={{ background: wp.value }}
               onClick={() => handleWallpaperSelect(wp)}
               disabled={applying}
-              aria-label={`Selecionar wallpaper ${index + 1}`}
-              title={`Wallpaper ${index + 1}`}
+              aria-label={t('background.selectWallpaper', { n: index + 1 })}
+              title={t('background.wallpaperN', { n: index + 1 })}
             />
           ))}
           {uploadedBackgrounds.map((dataUrl, index) => (
@@ -208,14 +210,14 @@ export function BackgroundPanel({ settings, onChange, onClose }: BackgroundPanel
                 style={{ backgroundImage: `url(${dataUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}
                 onClick={() => handleWallpaperSelect({ type: 'url', value: dataUrl })}
                 disabled={applying}
-                aria-label={`Selecionar imagem ${index + 1}`}
-                title={`Imagem ${index + 1}`}
+                aria-label={t('background.selectImage', { n: index + 1 })}
+                title={t('background.imageN', { n: index + 1 })}
               />
               <button
                 className="wallpaper-thumb__delete"
                 onClick={(e) => { e.stopPropagation(); handleDeleteUploaded(index); }}
-                aria-label={`Excluir imagem ${index + 1}`}
-                title="Excluir"
+                aria-label={t('background.deleteImage', { n: index + 1 })}
+                title={t('background.delete')}
               >
                 <Trash2 size={12} />
               </button>
@@ -225,14 +227,14 @@ export function BackgroundPanel({ settings, onChange, onClose }: BackgroundPanel
             <button
               className="wallpaper-upload"
               onClick={() => fileInputRef.current?.click()}
-              aria-label="Fazer upload de imagem"
-              title="Upload de imagem"
+              aria-label={t('background.uploadImageLabel')}
+              title={t('background.uploadImage')}
               onDrop={handleDrop}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
             >
               <Upload size={20} />
-              <span>Upload</span>
+              <span>{t('background.upload')}</span>
             </button>
           )}
         </div>
@@ -255,13 +257,13 @@ export function BackgroundPanel({ settings, onChange, onClose }: BackgroundPanel
             onDragLeave={handleDragLeave}
             role="button"
             tabIndex={0}
-            aria-label="Arraste imagens ou clique para fazer upload"
+            aria-label={t('background.dragOrClick')}
             onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
           >
             <Upload size={18} />
-            <span>Arraste imagens ou clique para fazer upload</span>
+            <span>{t('background.dragOrClick')}</span>
             <span className="wallpaper-dropzone__hint">
-              {uploadedBackgrounds.length}/{MAX_UPLOADS} usadas
+              {t('background.usedSlots', { used: uploadedBackgrounds.length, total: MAX_UPLOADS })}
             </span>
           </div>
         )}
@@ -269,7 +271,7 @@ export function BackgroundPanel({ settings, onChange, onClose }: BackgroundPanel
       </div>
 
       <div className="settings-panel__section">
-        <label className="settings-panel__label">Cor principal</label>
+        <label className="settings-panel__label">{t('background.primaryColor')}</label>
         <div className="theme-color-picker">
           <HexColorPicker
             color={themeConfig.primaryColor}
@@ -291,14 +293,14 @@ export function BackgroundPanel({ settings, onChange, onClose }: BackgroundPanel
                 }
               }}
               className="theme-color-input"
-              aria-label="Cor principal (hex)"
+              aria-label={t('background.primaryColorHex')}
             />
           </div>
         </div>
       </div>
 
       <div className="settings-panel__section">
-        <label className="settings-panel__label">Cor dos blocos</label>
+        <label className="settings-panel__label">{t('background.boardColor')}</label>
         <div className="theme-color-picker">
           <HexColorPicker
             color={themeConfig.boardColor}
@@ -320,7 +322,7 @@ export function BackgroundPanel({ settings, onChange, onClose }: BackgroundPanel
                 }
               }}
               className="theme-color-input"
-              aria-label="Cor dos blocos (hex)"
+              aria-label={t('background.boardColorHex')}
             />
           </div>
         </div>
@@ -328,7 +330,7 @@ export function BackgroundPanel({ settings, onChange, onClose }: BackgroundPanel
 
       <div className="settings-panel__section">
         <label className="settings-panel__label">
-          Opacidade: {Math.round(themeConfig.boardOpacity * 100)}%
+          {t('background.opacity', { value: Math.round(themeConfig.boardOpacity * 100) })}
         </label>
         <input
           type="range"
@@ -340,13 +342,13 @@ export function BackgroundPanel({ settings, onChange, onClose }: BackgroundPanel
             updateThemeConfig({ boardOpacity: val / 100 });
           }}
           className="theme-slider"
-          aria-label="Opacidade dos blocos"
+          aria-label={t('background.boardOpacity')}
         />
       </div>
 
       <div className="settings-panel__section">
         <label className="settings-panel__label">
-          Desfoque: {themeConfig.boardBlur}px
+          {t('background.blur', { value: themeConfig.boardBlur })}
         </label>
         <input
           type="range"
@@ -358,7 +360,7 @@ export function BackgroundPanel({ settings, onChange, onClose }: BackgroundPanel
             updateThemeConfig({ boardBlur: val });
           }}
           className="theme-slider"
-          aria-label="Desfoque dos blocos"
+          aria-label={t('background.boardBlur')}
         />
       </div>
 
@@ -369,7 +371,7 @@ export function BackgroundPanel({ settings, onChange, onClose }: BackgroundPanel
           onClick={handleResetFromWallpaper}
           disabled={applying}
         >
-          {applying ? 'Extraindo cores...' : 'Redefinir cores do wallpaper'}
+          {applying ? t('background.extractingColors') : t('background.resetColors')}
         </button>
       </div>
     </div>

@@ -2130,6 +2130,20 @@ body {
   line-height: 1.4;
 }
 
+.settings-panel__select {
+  font-size: 0.8125rem;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  outline: none;
+}
+.settings-panel__select:focus {
+  border-color: var(--primary);
+}
+
 .settings-panel__label-row {
   display: flex;
   align-items: center;

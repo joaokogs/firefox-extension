@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import type { Widget } from '@shared/types';
 import { MoreVertical, Plus, Pencil, Trash2 } from 'lucide-preact';
+import { useI18n } from '@shared/i18n';
 
 interface WidgetCardProps {
   widget: Widget;
@@ -32,6 +33,7 @@ export function WidgetCard({
   isDragging,
   className = ''
 }: WidgetCardProps) {
+  const { t } = useI18n();
   const cardRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const kebabRef = useRef<HTMLButtonElement>(null);
@@ -149,8 +151,8 @@ export function WidgetCard({
                 ref={kebabRef}
                 className="widget-card__kebab"
                 onClick={handleKebabClick}
-                aria-label="Ações do widget"
-                title="Ações"
+                aria-label={t('widgetCard.widgetActions')}
+                title={t('widgetCard.actions')}
               >
                 <MoreVertical size={16} strokeWidth={2} />
               </button>
@@ -166,7 +168,7 @@ export function WidgetCard({
                       onClick={handleAction(onAddLink)}
                     >
                       <Plus size={14} strokeWidth={2} />
-                      Adicionar link
+                      {t('widgetCard.addLink')}
                     </button>
                   )}
                   {onEdit && widget.type !== 'clock' && widget.type !== 'calendar' && (
@@ -175,7 +177,7 @@ export function WidgetCard({
                       onClick={handleAction(onEdit)}
                     >
                       <Pencil size={14} strokeWidth={2} />
-                      Editar
+                      {t('widgetCard.edit')}
                     </button>
                   )}
                   {onDelete && (
@@ -184,7 +186,7 @@ export function WidgetCard({
                       onClick={handleAction(onDelete)}
                     >
                       <Trash2 size={14} strokeWidth={2} />
-                      Excluir
+                      {t('widgetCard.delete')}
                     </button>
                   )}
                 </div>,
@@ -198,8 +200,8 @@ export function WidgetCard({
         <div
           className="widget-card__resize-handle"
           onMouseDown={handleMouseDown}
-          aria-label="Redimensionar widget"
-          title="Arraste para redimensionar"
+          aria-label={t('widgetCard.resize')}
+          title={t('widgetCard.dragToResize')}
         />
       )}
     </div>

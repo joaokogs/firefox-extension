@@ -97,6 +97,7 @@ export interface AppSettings {
   openInNewTab?: boolean;
   recentSearches?: string[];
   uploadedBackgrounds?: string[];
+  locale?: string;
 }
 
 export interface WallpaperSetting {
@@ -155,28 +156,10 @@ export const INITIAL_SAMPLE_BOARDS: Board[] = [
     widgets: [
       {
         id: generateId('widget'),
-        type: 'todo',
-        title: 'Bloco de Notas',
-        colSpan: 1,
-        order: 0,
-        items: [],
-        height: 381,
-        col: 2
-      },
-      {
-        id: generateId('widget'),
-        type: 'calendar',
-        title: 'Calendar',
-        colSpan: 1,
-        order: 0,
-        col: 3
-      },
-      {
-        id: generateId('widget'),
         type: 'links',
         title: 'Luma',
         colSpan: 1,
-        order: 1,
+        order: 0,
         items: [
           {
             id: generateId('link'),
@@ -193,6 +176,24 @@ export const INITIAL_SAMPLE_BOARDS: Board[] = [
         ],
         col: 0,
         height: 163
+      },
+      {
+        id: generateId('widget'),
+        type: 'todo',
+        title: 'Todo',
+        colSpan: 1,
+        order: 0,
+        items: [],
+        height: 406,
+        col: 2
+      },
+      {
+        id: generateId('widget'),
+        type: 'calendar',
+        title: 'Calendar',
+        colSpan: 1,
+        order: 0,
+        col: 3
       }
     ]
   }
@@ -211,7 +212,8 @@ export function getDefaultData(): AppData {
       ],
       editMode: true,
       openInNewTab: true,
-      lastBoardId: 'board-home'
+      lastBoardId: 'board-home',
+      locale: 'en'
     },
     installedAt: Date.now()
   };

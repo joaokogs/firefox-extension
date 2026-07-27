@@ -5,6 +5,7 @@
  */
 
 import { browser } from './browser';
+import { t } from '@shared/i18n';
 import type {
   AppData,
   AppSettings,
@@ -82,7 +83,7 @@ export function createBoard(title: string): Board {
   const now = Date.now();
   return {
     id: generateId('board'),
-    title: title.trim() || 'Nova aba',
+    title: title.trim() || t('defaults.newBoard'),
     widgets: [],
     createdAt: now,
     updatedAt: now
@@ -200,15 +201,15 @@ export function createWidget(type: WidgetType, title: string): Widget {
 function defaultWidgetTitle(type: WidgetType): string {
   switch (type) {
     case 'links':
-      return 'Links';
+      return t('defaults.linksWidget');
     case 'calendar':
-      return 'Calendar';
+      return t('defaults.calendarWidget');
     case 'clock':
-      return 'Clock';
+      return t('defaults.clockWidget');
     case 'weather':
-      return 'Weather';
+      return t('defaults.weatherWidget');
     case 'todo':
-      return 'Bloco de Notas';
+      return t('defaults.todoWidget');
   }
 }
 
@@ -264,7 +265,7 @@ export function reorderWidgets(data: AppData, boardId: string, widgetIds: string
 export function createLink(title: string, url: string, icon?: string | null): LinkItem {
   return {
     id: generateId('link'),
-    title: title.trim() || 'Link sem título',
+    title: title.trim() || t('defaults.newLink'),
     url: normalizeUrl(url),
     icon: icon || undefined
   };
@@ -375,7 +376,7 @@ export function moveLink(
 export function createTodoItem(text: string): TodoItem {
   return {
     id: generateId('todo'),
-    text: text.trim() || 'Nova nota',
+    text: text.trim() || t('defaults.newNote'),
     done: false
   };
 }
@@ -469,7 +470,7 @@ export function exportData(data: AppData): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `luma-dashboard-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = t('storage.backupFilename', { date: new Date().toISOString().slice(0, 10) });
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -481,15 +482,15 @@ export function importData(file: File): Promise<AppData> {
       try {
         const parsed = JSON.parse(reader.result as string);
         if (!parsed.boards || !Array.isArray(parsed.boards) || !parsed.settings) {
-          reject(new Error('Arquivo inválido: formato de dados incorreto.'));
+          reject(new Error(t('storage.invalidFileFormat')));
           return;
         }
         resolve(parsed as AppData);
       } catch {
-        reject(new Error('Arquivo inválido: não foi possível fazer o parse do JSON.'));
+        reject(new Error(t('storage.invalidFileParse')));
       }
     };
-    reader.onerror = () => reject(new Error('Erro ao ler o arquivo.'));
+    reader.onerror = () => reject(new Error(t('storage.errorReadingFile')));
     reader.readAsText(file);
   });
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { useI18n } from '@shared/i18n';
 import { createPortal } from 'preact/compat';
 import type { LinkItem, LinksWidget } from '@shared/types';
 import { getFaviconUrl } from '@shared/storage';
@@ -158,6 +159,7 @@ function LinkRow({
   onDragStart?: (e: DragEvent, linkId: string) => void;
   onDragEnd?: () => void;
 }) {
+  const { t } = useI18n();
   const [imageError, setImageError] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuPos, setMenuPos] = useState({ top: 0, right: 0 });
@@ -237,7 +239,7 @@ function LinkRow({
         target={openInNewTab ? '_blank' : '_self'}
         rel="noopener noreferrer"
         className="links-widget__link"
-        aria-label={`Abrir ${link.title}`}
+        aria-label={t('linksWidget.open', { title: link.title })}
       >
         <span className="links-widget__drag-handle" aria-hidden="true">
           <GripVertical size={12} />
@@ -267,8 +269,8 @@ function LinkRow({
             ref={kebabRef}
             className="links-widget__kebab"
             onClick={handleKebabClick}
-            aria-label="Ações do link"
-            title="Ações"
+            aria-label={t('linksWidget.linkActions')}
+            title={t('linksWidget.actions')}
           >
             <MoreVertical size={14} strokeWidth={2} />
           </button>
@@ -284,7 +286,7 @@ function LinkRow({
                   onClick={handleAction(onEdit)}
                 >
                   <Pencil size={14} strokeWidth={2} />
-                  Editar
+                  {t('linksWidget.edit')}
                 </button>
               )}
               {onDelete && (
@@ -293,7 +295,7 @@ function LinkRow({
                   onClick={handleAction(onDelete)}
                 >
                   <Trash2 size={14} strokeWidth={2} />
-                  Excluir
+                  {t('linksWidget.delete')}
                 </button>
               )}
             </div>,

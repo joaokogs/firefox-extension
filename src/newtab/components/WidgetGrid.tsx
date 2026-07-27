@@ -1,5 +1,6 @@
 import { useRef, useState, useMemo } from 'preact/hooks';
 import type { Widget } from '@shared/types';
+import { useI18n } from '@shared/i18n';
 import { WidgetCard } from './WidgetCard';
 import { LinksWidgetView } from './LinksWidget';
 import { CalendarWidgetView } from './CalendarWidget';
@@ -59,6 +60,7 @@ export function WidgetGrid({
   onMoveTodo,
   isEditing = true
 }: WidgetGridProps) {
+  const { t } = useI18n();
   const gridRef = useRef<HTMLDivElement>(null);
   const columnCount = useColumnCount(gridRef);
   const [drag, setDrag] = useState<DragTarget>({ widgetId: null, col: null, targetId: null, position: null });
@@ -329,8 +331,8 @@ export function WidgetGrid({
             <button
               className="widgets-column__add"
               onClick={() => onAddWidget?.()}
-              aria-label={`Adicionar widget na coluna ${colIndex + 1}`}
-              title="Adicionar widgets"
+              aria-label={t('widgetGrid.addWidgetColumn', { n: colIndex + 1 })}
+              title={t('widgetGrid.addWidgets')}
             >
               <span aria-hidden="true">+</span>
             </button>
