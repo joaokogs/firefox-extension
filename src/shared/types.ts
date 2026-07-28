@@ -1,5 +1,5 @@
 /**
- * Shared type definitions for the Luma extension.
+ * Shared type definitions for the Prismi extension.
  * Keep this file dependency-free so it can be imported anywhere.
  */
 
@@ -157,20 +157,20 @@ export const INITIAL_SAMPLE_BOARDS: Board[] = [
       {
         id: generateId('widget'),
         type: 'links',
-        title: 'Luma',
+        title: 'Prismi',
         colSpan: 1,
         order: 0,
         items: [
           {
             id: generateId('link'),
-            title: 'Luma',
-            url: 'https://luma-page-sooty.vercel.app/',
-            icon: 'fa:heart'
+            title: 'Prismi',
+            url: 'https://prismi.vercel.app/',
+            icon: 'fa:star'
           },
           {
             id: generateId('link'),
-            title: 'Luma Repository',
-            url: 'https://github.com/joaokogs/luma-extension',
+            title: 'Prismi Repository',
+            url: 'https://github.com/joaokogs/prismi',
             icon: 'fab:github'
           }
         ],
@@ -183,9 +183,15 @@ export const INITIAL_SAMPLE_BOARDS: Board[] = [
         title: 'Todo',
         colSpan: 1,
         order: 0,
-        items: [],
+        items: [
+          {
+            id: generateId('todo'),
+            text: 'A reminder to star the repository 🌟',
+            done: false
+          }
+        ],
         height: 406,
-        col: 2
+        col: 3
       },
       {
         id: generateId('widget'),
@@ -193,7 +199,7 @@ export const INITIAL_SAMPLE_BOARDS: Board[] = [
         title: 'Calendar',
         colSpan: 1,
         order: 0,
-        col: 3
+        col: 4
       }
     ]
   }

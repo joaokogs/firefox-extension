@@ -1,116 +1,92 @@
-# Luma Dashboard
+<p align="center">
+  <img src="prismi-icon.png" alt="Prismi" width="64" height="64">
+</p>
 
-Luma Dashboard — extensão Firefox que substitui a nova aba por uma dashboard visual, rápida e elegante com boards, widgets, clima, calendário e notas.
+<h1 align="center">Prismi</h1>
 
-## Stack
+<p align="center">
+  <b>Your new tab, finally useful.</b>
+  <br>
+  Save any tab, link, or note in one click, then find it instantly, right on your new tab.
+</p>
 
-- **Vite** — build rápido e leve
-- **TypeScript** — tipagem estática
-- **Preact** — React-like com bundle muito menor
-- **CSS puro organizado por feature**
-- **WebExtensions Manifest V3**
-- **browser.storage.local** — dados locais, sem backend
+<p align="center">
+  <a href="https://addons.mozilla.org/pt-BR/firefox/addon/luma-new-tab-with-widgets/">
+    <img src="https://img.shields.io/badge/Firefox-FF7139?style=for-the-badge&logo=firefoxbrowser&logoColor=white" alt="Firefox">
+  </a>
+  <a href="https://chromewebstore.google.com/detail/faohpcjkdlgohpiojcdgnooikififmek?utm_source=item-share-cb">
+    <img src="https://img.shields.io/badge/Chrome-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Chrome">
+  </a>
+</p>
 
-## Funcionalidades MVP
+---
 
-- Substitui a nova aba do Firefox (`chrome_url_overrides.newtab`)
-- Boards visuais com cards de links
-- Criar, renomear e excluir boards
-- Cards com título, URL, favicon e nota opcional
-- Popup com botão "Salvar aba atual"
-- Busca instantânea de links
-- Tema claro/escuro/sistema
-- Wallpaper customizável (gradientes pré-definidos ou URL)
-- Layout responsivo
-- Dados de exemplo na primeira execução
+## Stop losing tabs you meant to come back to
 
-## Estrutura do projeto
+Prismi turns the most familiar page in your browser into a small system for the things you want to return to. Save a useful page instead of leaving another tab open as a reminder, give it a home in seconds, and pick up exactly where you left off.
 
-```
-.
-├── dist/                    # Build pronto para instalação
-├── public/
-│   ├── manifest.json        # Manifest V3 da extensão
-│   └── icons/               # Ícones PNG gerados do SVG
-├── scripts/
-│   └── build-icons.js       # Gera ícones PNG a partir do SVG
-├── src/
-│   ├── newtab/
-│   │   ├── App.tsx          # Página principal da nova aba
-│   │   ├── main.tsx         # Entry point da nova aba
-│   │   ├── styles.css       # Estilos da nova aba
-│   │   └── components/      # Componentes da newtab
-│   ├── popup/
-│   │   ├── Popup.tsx        # Popup da extensão
-│   │   ├── main.tsx         # Entry point do popup
-│   │   └── styles.css       # Estilos do popup
-│   └── shared/
-│       ├── browser.ts       # Wrapper da API do navegador
-│       ├── storage.ts       # Funções centralizadas de storage
-│       └── types.ts         # Tipos e dados iniciais
-├── newtab.html              # HTML da nova aba
-├── popup.html               # HTML do popup
-├── package.json
-├── tsconfig.json
-└── vite.config.ts
-```
+Your collection is waiting in every new tab, ready when the next task starts.
 
-## Requisitos de sistema
+<p align="center">
+  <img src="Preview.jpg" alt="Prismi dashboard preview" width="680" style="border-radius: 8px;">
+</p>
 
-- **OS**: Windows, macOS ou Linux
-- **Node.js**: >= 18.x
-- **npm**: >= 9.x
+## A calmer starting point
 
-## Como rodar
+**Save what is worth keeping** - Save tabs, links, and notes while they are still useful, without keeping them open as reminders.
 
-### 1. Instalar dependências
+**Give every context a home** - Create boards for work, ideas, reading, or anything else that helps you think clearly.
 
-```bash
-npm install
-```
+**Find the thread again** - Your saved collection is always available on your new tab, so you can return to the right link when the next task begins.
 
-### 2. Build de produção
+**Make the space yours** - Choose a wallpaper, tune the colors, and add the small utilities that make a new tab useful from the first click.
 
-```bash
-npm run build
-```
+**Search without leaving** - Find saved links or use the built-in search bar from the place where your next task begins.
 
-O comando gera os ícones PNG, compila o TypeScript e emite os arquivos na pasta `dist/`.
+**Import bookmarks** - Bring existing browser bookmarks into Prismi, keep the useful ones, and organize the rest.
 
-> Este build reproduz exatamente o pacote enviado. O zip da extensão é o conteúdo da pasta `dist/`.
+## How it works
 
-### 3. Carregar no Firefox
+| Step | What to do |
+|---|---|
+| **1. Install** | Add Prismi from Firefox Add-ons or the Chrome Web Store. It becomes your new-tab page. |
+| **2. Create a board** | Start with a context you return to, such as a project, reading list, or everyday tools. |
+| **3. Save and return** | Save useful tabs, links, or notes in one click and find them again whenever you open a new tab. |
 
-1. Abra o Firefox e digite na barra de endereço: `about:debugging`
-2. Clique em **"This Firefox"** (ou "Este Firefox")
-3. Clique em **"Load Temporary Add-on..."** (ou "Carregar extensão temporária...")
-4. Navegue até a pasta `dist/` e selecione o arquivo `manifest.json`
+## Compatibility
 
-A extensão será carregada. Abra uma nova aba para ver a dashboard.
+Prismi works on desktop Firefox, Chrome, Edge, Opera, Brave, and most Chromium-based browsers. Mobile browsers are not supported.
 
-> **Dica:** A extensão fica carregada apenas durante a sessão atual do Firefox. Para usar permanentemente, é necessário empacotar e publicar na Mozilla Add-ons ou assinar com um arquivo `.xpi`.
+## Privacy
 
-### Desenvolvimento
+Prismi is free and private by design: no ads, tracking, subscriptions, or feature caps. Your saved links remain under your control, are stored locally in your browser, and can be exported.
 
-```bash
-npm run dev
-```
+Read the full [Privacy Policy](PRIVACY.md).
 
-O Vite inicia um servidor de desenvolvimento. Para testar a extensão no Firefox, ainda é necessário carregar a pasta `dist/` via `about:debugging` após o build.
+## Support the project
 
-## Decisões de performance
+<p align="center">
+  <img src="prismi-2.png" alt="Prismi" width="400">
+</p>
 
-1. **Preact em vez de React**: reduz o bundle inicial em dezenas de KB mantendo a API familiar.
-2. **CSS puro**: sem bibliotecas de CSS-in-JS ou frameworks de UI, evitando parse e runtime extras.
-3. **WebExtension Polyfill apenas onde necessário**: centralizado em `src/shared/browser.ts`.
-4. **Favicon leve**: usa serviço de favicon do Google com tamanho 64px, com fallback para o favicon nativo da aba no popup.
-5. **Storage centralizado**: todas as operações de `browser.storage.local` passam por `src/shared/storage.ts`, com funções puras para atualizar o estado.
-6. **Busca simples no cliente**: busca por substring em título, URL e nota, sem índices complexos para o MVP.
-7. **CSS transitions**: microinterações via CSS puro, sem animações JavaScript pesadas.
-8. **Imagens sob demanda**: wallpaper padrão são gradientes CSS; imagens externas só carregam quando o usuário escolhe.
-9. **Bundle dividido**: newtab e popup são entry points separados, carregando apenas o necessário.
-10. **Estado de UI separado do estado persistido**: o componente mantém o estado visual (busca, modais, aba ativa) e sincroniza o modelo de dados com `browser.storage.local`.
+Prismi is free and open source. If you find it useful, a star on GitHub helps other people discover the project.
 
-## Licença
+<p align="center">
+  <a href="https://github.com/joaokogs/prismi/stargazers">
+    <img src="https://img.shields.io/github/stars/joaokogs/luma-extension?style=for-the-badge&logo=github&label=Stars&color=FF7139" alt="GitHub stars">
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://github.com/joaokogs/prismi/issues">
+    <img src="https://img.shields.io/github/issues/joaokogs/luma-extension?style=for-the-badge&logo=github&label=Issues&color=818cf8" alt="GitHub issues">
+  </a>
+</p>
+
+<p align="center">
+  <b><a href="https://github.com/joaokogs/prismi">Star the repository on GitHub</a></b>
+  <br>
+  <sub>Open source. No ads or tracking. Your saved links stay under your control.</sub>
+</p>
+
+## License
 
 MIT

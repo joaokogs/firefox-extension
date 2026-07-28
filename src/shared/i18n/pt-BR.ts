@@ -273,7 +273,7 @@ export const ptBR: Record<string, string> = {
   'storage.errorReadingFile': 'Erro ao ler o arquivo.',
   'storage.invalidFileFormat': 'Arquivo inválido: formato de dados incorreto.',
   'storage.invalidFileParse': 'Arquivo inválido: não foi possível fazer o parse do JSON.',
-  'storage.backupFilename': 'luma-dashboard-backup-{date}.json',
+  'storage.backupFilename': 'prismi-dashboard-backup-{date}.json',
 
   // Language
   'settings.language': 'Idioma',

@@ -273,7 +273,7 @@ export const en: Record<string, string> = {
   'storage.errorReadingFile': 'Error reading file.',
   'storage.invalidFileFormat': 'Invalid file: incorrect data format.',
   'storage.invalidFileParse': 'Invalid file: could not parse JSON.',
-  'storage.backupFilename': 'luma-dashboard-backup-{date}.json',
+  'storage.backupFilename': 'prismi-dashboard-backup-{date}.json',
 
   // Language
   'settings.language': 'Language',

@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 200" width="400" height="200">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0f172a" stop-opacity="0" />
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="glowSoft">
+      <feGaussianBlur stdDeviation="1" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="400" height="200" fill="url(#bg)" />
+
+  <!-- Estrela 1 -->
+  <g filter="url(#glow)">
+    <polygon points="60,30 63,40 73,40 65,47 68,57 60,50 52,57 55,47 47,40 57,40" fill="#FFD700" opacity="0">
+      <animate attributeName="opacity" values="0;1;1;0" dur="3s" repeatCount="indefinite" begin="0s" />
+      <animateTransform attributeName="transform" type="translate" values="0,80; 0,-30" dur="3s" repeatCount="indefinite" begin="0s" />
+    </polygon>
+  </g>
+
+  <!-- Estrela 2 -->
+  <g filter="url(#glow)">
+    <polygon points="140,50 143,58 151,58 145,63 147,71 140,66 133,71 135,63 129,58 137,58" fill="#FFD700" opacity="0">
+      <animate attributeName="opacity" values="0;1;1;0" dur="3.5s" repeatCount="indefinite" begin="0.5s" />
+      <animateTransform attributeName="transform" type="translate" values="0,70; 0,-40" dur="3.5s" repeatCount="indefinite" begin="0.5s" />
+    </polygon>
+  </g>
+
+  <!-- Estrela 3 (menor) -->
+  <g filter="url(#glowSoft)">
+    <polygon points="220,20 222,27 229,27 224,31 225,38 220,34 215,38 216,31 211,27 218,27" fill="#FFD700" opacity="0">
+      <animate attributeName="opacity" values="0;0.8;0.8;0" dur="2.8s" repeatCount="indefinite" begin="1s" />
+      <animateTransform attributeName="transform" type="translate" values="0,90; 0,-20" dur="2.8s" repeatCount="indefinite" begin="1s" />
+    </polygon>
+  </g>
+
+  <!-- Estrela 4 -->
+  <g filter="url(#glow)">
+    <polygon points="310,40 313,48 321,48 315,53 317,61 310,56 303,61 305,53 299,48 307,48" fill="#FFD700" opacity="0">
+      <animate attributeName="opacity" values="0;0.9;0.9;0" dur="4s" repeatCount="indefinite" begin="0.2s" />
+      <animateTransform attributeName="transform" type="translate" values="0,75; 0,-35" dur="4s" repeatCount="indefinite" begin="0.2s" />
+    </polygon>
+  </g>
+
+  <!-- Estrela 5 (pequena) -->
+  <g filter="url(#glowSoft)">
+    <polygon points="95,60 97,66 103,66 98,70 99,76 95,72 91,76 92,70 87,66 93,66" fill="#FFC107" opacity="0">
+      <animate attributeName="opacity" values="0;0.7;0.7;0" dur="3.2s" repeatCount="indefinite" begin="1.5s" />
+      <animateTransform attributeName="transform" type="translate" values="0,60; 0,-40" dur="3.2s" repeatCount="indefinite" begin="1.5s" />
+    </polygon>
+  </g>
+
+  <!-- Estrela 6 -->
+  <g filter="url(#glow)">
+    <polygon points="350,60 352,66 358,66 354,70 355,76 350,72 345,76 346,70 342,66 348,66" fill="#FFF176" opacity="0">
+      <animate attributeName="opacity" values="0;0.6;0.6;0" dur="3.8s" repeatCount="indefinite" begin="2s" />
+      <animateTransform attributeName="transform" type="translate" values="0,65; 0,-45" dur="3.8s" repeatCount="indefinite" begin="2s" />
+    </polygon>
+  </g>
+
+  <!-- Estrela 7 -->
+  <g filter="url(#glowSoft)">
+    <polygon points="180,70 182,76 188,76 184,80 185,86 180,82 175,86 176,80 172,76 178,76" fill="#FFD700" opacity="0">
+      <animate attributeName="opacity" values="0;0.8;0.8;0" dur="2.5s" repeatCount="indefinite" begin="0.8s" />
+      <animateTransform attributeName="transform" type="translate" values="0,55; 0,-50" dur="2.5s" repeatCount="indefinite" begin="0.8s" />
+    </polygon>
+  </g>
+
+  <!-- Estrela 8 -->
+  <g filter="url(#glow)">
+    <polygon points="260,25 262,31 268,31 264,35 265,41 260,37 255,41 256,35 252,31 258,31" fill="#FFE082" opacity="0">
+      <animate attributeName="opacity" values="0;0.9;0.9;0" dur="3.6s" repeatCount="indefinite" begin="1.2s" />
+      <animateTransform attributeName="transform" type="translate" values="0,85; 0,-25" dur="3.6s" repeatCount="indefinite" begin="1.2s" />
+    </polygon>
+  </g>
+
+  <!-- Partículas brilhantes -->
+  <circle cx="50" cy="180" r="1.5" fill="#FFD700" opacity="0">
+    <animate attributeName="opacity" values="0;0.8;0" dur="2s" repeatCount="indefinite" begin="0.3s" />
+    <animate attributeName="cy" values="180;20" dur="2s" repeatCount="indefinite" begin="0.3s" />
+  </circle>
+
+  <circle cx="120" cy="180" r="1" fill="#FFC107" opacity="0">
+    <animate attributeName="opacity" values="0;0.6;0" dur="2.5s" repeatCount="indefinite" begin="0.7s" />
+    <animate attributeName="cy" values="180;30" dur="2.5s" repeatCount="indefinite" begin="0.7s" />
+  </circle>
+
+  <circle cx="190" cy="180" r="1.5" fill="#FFD700" opacity="0">
+    <animate attributeName="opacity" values="0;0.7;0" dur="2.2s" repeatCount="indefinite" begin="1.1s" />
+    <animate attributeName="cy" values="180;25" dur="2.2s" repeatCount="indefinite" begin="1.1s" />
+  </circle>
+
+  <circle cx="280" cy="180" r="1" fill="#FFF176" opacity="0">
+    <animate attributeName="opacity" values="0;0.5;0" dur="2.8s" repeatCount="indefinite" begin="0.5s" />
+    <animate attributeName="cy" values="180;15" dur="2.8s" repeatCount="indefinite" begin="0.5s" />
+  </circle>
+
+  <circle cx="340" cy="180" r="1.2" fill="#FFE082" opacity="0">
+    <animate attributeName="opacity" values="0;0.9;0" dur="1.8s" repeatCount="indefinite" begin="1.5s" />
+    <animate attributeName="cy" values="180;35" dur="1.8s" repeatCount="indefinite" begin="1.5s" />
+  </circle>
+
+  <circle cx="370" cy="180" r="1" fill="#FFD700" opacity="0">
+    <animate attributeName="opacity" values="0;0.6;0" dur="3s" repeatCount="indefinite" begin="2s" />
+    <animate attributeName="cy" values="180;10" dur="3s" repeatCount="indefinite" begin="2s" />
+  </circle>
+</svg>

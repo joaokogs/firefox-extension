@@ -1,7 +1,7 @@
 {
-  "name": "luma-dashboard",
-  "version": "1.2.0",
-  "description": "Luma Dashboard — nova aba bonita e rápida para Firefox com boards visuais para organizar links, abas e notas.",
+  "name": "prismi-dashboard",
+  "version": "1.3.0",
+  "description": "Prismi Dashboard — nova aba bonita e rápida para Firefox com boards visuais para organizar links, abas e notas.",
   "type": "module",
   "scripts": {
     "dev": "vite",
