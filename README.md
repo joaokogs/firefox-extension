@@ -55,6 +55,12 @@ Luma Dashboard — extensão Firefox que substitui a nova aba por uma dashboard 
 └── vite.config.ts
 ```
 
+## Requisitos de sistema
+
+- **OS**: Windows, macOS ou Linux
+- **Node.js**: >= 18.x
+- **npm**: >= 9.x
+
 ## Como rodar
 
 ### 1. Instalar dependências
@@ -70,6 +76,8 @@ npm run build
 ```
 
 O comando gera os ícones PNG, compila o TypeScript e emite os arquivos na pasta `dist/`.
+
+> Este build reproduz exatamente o pacote enviado. O zip da extensão é o conteúdo da pasta `dist/`.
 
 ### 3. Carregar no Firefox
 
