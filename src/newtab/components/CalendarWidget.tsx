@@ -1,14 +1,11 @@
 import { useState, useEffect } from 'preact/hooks';
 import { ChevronLeft, ChevronRight } from 'lucide-preact';
-
-const MONTHS = [
-  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-];
-
-const DAYS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+import { useI18n } from '@shared/i18n';
 
 export function CalendarWidgetView() {
+  const { t } = useI18n();
+  const MONTHS = t('calendar.months').split(',');
+  const DAYS = t('calendar.days').split(',');
   const [today, setToday] = useState(new Date());
   const [month, setMonth] = useState(new Date());
 
@@ -39,11 +36,11 @@ export function CalendarWidgetView() {
   return (
     <div className="calendar-widget">
       <div className="calendar-widget__header">
-        <button className="calendar-widget__nav" onClick={prevMonth} aria-label="Mês anterior">
+        <button className="calendar-widget__nav" onClick={prevMonth} aria-label={t('calendar.prevMonth')}>
           <ChevronLeft size={16} strokeWidth={2} />
         </button>
         <span className="calendar-widget__month">{MONTHS[monthIndex]} {year}</span>
-        <button className="calendar-widget__nav" onClick={nextMonth} aria-label="Próximo mês">
+        <button className="calendar-widget__nav" onClick={nextMonth} aria-label={t('calendar.nextMonth')}>
           <ChevronRight size={16} strokeWidth={2} />
         </button>
       </div>

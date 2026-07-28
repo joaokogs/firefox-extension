@@ -1,5 +1,6 @@
 import { useRef, useState, useMemo } from 'preact/hooks';
 import type { Widget } from '@shared/types';
+import { useI18n } from '@shared/i18n';
 import { WidgetCard } from './WidgetCard';
 import { LinksWidgetView } from './LinksWidget';
 import { CalendarWidgetView } from './CalendarWidget';
@@ -18,7 +19,7 @@ interface WidgetGridProps {
   onEditLink?: (widgetId: string, linkId: string) => void;
   onAddLink?: (widget: Widget) => void;
   onResizeWidget?: (widgetId: string, height: number) => void;
-  onAddWidget?: (column: number) => void;
+  onAddWidget?: () => void;
   onMoveLink?: (fromWidgetId: string, toWidgetId: string, linkId: string, toIndex: number) => void;
   onAddTodo?: (widgetId: string, text: string) => void;
   onToggleTodo?: (widgetId: string, todoId: string) => void;
@@ -59,6 +60,7 @@ export function WidgetGrid({
   onMoveTodo,
   isEditing = true
 }: WidgetGridProps) {
+  const { t } = useI18n();
   const gridRef = useRef<HTMLDivElement>(null);
   const columnCount = useColumnCount(gridRef);
   const [drag, setDrag] = useState<DragTarget>({ widgetId: null, col: null, targetId: null, position: null });
@@ -300,7 +302,7 @@ export function WidgetGrid({
                   onEdit={isEditing ? () => onEditWidget(widget) : undefined}
                   onDelete={isEditing ? () => onDeleteWidget(widget.id) : undefined}
                   onAddLink={isEditing && widget.type === 'links' && onAddLink ? () => onAddLink(widget) : undefined}
-                  onResize={isEditing && onResizeWidget ? (h) => onResizeWidget(widget.id, h) : undefined}
+                  onResize={isEditing && onResizeWidget && (widget.type === 'links' || widget.type === 'todo') ? (h) => onResizeWidget(widget.id, h) : undefined}
                 >
                   <WidgetContent
                     widget={widget}
@@ -316,9 +318,9 @@ export function WidgetGrid({
                     onToggleTodo={onToggleTodo}
                     onUpdateTodo={onUpdateTodo}
                     onDeleteTodo={onDeleteTodo}
-                    onTodoDragStart={isEditing ? (e, todoId) => handleTodoDragStart(e, todoId, widget.id) : undefined}
-                    onTodoDragEnd={isEditing ? handleTodoDragEnd : undefined}
-                    onTodoDrop={isEditing ? (widgetId, targetTodoId, position) => handleTodoDrop(widgetId, targetTodoId, position) : undefined}
+                    onTodoDragStart={(e, todoId) => handleTodoDragStart(e, todoId, widget.id)}
+                    onTodoDragEnd={handleTodoDragEnd}
+                    onTodoDrop={(widgetId, targetTodoId, position) => handleTodoDrop(widgetId, targetTodoId, position)}
                   />
                 </WidgetCard>
                 {isTarget && drag.position === 'after' && <DropIndicator />}
@@ -328,9 +330,9 @@ export function WidgetGrid({
           {isEditing && onAddWidget && (
             <button
               className="widgets-column__add"
-              onClick={() => onAddWidget(colIndex)}
-              aria-label={`Adicionar widget na coluna ${colIndex + 1}`}
-              title="Adicionar widgets"
+              onClick={() => onAddWidget?.()}
+              aria-label={t('widgetGrid.addWidgetColumn', { n: colIndex + 1 })}
+              title={t('widgetGrid.addWidgets')}
             >
               <span aria-hidden="true">+</span>
             </button>

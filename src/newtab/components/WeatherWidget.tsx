@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { Sun, Cloud, CloudSun, CloudRain } from 'lucide-preact';
+import { t } from '@shared/i18n';
 
 interface WeatherWidgetViewProps {
   city?: string;
@@ -48,7 +49,7 @@ export function WeatherWidgetView({ city = '' }: WeatherWidgetViewProps) {
 
         if (city) {
           const geo = await geocodeCity(city, abort.signal);
-          if (!geo) throw new Error('Cidade não encontrada');
+          if (!geo) throw new Error(t('weather.cityNotFound'));
           lat = geo.lat;
           lon = geo.lon;
           cityName = geo.name;
@@ -67,17 +68,17 @@ export function WeatherWidgetView({ city = '' }: WeatherWidgetViewProps) {
             isGeo = true;
             cityName = await reverseGeocode(lat, lon, abort.signal);
           } catch {
-            throw new Error('Localização não disponível');
+            throw new Error(t('weather.locationUnavailable'));
           }
         } else {
-          throw new Error('Localização não disponível');
+          throw new Error(t('weather.locationUnavailable'));
         }
 
         const response = await fetch(
           `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=auto`,
           { signal: abort.signal }
         );
-        if (!response.ok) throw new Error('Falha ao buscar clima');
+        if (!response.ok) throw new Error(t('weather.fetchFailed'));
         const data = await response.json();
         const code = data.current_weather?.weathercode ?? 0;
         const temp = data.current_weather?.temperature;
@@ -94,7 +95,7 @@ export function WeatherWidgetView({ city = '' }: WeatherWidgetViewProps) {
         }
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return;
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Erro');
+        if (!cancelled) setError(err instanceof Error ? err.message : t('weather.error'));
       } finally {
         if (!cancelled) setLoading(false);
       }

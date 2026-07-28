@@ -4,29 +4,29 @@ import { createWidget } from '@shared/storage';
 import { X, ExternalLink, LayoutGrid, Clock, CloudSun, CheckSquare } from 'lucide-preact';
 import type { LucideIcon } from 'lucide-preact';
 import { CityAutocomplete } from './CityAutocomplete';
-
-const WIDGET_TYPES: { type: WidgetType; label: string; icon: LucideIcon }[] = [
-  { type: 'links', label: 'Links', icon: ExternalLink },
-  { type: 'calendar', label: 'Calendário', icon: LayoutGrid },
-  { type: 'clock', label: 'Relógio', icon: Clock },
-  { type: 'weather', label: 'Clima', icon: CloudSun },
-  { type: 'todo', label: 'Bloco de Notas', icon: CheckSquare }
-];
+import { useI18n } from '@shared/i18n';
 
 interface WidgetEditorProps {
   widget?: Widget | null;
-  initialColumn?: number;
   linksOnly?: boolean;
   onSave: (widget: Widget) => void;
   onClose: () => void;
 }
 
-export function WidgetEditor({ widget, initialColumn = 0, linksOnly = false, onSave, onClose }: WidgetEditorProps) {
+export function WidgetEditor({ widget, linksOnly = false, onSave, onClose }: WidgetEditorProps) {
+  const { t } = useI18n();
   const isEdit = !!widget;
+
+  const WIDGET_TYPES: { type: WidgetType; label: string; icon: LucideIcon }[] = [
+    { type: 'links', label: t('widgetEditor.links'), icon: ExternalLink },
+    { type: 'calendar', label: t('widgetEditor.calendar'), icon: LayoutGrid },
+    { type: 'clock', label: t('widgetEditor.clock'), icon: Clock },
+    { type: 'weather', label: t('widgetEditor.weather'), icon: CloudSun },
+    { type: 'todo', label: t('widgetEditor.todo'), icon: CheckSquare }
+  ];
+
   const [type, setType] = useState<WidgetType>(widget?.type || 'links');
   const [title, setTitle] = useState(widget?.title || '');
-  const [colSpan, setColSpan] = useState(widget?.colSpan || 1);
-  const [col, setCol] = useState(widget?.col ?? initialColumn);
   const [height, setHeight] = useState<number | ''>(widget?.height ?? '');
   const [city, setCity] = useState((widget?.type === 'weather' && widget.city) || '');
   const [timezone, setTimezone] = useState((widget?.type === 'clock' && widget.timezone) || '');
@@ -60,8 +60,6 @@ export function WidgetEditor({ widget, initialColumn = 0, linksOnly = false, onS
     const updated: Widget = {
       ...base,
       title: title.trim() || base.title,
-      colSpan: Math.min(Math.max(Number(colSpan) || 1, 1), 2),
-      col: Math.max(Number(col) || 0, 0),
       height: height !== '' ? Math.max(Number(height), 120) : undefined
     } as Widget;
 
@@ -79,8 +77,8 @@ export function WidgetEditor({ widget, initialColumn = 0, linksOnly = false, onS
     <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()} role="dialog" aria-modal="true">
       <div className="modal modal--wide">
         <div className="modal__header">
-          <h2>{isEdit ? 'Editar widget' : linksOnly ? 'Novo bloco de links' : 'Novo widget'}</h2>
-          <button className="modal__close" onClick={onClose} aria-label="Fechar">
+          <h2>{isEdit ? t('widgetEditor.editWidget') : linksOnly ? t('widgetEditor.newLinksWidget') : t('widgetEditor.newWidget')}</h2>
+          <button className="modal__close" onClick={onClose} aria-label={t('widgetEditor.close')}>
             <X size={18} />
           </button>
         </div>
@@ -88,7 +86,7 @@ export function WidgetEditor({ widget, initialColumn = 0, linksOnly = false, onS
         <div className="widget-editor">
           {!isEdit && !linksOnly && (
             <div className="widget-editor__section">
-              <label className="widget-editor__label">Tipo</label>
+              <label className="widget-editor__label">{t('widgetEditor.type')}</label>
               <div className="widget-editor__types">
                 {WIDGET_TYPES.map((t) => (
                   <button
@@ -108,59 +106,39 @@ export function WidgetEditor({ widget, initialColumn = 0, linksOnly = false, onS
           <div className="widget-editor__row">
             {(linksOnly || (isEdit && (type === 'links' || type === 'todo'))) && (
               <label className="widget-editor__field">
-                <span>Título</span>
+                <span>{t('widgetEditor.title')}</span>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle((e.target as HTMLInputElement).value)}
-                  placeholder="Ex: Trabalho"
+                  placeholder={t('widgetEditor.titlePlaceholder')}
                 />
               </label>
             )}
-            {!linksOnly && (
+            {isEdit && (widget?.type === 'links' || widget?.type === 'todo') && (
               <label className="widget-editor__field widget-editor__field--small">
-                <span>Largura</span>
-                <select value={colSpan} onChange={(e) => setColSpan(Number((e.target as HTMLSelectElement).value))}>
-                  <option value={1}>1 coluna</option>
-                  <option value={2}>2 colunas</option>
-                </select>
+                <span>{t('widgetEditor.height')}</span>
+                <input
+                  type="number"
+                  value={height}
+                  onChange={(e) => {
+                    const val = (e.target as HTMLInputElement).value;
+                    setHeight(val === '' ? '' : Number(val));
+                  }}
+                  placeholder={t('widgetEditor.auto')}
+                  min={120}
+                />
               </label>
-            )}
-            {isEdit && (
-              <>
-                <label className="widget-editor__field widget-editor__field--small">
-                  <span>Coluna</span>
-                  <input
-                    type="number"
-                    value={col}
-                    onChange={(e) => setCol(Math.max(Number((e.target as HTMLInputElement).value) || 0, 0))}
-                    min={0}
-                  />
-                </label>
-                <label className="widget-editor__field widget-editor__field--small">
-                  <span>Altura (px)</span>
-                  <input
-                    type="number"
-                    value={height}
-                    onChange={(e) => {
-                      const val = (e.target as HTMLInputElement).value;
-                      setHeight(val === '' ? '' : Number(val));
-                    }}
-                    placeholder="Auto"
-                    min={120}
-                  />
-                </label>
-              </>
             )}
           </div>
 
           {type === 'weather' && (
             <label className="widget-editor__field">
-              <span>Cidade</span>
+              <span>{t('widgetEditor.city')}</span>
               <CityAutocomplete
                 value={city}
                 onChange={setCity}
-                placeholder="Ex: São Paulo"
+                placeholder={t('widgetEditor.cityPlaceholder')}
                 id="widget-editor-city"
               />
             </label>
@@ -169,21 +147,21 @@ export function WidgetEditor({ widget, initialColumn = 0, linksOnly = false, onS
           {type === 'clock' && (
             <div className="widget-editor__row">
               <label className="widget-editor__field">
-                <span>Timezone (opcional)</span>
+                <span>{t('widgetEditor.timezone')}</span>
                 <input
                   type="text"
                   value={timezone}
                   onChange={(e) => setTimezone((e.target as HTMLInputElement).value)}
-                  placeholder="Ex: America/New_York"
+                  placeholder={t('widgetEditor.timezonePlaceholder')}
                 />
               </label>
               <label className="widget-editor__field">
-                <span>Label (opcional)</span>
+                <span>{t('widgetEditor.label')}</span>
                 <input
                   type="text"
                   value={label}
                   onChange={(e) => setLabel((e.target as HTMLInputElement).value)}
-                  placeholder="Ex: Wed Jun 17"
+                  placeholder={t('widgetEditor.labelPlaceholder')}
                 />
               </label>
             </div>
@@ -193,10 +171,10 @@ export function WidgetEditor({ widget, initialColumn = 0, linksOnly = false, onS
 
         <div className="modal__actions">
           <button type="button" className="btn btn--secondary" onClick={onClose}>
-            Cancelar
+            {t('widgetEditor.cancel')}
           </button>
           <button type="button" className="btn btn--primary" onClick={handleSave}>
-            Salvar widget
+            {t('widgetEditor.saveWidget')}
           </button>
         </div>
       </div>

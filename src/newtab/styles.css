@@ -75,6 +75,39 @@ select {
   font: inherit;
 }
 
+/* Scrollbar styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+*:hover {
+  scrollbar-color: color-mix(in srgb, var(--text-muted) 35%, transparent) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 4px;
+  transition: background 0.25s ease;
+}
+
+*:hover::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--text-muted) 35%, transparent);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--text-muted) 55%, transparent);
+}
+
 button {
   cursor: pointer;
   border: none;
@@ -587,13 +620,14 @@ body {
 
 /* Top info widgets */
 .top-info-widgets {
-  justify-self: end;
+  justify-self: stretch;
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
 .top-info-widget {
+  flex: 1;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -859,15 +893,6 @@ body {
   outline: none;
 }
 
-.widgets-column::-webkit-scrollbar {
-  width: 6px;
-}
-
-.widgets-column::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 3px;
-}
-
 .widget-drop-wrapper {
   display: flex;
   flex-direction: column;
@@ -914,15 +939,6 @@ body {
   flex: 1;
   min-height: 0;
   padding-right: 4px;
-}
-
-.widget-card--fixed-height .widget-card__content::-webkit-scrollbar {
-  width: 5px;
-}
-
-.widget-card--fixed-height .widget-card__content::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 3px;
 }
 
 .widget-card:hover {
@@ -2112,6 +2128,20 @@ body {
   font-size: 0.8125rem;
   color: var(--text-muted);
   line-height: 1.4;
+}
+
+.settings-panel__select {
+  font-size: 0.8125rem;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  outline: none;
+}
+.settings-panel__select:focus {
+  border-color: var(--primary);
 }
 
 .settings-panel__label-row {

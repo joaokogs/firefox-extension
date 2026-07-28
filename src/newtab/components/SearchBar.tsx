@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Search, X, Bookmark, Clock, Globe } from 'lucide-preact';
 import { SEARCH_ENGINES } from '@shared/types';
 import type { LinkItem, SearchEngine } from '@shared/types';
+import { useI18n } from '@shared/i18n';
 
 type DropdownItem =
   | { type: 'link'; text: string; link: LinkItem }
@@ -37,6 +38,7 @@ export function SearchBar({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<number | null>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     let count = 0;
@@ -187,7 +189,7 @@ export function SearchBar({
         <button
           className="search-engine-btn"
           onClick={() => setEngineDropdownOpen((s) => !s)}
-          aria-label="Alterar buscador"
+          aria-label={t('searchBar.changeEngine')}
           title={currentEngine?.name}
         >
           <img
@@ -200,7 +202,7 @@ export function SearchBar({
       <input
         ref={inputRef}
         type="text"
-        placeholder="Pesquisar ou digitar URL..."
+        placeholder={t('searchBar.placeholder')}
         value={searchQuery}
         onInput={(e) => handleInput((e.target as HTMLInputElement).value)}
         onKeyDown={handleKeyDown}
@@ -209,13 +211,13 @@ export function SearchBar({
         autoFocus
         aria-autocomplete="list"
         aria-expanded={hasDropdown}
-        aria-label="Pesquisar ou digitar URL"
+        aria-label={t('searchBar.placeholder')}
       />
       {searchQuery && (
         <button
           className="app-header__clear"
           onClick={() => { onSearchQueryChange(''); setOpen(false); inputRef.current?.focus(); }}
-          aria-label="Limpar busca"
+          aria-label={t('searchBar.clearSearch')}
         >
           <X size={14} />
         </button>
@@ -242,7 +244,7 @@ export function SearchBar({
             <>
               {(index === 0 || item.type !== dropdownItems[index - 1]?.type) && (
                 <li className={`search-suggestions__section ${item.type === 'link' ? 'search-suggestions__section--links' : ''}`} role="presentation">
-                  {item.type === 'search' ? 'Pesquisar' : item.type === 'link' ? 'Links' : item.type === 'suggestion' ? 'Recomendados da web' : 'Buscas recentes'}
+                  {item.type === 'search' ? t('searchBar.sectionSearch') : item.type === 'link' ? t('searchBar.sectionLinks') : item.type === 'suggestion' ? t('searchBar.sectionSuggestions') : t('searchBar.sectionRecent')}
                 </li>
               )}
               <li
@@ -262,7 +264,7 @@ export function SearchBar({
                   <button
                     className="search-suggestions__remove"
                     onClick={(e) => { e.stopPropagation(); onRemoveRecentSearch(item.text); }}
-                    aria-label={`Remover busca "${item.text}"`}
+                    aria-label={t('searchBar.removeSearch', { text: item.text })}
                   >
                     <X size={12} />
                   </button>

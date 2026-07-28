@@ -1,3 +1,4 @@
+import { useI18n } from '@shared/i18n';
 import { Trash2 } from 'lucide-preact';
 
 interface ConfirmDialogProps {
@@ -15,12 +16,16 @@ export function ConfirmDialog({
   open,
   title,
   message,
-  confirmLabel = 'Confirmar',
-  cancelLabel = 'Cancelar',
+  confirmLabel: confirmLabelProp,
+  cancelLabel: cancelLabelProp,
   danger = false,
   onConfirm,
   onCancel
 }: ConfirmDialogProps) {
+  const { t } = useI18n();
+  const confirmLabel = confirmLabelProp ?? t('confirm.confirm');
+  const cancelLabel = cancelLabelProp ?? t('confirm.cancel');
+
   if (!open) return null;
 
   return (

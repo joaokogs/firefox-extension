@@ -73,8 +73,8 @@ export interface ThemeConfig {
 }
 
 export const DEFAULT_THEME: ThemeConfig = {
-  primaryColor: '#4f46e5',
-  boardColor: '#ffffff',
+  primaryColor: '#4a90e2',
+  boardColor: '#eef6fb',
   boardOpacity: 0.78,
   boardBlur: 16,
   derivedFromWallpaper: true
@@ -97,6 +97,7 @@ export interface AppSettings {
   openInNewTab?: boolean;
   recentSearches?: string[];
   uploadedBackgrounds?: string[];
+  locale?: string;
 }
 
 export interface WallpaperSetting {
@@ -153,32 +154,48 @@ export const INITIAL_SAMPLE_BOARDS: Board[] = [
     createdAt: Date.now(),
     updatedAt: Date.now(),
     widgets: [
-      { id: generateId('widget'), type: 'links', title: 'Work', colSpan: 1, order: 0, col: 0, items: [] },
-      { id: generateId('widget'), type: 'links', title: 'Social', colSpan: 1, order: 0, col: 1, items: [] },
-      { id: generateId('widget'), type: 'links', title: 'Learn', colSpan: 1, order: 0, col: 2, items: [] },
-      { id: generateId('widget'), type: 'calendar', title: 'Calendar', colSpan: 1, order: 0, col: 3 }
+      {
+        id: generateId('widget'),
+        type: 'links',
+        title: 'Luma',
+        colSpan: 1,
+        order: 0,
+        items: [
+          {
+            id: generateId('link'),
+            title: 'Luma',
+            url: 'https://luma-page-sooty.vercel.app/',
+            icon: 'fa:heart'
+          },
+          {
+            id: generateId('link'),
+            title: 'Luma Repository',
+            url: 'https://github.com/joaokogs/luma-extension',
+            icon: 'fab:github'
+          }
+        ],
+        col: 0,
+        height: 163
+      },
+      {
+        id: generateId('widget'),
+        type: 'todo',
+        title: 'Todo',
+        colSpan: 1,
+        order: 0,
+        items: [],
+        height: 406,
+        col: 2
+      },
+      {
+        id: generateId('widget'),
+        type: 'calendar',
+        title: 'Calendar',
+        colSpan: 1,
+        order: 0,
+        col: 3
+      }
     ]
-  },
-  {
-    id: 'board-personal',
-    title: 'Personal',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    widgets: []
-  },
-  {
-    id: 'board-learning',
-    title: 'Learning',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    widgets: []
-  },
-  {
-    id: 'board-projects',
-    title: 'Projects',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-    widgets: []
   }
 ];
 
@@ -186,14 +203,17 @@ export function getDefaultData(): AppData {
   return {
     boards: INITIAL_SAMPLE_BOARDS,
     settings: {
-      theme: 'system',
+      theme: 'light',
       wallpaper: DEFAULT_WALLPAPERS[0],
       topWidgets: [
         { type: 'weather', city: 'New York' },
-        { type: 'clock' }
+        { type: 'clock' },
+        { type: 'search' }
       ],
       editMode: true,
-      openInNewTab: true
+      openInNewTab: true,
+      lastBoardId: 'board-home',
+      locale: 'en'
     },
     installedAt: Date.now()
   };

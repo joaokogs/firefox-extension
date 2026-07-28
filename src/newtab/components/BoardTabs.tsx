@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { createPortal } from 'preact/compat';
 import type { Board } from '@shared/types';
+import { useI18n } from '@shared/i18n';
 import { ChevronLeft, ChevronRight, GripVertical, MoreVertical, Pencil, Trash2, Plus } from 'lucide-preact';
 
 interface BoardTabsProps {
@@ -14,6 +15,7 @@ interface BoardTabsProps {
 }
 
 export function BoardTabs({ boards, activeId, onSelect, onAdd, onRename, onDelete, onReorder }: BoardTabsProps) {
+  const { t } = useI18n();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
@@ -199,12 +201,12 @@ export function BoardTabs({ boards, activeId, onSelect, onAdd, onRename, onDelet
     dragOverId === board.id && dragId !== board.id;
 
   return (
-    <nav className="board-tabs" aria-label="Boards">
+    <nav className="board-tabs" aria-label={t('boardTabs.boards')}>
       {canScrollLeft && (
         <button
           className="board-tabs__arrow board-tabs__arrow--left"
           onClick={() => scrollBy('left')}
-          aria-label="Rolar para esquerda"
+          aria-label={t('boardTabs.scrollLeft')}
         >
           <ChevronLeft size={16} strokeWidth={2} />
         </button>
@@ -233,7 +235,7 @@ export function BoardTabs({ boards, activeId, onSelect, onAdd, onRename, onDelet
               onPointerCancel={clearDrag}
               role="button"
               tabIndex={0}
-              aria-label={`Abrir board ${board.title}`}
+              aria-label={t('boardTabs.openBoard', { title: board.title })}
               onKeyDown={(e) => e.key === 'Enter' && onSelect(board.id)}
             >
               {editingId === board.id ? (
@@ -245,7 +247,7 @@ export function BoardTabs({ boards, activeId, onSelect, onAdd, onRename, onDelet
                   onBlur={commitRename}
                   onKeyDown={handleKeyDown}
                   onClick={(e) => e.stopPropagation()}
-                  aria-label="Renomear board"
+                  aria-label={t('boardTabs.renameBoard')}
                 />
               ) : (
                 <>
@@ -259,8 +261,8 @@ export function BoardTabs({ boards, activeId, onSelect, onAdd, onRename, onDelet
                         ref={(el) => { kebabRefs.current[board.id] = el; }}
                         className="board-tab__kebab"
                         onClick={(e) => handleKebabClick(e, board.id)}
-                        aria-label="Ações da aba"
-                        title="Ações"
+                        aria-label={t('boardTabs.boardActions')}
+                        title={t('boardTabs.actions')}
                       >
                         <MoreVertical size={12} strokeWidth={2} />
                       </button>
@@ -277,7 +279,7 @@ export function BoardTabs({ boards, activeId, onSelect, onAdd, onRename, onDelet
                         onClick={handleAction(() => startRename(board))}
                       >
                         <Pencil size={12} strokeWidth={2} />
-                        Renomear
+                        {t('boardTabs.rename')}
                       </button>
                       {boards.length > 1 && (
                         <button
@@ -285,7 +287,7 @@ export function BoardTabs({ boards, activeId, onSelect, onAdd, onRename, onDelet
                           onClick={handleAction(() => onDelete(board.id, board.title))}
                         >
                           <Trash2 size={12} strokeWidth={2} />
-                          Excluir
+                          {t('boardTabs.delete')}
                         </button>
                       )}
                     </div>,
@@ -297,7 +299,7 @@ export function BoardTabs({ boards, activeId, onSelect, onAdd, onRename, onDelet
           );
         })}
 
-        <button className="board-tab board-tab--add" onClick={onAdd} aria-label="Criar nova aba" title="Nova aba">
+        <button className="board-tab board-tab--add" onClick={onAdd} aria-label={t('boardTabs.createNewTab')} title={t('boardTabs.newTab')}>
           <Plus size={14} strokeWidth={2} />
         </button>
       </div>
@@ -305,7 +307,7 @@ export function BoardTabs({ boards, activeId, onSelect, onAdd, onRename, onDelet
         <button
           className="board-tabs__arrow board-tabs__arrow--right"
           onClick={() => scrollBy('right')}
-          aria-label="Rolar para direita"
+          aria-label={t('boardTabs.scrollRight')}
         >
           <ChevronRight size={16} strokeWidth={2} />
         </button>

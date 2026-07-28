@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
+import { useI18n } from '@shared/i18n';
 import { X } from 'lucide-preact';
 
 interface NewTabDialogProps {
@@ -18,6 +19,8 @@ export function NewTabDialog({ open, onSave, onClose }: NewTabDialogProps) {
     }
   }, [open]);
 
+  const { t } = useI18n();
+
   const handleSave = () => {
     const trimmed = title.trim();
     if (trimmed) {
@@ -33,25 +36,25 @@ export function NewTabDialog({ open, onSave, onClose }: NewTabDialogProps) {
       onClick={(e) => e.target === e.currentTarget && onClose()}
       role="dialog"
       aria-modal="true"
-      aria-label="Nova aba"
+      aria-label={t('newTab.title')}
     >
       <div className="modal">
         <div className="modal__header">
-          <h2>Nova aba</h2>
-          <button className="modal__close" onClick={onClose} aria-label="Fechar">
+          <h2>{t('newTab.title')}</h2>
+          <button className="modal__close" onClick={onClose} aria-label={t('newTab.close')}>
             <X size={18} />
           </button>
         </div>
 
         <div className="dialog__body">
           <label className="widget-editor__field">
-            <span>Nome da aba</span>
+            <span>{t('newTab.name')}</span>
             <input
               ref={inputRef}
               type="text"
               value={title}
               onChange={(e) => setTitle((e.target as HTMLInputElement).value)}
-              placeholder="Ex: Trabalho, Estudos..."
+              placeholder={t('newTab.namePlaceholder')}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSave();
                 if (e.key === 'Escape') onClose();
@@ -63,7 +66,7 @@ export function NewTabDialog({ open, onSave, onClose }: NewTabDialogProps) {
 
         <div className="modal__actions">
           <button type="button" className="btn btn--secondary" onClick={onClose}>
-            Cancelar
+            {t('newTab.cancel')}
           </button>
           <button
             type="button"
@@ -71,7 +74,7 @@ export function NewTabDialog({ open, onSave, onClose }: NewTabDialogProps) {
             onClick={handleSave}
             disabled={!title.trim()}
           >
-            Criar
+            {t('newTab.create')}
           </button>
         </div>
       </div>

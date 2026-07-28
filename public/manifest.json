@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Luma New Tab Dashboard",
-  "version": "1.1.0",
-  "description": "Substitui a nova aba do navegador por um dashboard visual com widgets de clima, relógio, calendário, notas e links favoritos, organizados em boards personalizáveis.",
+  "name": "__MSG_appName__",
+  "version": "1.2.0",
+  "default_locale": "en",
+  "description": "__MSG_appDescription__",
   "author": "Luma Extension",
   "icons": {
     "16": "icons/icon-16.png",
@@ -34,7 +35,16 @@
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png"
     },
-    "default_title": "Salvar aba atual"
+    "default_title": "__MSG_defaultTitle__"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "luma-dashboard@luma-extension.io",
+      "strict_min_version": "142.0",
+      "data_collection_permissions": {
+        "required": ["none"]
+      }
+    }
   },
   "content_security_policy": {
     "extension_pages": "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https:;"

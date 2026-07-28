@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import type { LinkItem } from '@shared/types';
 import { normalizeUrl } from '@shared/storage';
+import { useI18n } from '@shared/i18n';
 import { X } from 'lucide-preact';
 
 interface LinkDialogProps {
@@ -10,6 +11,7 @@ interface LinkDialogProps {
 }
 
 export function LinkDialog({ link, onSave, onClose }: LinkDialogProps) {
+  const { t } = useI18n();
   const isEdit = !!link;
   const [title, setTitle] = useState(link?.title || '');
   const [url, setUrl] = useState(link?.url || '');
@@ -17,37 +19,37 @@ export function LinkDialog({ link, onSave, onClose }: LinkDialogProps) {
   const handleSave = () => {
     const normalized = normalizeUrl(url);
     if (!normalized) return;
-    onSave(title.trim() || 'Link sem título', normalized);
+    onSave(title.trim() || t('defaults.newLink'), normalized);
   };
 
   return (
     <div className="dialog-overlay" onClick={(e) => e.target === e.currentTarget && onClose()} role="dialog" aria-modal="true">
       <div className="dialog">
         <div className="dialog__header">
-          <h2>{isEdit ? 'Editar link' : 'Adicionar link'}</h2>
-          <button className="dialog__close" onClick={onClose} aria-label="Fechar">
+          <h2>{isEdit ? t('popupLink.editLink') : t('popupLink.addLink')}</h2>
+          <button className="dialog__close" onClick={onClose} aria-label={t('popupLink.close')}>
             <X size={18} />
           </button>
         </div>
 
         <div className="dialog__body">
           <label className="dialog__field">
-            <span>Título</span>
+            <span>{t('popupLink.title')}</span>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle((e.target as HTMLInputElement).value)}
-              placeholder="Ex: Meu site favorito"
+              placeholder={t('popupLink.titlePlaceholder')}
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
             />
           </label>
           <label className="dialog__field">
-            <span>URL</span>
+            <span>{t('popupLink.url')}</span>
             <input
               type="url"
               value={url}
               onChange={(e) => setUrl((e.target as HTMLInputElement).value)}
-              placeholder="https://..."
+              placeholder={t('popupLink.urlPlaceholder')}
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
             />
           </label>
@@ -55,10 +57,10 @@ export function LinkDialog({ link, onSave, onClose }: LinkDialogProps) {
 
         <div className="dialog__actions">
           <button type="button" className="btn btn--secondary" onClick={onClose}>
-            Cancelar
+            {t('popupLink.cancel')}
           </button>
           <button type="button" className="btn btn--primary" onClick={handleSave} disabled={!url.trim()}>
-            {isEdit ? 'Salvar' : 'Adicionar'}
+            {isEdit ? t('popupLink.save') : t('popupLink.add')}
           </button>
         </div>
       </div>

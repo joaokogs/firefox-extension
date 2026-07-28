@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { useI18n } from '@shared/i18n';
 
 interface CityResult {
   id: number;
@@ -22,10 +23,12 @@ export function CityAutocomplete({
   value,
   onChange,
   onSelect,
-  placeholder = 'Ex: São Paulo',
+  placeholder: placeholderProp,
   id,
   className = ''
 }: CityAutocompleteProps) {
+  const { t } = useI18n();
+  const placeholder = placeholderProp ?? t('cityAutocomplete.placeholder');
   const [query, setQuery] = useState(value);
   const [results, setResults] = useState<CityResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -60,7 +63,7 @@ export function CityAutocomplete({
       const response = await fetch(
         `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=10&language=pt&format=json`
       );
-      if (!response.ok) throw new Error('Falha na busca');
+      if (!response.ok) throw new Error(t('cityAutocomplete.searchFailed'));
       const data = await response.json();
       const list: CityResult[] = data.results || [];
       setResults(list);
