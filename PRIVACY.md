@@ -1,12 +1,12 @@
-# Política de Privacidade — Luma Dashboard
+# Política de Privacidade — Prismi Dashboard
 
 Última atualização: 23 de julho de 2026
 
-Esta política descreve como o Luma Dashboard coleta, usa e compartilha informações dos usuários.
+Esta política descreve como o Prismi Dashboard coleta, usa e compartilha informações dos usuários.
 
 ## Armazenamento de dados
 
-O Luma Dashboard **não possui servidores, não coleta dados pessoais e não compartilha informações com terceiros para fins de rastreamento ou publicidade.**
+O Prismi Dashboard **não possui servidores, não coleta dados pessoais e não compartilha informações com terceiros para fins de rastreamento ou publicidade.**
 
 Todos os dados criados pelo usuário (boards, widgets, links, notas, configurações de tema e wallpapers) são armazenados **exclusivamente no armazenamento local do navegador** (`browser.storage.local`) e nunca saem do dispositivo.
 

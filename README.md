@@ -1,13 +1,13 @@
 <p align="center">
-  <img src="public/icons/icon-128.png" alt="Luma" width="64" height="64">
+  <img src="prismi-icon.png" alt="Prismi" width="64" height="64">
 </p>
 
-<h1 align="center">Luma</h1>
+<h1 align="center">Prismi</h1>
 
 <p align="center">
-  <b>Sua aba finalmente útil.</b>
+  <b>Your new tab, finally useful.</b>
   <br>
-  Customize sua nava aba do jeito que preferir com diversos widgets.
+  Save any tab, link, or note in one click, then find it instantly, right on your new tab.
 </p>
 
 <p align="center">
@@ -21,86 +21,72 @@
 
 ---
 
-## Sua nova aba não faz nada. Faça ela valer a pena.
+## Stop losing tabs you meant to come back to
 
-### Uma nova aba normal
+Prismi turns the most familiar page in your browser into a small system for the things you want to return to. Save a useful page instead of leaving another tab open as a reminder, give it a home in seconds, and pick up exactly where you left off.
 
-- Uma página em branco, ou uma grade de sites que você nunca escolheu
-- 30 abas abertas, porque fechar uma significa perdê-la
-- Favoritos enterrados em pastas que você nunca abre
-- "Onde eu salvei aquele link?", cinco vezes ao dia
-
-### Sua nova aba com Luma
-
-- Tudo que você salvou, na página que você abre o dia todo
-- Um atalho e a aba está em um board. Feche ela.
-- Boards que você realmente vê, não pastas que você esquece
-- Busque tudo que você salvou, instantaneamente
-
-## Funcionalidades
+Your collection is waiting in every new tab, ready when the next task starts.
 
 <p align="center">
-  <img src="Preview.jpg" alt="Luma Dashboard preview" width="680" style="border-radius: 8px;">
+  <img src="Preview.jpg" alt="Prismi dashboard preview" width="680" style="border-radius: 8px;">
 </p>
 
-**Visual Boards** — Arraste e solte seus favoritos em boards visuais e organizados.
+## A calmer starting point
 
-**Quick Save** — Salve qualquer página em um board com um atalho. O jeito mais rápido de favoritar.
+**Save what is worth keeping** - Save tabs, links, and notes while they are still useful, without keeping them open as reminders.
 
-**Importar Favoritos** — Importe seus favoritos do navegador em segundos.
+**Give every context a home** - Create boards for work, ideas, reading, or anything else that helps you think clearly.
 
-**Wallpapers** — Coloque papéis de parede bonitos e faça da sua nova aba um lugar seu.
+**Find the thread again** - Your saved collection is always available on your new tab, so you can return to the right link when the next task begins.
 
-**Widgets** — Adicione widgets mínimos como relógio, clima e busca rápida.
+**Make the space yours** - Choose a wallpaper, tune the colors, and add the small utilities that make a new tab useful from the first click.
 
-**Busca Inteligente** — Busque entre todos os seus links salvos instantaneamente.
+**Search without leaving** - Find saved links or use the built-in search bar from the place where your next task begins.
 
-## Como começar
+**Import bookmarks** - Bring existing browser bookmarks into Prismi, keep the useful ones, and organize the rest.
 
-É grátis. Sem conta. Sem custos escondidos.
+## How it works
 
-| | |
+| Step | What to do |
 |---|---|
-| **1. Instale** | Adicione pelo Firefox Add-ons ou Chrome Web Store |
-| **2. Customize** | Organize seus boards, escolha um wallpaper, adicione widgets |
-| **3. Aproveite** | Sua nova aba finalmente útil. Salve e encontre abas instantaneamente |
+| **1. Install** | Add Prismi from Firefox Add-ons or the Chrome Web Store. It becomes your new-tab page. |
+| **2. Create a board** | Start with a context you return to, such as a project, reading list, or everyday tools. |
+| **3. Save and return** | Save useful tabs, links, or notes in one click and find them again whenever you open a new tab. |
 
-## Compatibilidade
+## Compatibility
 
-Firefox · Chrome  · Opera · Brave 
+Prismi works on desktop Firefox, Chrome, Edge, Opera, Brave, and most Chromium-based browsers. Mobile browsers are not supported.
 
-## ⭐ Apoie o projeto
+## Privacy
+
+Prismi is free and private by design: no ads, tracking, subscriptions, or feature caps. Your saved links remain under your control, are stored locally in your browser, and can be exported.
+
+Read the full [Privacy Policy](PRIVACY.md).
+
+## Support the project
 
 <p align="center">
-  <img src="public/stars-animation.svg" alt="Estrelas subindo" width="400" height="200">
+  <img src="prismi-2.png" alt="Prismi" width="400">
 </p>
 
-### Se o Luma faz parte do seu dia a dia, faça parte da história dele.
-
-Cada estrela no GitHub ajuda mais pessoas a descobrirem uma nova aba que realmente faz diferença. São segundos pra você, mas significa muito pra manter o projeto vivo e gratuito.
+Prismi is free and open source. If you find it useful, a star on GitHub helps other people discover the project.
 
 <p align="center">
-  <a href="https://github.com/joaokogs/luma-extension/stargazers">
-    <img src="https://img.shields.io/github/stars/joaokogs/luma-extension?style=for-the-badge&logo=github&label=Estrelas&color=FF7139" alt="GitHub stars">
+  <a href="https://github.com/joaokogs/prismi/stargazers">
+    <img src="https://img.shields.io/github/stars/joaokogs/luma-extension?style=for-the-badge&logo=github&label=Stars&color=FF7139" alt="GitHub stars">
   </a>
   &nbsp;&nbsp;
-  <a href="https://github.com/joaokogs/luma-extension/issues">
-    <img src="https://img.shields.io/github/issues/joaokogs/luma-extension?style=for-the-badge&logo=github&label=Ideias%2FBugs&color=818cf8" alt="GitHub issues">
+  <a href="https://github.com/joaokogs/prismi/issues">
+    <img src="https://img.shields.io/github/issues/joaokogs/luma-extension?style=for-the-badge&logo=github&label=Issues&color=818cf8" alt="GitHub issues">
   </a>
 </p>
 
 <p align="center">
-  <b>⭐ <a href="https://github.com/joaokogs/luma-extension">Dê uma estrela no repositório</a></b>
+  <b><a href="https://github.com/joaokogs/prismi">Star the repository on GitHub</a></b>
   <br>
-  <sub>Open source. Sem servidores. Seus dados, seu navegador.</sub>
+  <sub>Open source. No ads or tracking. Your saved links stay under your control.</sub>
 </p>
 
-## Privacidade
+## License
 
-Luma **não possui servidores, não coleta dados pessoais e não compartilha informações com terceiros.** Todos os seus dados ficam armazenados localmente no seu navegador.
-
-→ [Política de Privacidade](PRIVACY.md)
-
-## Licença
-
-MIT — código aberto.
+MIT

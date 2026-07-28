@@ -1,14 +1,13 @@
 import sharp from 'sharp';
-import { readFileSync } from 'fs';
 import { writeFile } from 'fs/promises';
 import { resolve } from 'path';
 
 const SIZES = [16, 32, 48, 96, 128];
-const SVG = readFileSync(resolve('public/icons/icon.svg'));
+const SOURCE_ICON = resolve('prismi-icon.png');
 
 async function main() {
   for (const size of SIZES) {
-    const png = await sharp(SVG, { density: 300 })
+    const png = await sharp(SOURCE_ICON)
       .resize(size, size)
       .png()
       .toBuffer();
