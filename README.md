@@ -5,9 +5,9 @@
 <h1 align="center">Luma</h1>
 
 <p align="center">
-  <b>Seu novo navegador, finalmente útil.</b>
+  <b>Sua aba finalmente útil.</b>
   <br>
-  Salve qualquer aba, link ou nota em um clique e encontre tudo instantaneamente na sua nova aba.
+  Customize sua nava aba do jeito que preferir com diversos widgets.
 </p>
 
 <p align="center">
@@ -67,7 +67,40 @@
 
 ## Compatibilidade
 
-Firefox · Chrome · Edge · Opera · Brave · Chromium
+Firefox · Chrome  · Opera · Brave 
+
+## ⭐ Apoie o projeto
+
+<p align="center">
+  <img src="public/stars-animation.svg" alt="Estrelas subindo" width="400" height="200">
+</p>
+
+### Se o Luma faz parte do seu dia a dia, faça parte da história dele.
+
+Cada estrela no GitHub ajuda mais pessoas a descobrirem uma nova aba que realmente faz diferença. São segundos pra você, mas significa muito pra manter o projeto vivo e gratuito.
+
+<p align="center">
+  <table>
+    <tr>
+      <td align="center" width="200">
+        <a href="https://github.com/joaokogs/luma-extension/stargazers">
+          <img src="https://img.shields.io/github/stars/joaokogs/luma-extension?style=for-the-badge&logo=github&label=Estrelas&color=FF7139" alt="GitHub stars">
+        </a>
+      </td>
+      <td align="center" width="200">
+        <a href="https://github.com/joaokogs/luma-extension/issues">
+          <img src="https://img.shields.io/github/issues/joaokogs/luma-extension?style=for-the-badge&logo=github&label=Ideias%2FBugs&color=818cf8" alt="GitHub issues">
+        </a>
+      </td>
+    </tr>
+  </table>
+</p>
+
+<p align="center">
+  <b>⭐ <a href="https://github.com/joaokogs/luma-extension">Dê uma estrela no repositório</a></b>
+  <br>
+  <sub>Open source. Sem servidores. Seus dados, seu navegador.</sub>
+</p>
 
 ## Privacidade
 
