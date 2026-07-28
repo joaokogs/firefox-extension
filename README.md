@@ -80,20 +80,13 @@ Firefox · Chrome  · Opera · Brave
 Cada estrela no GitHub ajuda mais pessoas a descobrirem uma nova aba que realmente faz diferença. São segundos pra você, mas significa muito pra manter o projeto vivo e gratuito.
 
 <p align="center">
-  <table>
-    <tr>
-      <td align="center" width="200">
-        <a href="https://github.com/joaokogs/luma-extension/stargazers">
-          <img src="https://img.shields.io/github/stars/joaokogs/luma-extension?style=for-the-badge&logo=github&label=Estrelas&color=FF7139" alt="GitHub stars">
-        </a>
-      </td>
-      <td align="center" width="200">
-        <a href="https://github.com/joaokogs/luma-extension/issues">
-          <img src="https://img.shields.io/github/issues/joaokogs/luma-extension?style=for-the-badge&logo=github&label=Ideias%2FBugs&color=818cf8" alt="GitHub issues">
-        </a>
-      </td>
-    </tr>
-  </table>
+  <a href="https://github.com/joaokogs/luma-extension/stargazers">
+    <img src="https://img.shields.io/github/stars/joaokogs/luma-extension?style=for-the-badge&logo=github&label=Estrelas&color=FF7139" alt="GitHub stars">
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://github.com/joaokogs/luma-extension/issues">
+    <img src="https://img.shields.io/github/issues/joaokogs/luma-extension?style=for-the-badge&logo=github&label=Ideias%2FBugs&color=818cf8" alt="GitHub issues">
+  </a>
 </p>
 
 <p align="center">
