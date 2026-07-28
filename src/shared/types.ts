@@ -164,7 +164,7 @@ export const INITIAL_SAMPLE_BOARDS: Board[] = [
           {
             id: generateId('link'),
             title: 'Prismi',
-            url: 'https://prismi-page-sooty.vercel.app/',
+            url: 'https://prismi.vercel.app/',
             icon: 'fa:star'
           },
           {
@@ -191,7 +191,7 @@ export const INITIAL_SAMPLE_BOARDS: Board[] = [
           }
         ],
         height: 406,
-        col: 2
+        col: 3
       },
       {
         id: generateId('widget'),
@@ -199,7 +199,7 @@ export const INITIAL_SAMPLE_BOARDS: Board[] = [
         title: 'Calendar',
         colSpan: 1,
         order: 0,
-        col: 3
+        col: 4
       }
     ]
   }
