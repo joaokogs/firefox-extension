@@ -15,6 +15,11 @@ const manifest = JSON.parse(await readFile(manifestPath, 'utf-8'));
 
 delete manifest.browser_specific_settings;
 
+// Chrome requires "tabs" permission for tabs.query(); Firefox doesn't
+if (!manifest.permissions.includes('tabs')) {
+  manifest.permissions.unshift('tabs');
+}
+
 await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
 
 console.log('✅ Chrome build pronto em dist-chrome/');
