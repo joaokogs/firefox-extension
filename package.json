@@ -6,9 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build:icons": "node scripts/build-icons.js",
-    "build": "npm run build:icons && tsc && vite build",
+    "build:firefox": "npm run build:icons && tsc && vite build",
+    "build:chrome": "npm run build:icons && tsc && vite build && node scripts/build-chrome.js",
     "preview": "vite preview",
-    "clean": "rimraf dist",
+    "clean": "rimraf dist dist-chrome",
     "postinstall": "patch-package"
   },
   "dependencies": {
@@ -16,6 +17,7 @@
     "lucide-preact": "^1.25.0",
     "preact": "^10.22.0",
     "react-colorful": "^5.8.0",
+    "webextension-polyfill": "^0.12.0",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
@@ -26,7 +28,6 @@
     "rimraf": "^5.0.7",
     "sharp": "^0.35.3",
     "typescript": "^5.4.5",
-    "vite": "^5.2.13",
-    "webextension-polyfill": "^0.12.0"
+    "vite": "^5.2.13"
   }
 }
