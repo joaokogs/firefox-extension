@@ -1,56 +1,31 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Settings, Menu, Plus, Palette } from 'lucide-preact';
 import type { AppData, Widget, WidgetType, TopWidgetConfig, SearchEngine } from '@shared/types';
-import { SEARCH_ENGINES } from '@shared/types';
+import { SEARCH_ENGINES } from '@shared/types/constants';
 import { useI18n, setLocale as setI18nLocale } from '@shared/i18n';
 import {
   loadData,
   saveData,
-  createBoard,
-  addBoard,
-  renameBoard,
-  reorderBoard,
-  deleteBoard,
-  addWidget,
-  deleteWidget,
-  updateWidget,
-  addLink,
-  createLink,
-  deleteLink,
-  updateLink,
-  moveLink,
-  addTodoItem,
-  createTodoItem,
-  deleteTodoItem,
-  updateTodoItem,
-  toggleTodoItem,
-  moveTodoItem,
-  updateSettings,
-  getBoardById,
-  getInitialBoardId,
-  getWidgetsForBoard,
-  exportData,
-  importData,
-  createWidget,
-  addRecentSearch,
-  removeRecentSearch,
-  clearRecentSearches
 } from '@shared/storage';
-import { BoardTabs } from './components/BoardTabs';
-import { WidgetGrid } from './components/WidgetGrid';
-import { WidgetEditor } from './components/WidgetEditor';
-import { LinkDialog } from './components/LinkDialog';
-import { SettingsPanel } from './components/SettingsPanel';
-import { BackgroundPanel } from './components/BackgroundPanel';
-import { TopInfoWidgets } from './components/TopInfoWidgets';
-import { WidgetToolbar } from './components/WidgetToolbar';
-import { ConfirmDialog } from './components/ConfirmDialog';
-import { NewTabDialog } from './components/NewTabDialog';
-
-import { SearchBar } from './components/SearchBar';
+import { createBoard, addBoard, renameBoard, reorderBoard, deleteBoard, getBoardById, getInitialBoardId, updateSettings, removeRecentSearch, clearRecentSearches, addRecentSearch } from '@shared/storage/boards';
+import { createWidget, addWidget, deleteWidget, updateWidget, getWidgetsForBoard } from '@shared/storage/widgets';
+import { createLink, addLink, deleteLink, updateLink, moveLink } from '@shared/storage/links';
+import { createTodoItem, addTodoItem, deleteTodoItem, updateTodoItem, toggleTodoItem, moveTodoItem } from '@shared/storage/todos';
+import { exportData, importData } from '@shared/storage/backup';
+import { BoardTabs } from './components/layout/BoardTabs';
+import { WidgetGrid } from './components/widgets/WidgetGrid';
+import { WidgetEditor } from './components/dialogs/WidgetEditor';
+import { LinkDialog } from './components/dialogs/LinkDialog';
+import { SettingsPanel } from './components/settings/SettingsPanel';
+import { BackgroundPanel } from './components/settings/BackgroundPanel';
+import { TopInfoWidgets } from './components/layout/TopInfoWidgets';
+import { WidgetToolbar } from './components/settings/WidgetToolbar';
+import { ConfirmDialog } from './components/dialogs/ConfirmDialog';
+import { NewTabDialog } from './components/dialogs/NewTabDialog';
+import { SearchBar } from './components/layout/SearchBar';
 import { useThemeStore, type ThemeState } from './store/useThemeStore';
-import { computeThemeVariables } from '@shared/colorExtractor';
-import './styles.css';
+import { computeThemeVariables } from '@shared/theme';
+import './styles/index.css';
 
 function looksLikeUrl(str: string): boolean {
   return /^https?:\/\//i.test(str) || /^[a-z0-9][-a-z0-9]*\.[a-z]{2,}(\/|$)/i.test(str);

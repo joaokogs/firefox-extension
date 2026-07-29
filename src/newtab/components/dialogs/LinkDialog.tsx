@@ -1,9 +1,9 @@
 import { useState } from 'preact/hooks';
 import { useI18n } from '@shared/i18n';
 import type { LinkItem } from '@shared/types';
-import { normalizeUrl } from '@shared/storage';
+import { normalizeUrl } from '@shared/utils/url';
 import { X } from 'lucide-preact';
-import { IconPicker } from './IconPicker';
+import { IconPicker } from '../ui/IconPicker';
 
 interface LinkDialogProps {
   widgetTitle?: string;

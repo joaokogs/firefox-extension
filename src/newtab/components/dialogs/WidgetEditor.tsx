@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'preact/hooks';
 import type { Widget, WidgetType } from '@shared/types';
-import { createWidget } from '@shared/storage';
+import { createWidget } from '@shared/storage/widgets';
 import { X, ExternalLink, LayoutGrid, Clock, CloudSun, CheckSquare } from 'lucide-preact';
 import type { LucideIcon } from 'lucide-preact';
-import { CityAutocomplete } from './CityAutocomplete';
+import { CityAutocomplete } from '../ui/CityAutocomplete';
 import { useI18n } from '@shared/i18n';
 
 interface WidgetEditorProps {

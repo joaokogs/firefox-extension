@@ -1,0 +1,64 @@
+﻿/* Calendar widget */
+.calendar-widget {
+  width: 100%;
+}
+
+.calendar-widget__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.calendar-widget__month {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.calendar-widget__nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  color: var(--text-muted);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.calendar-widget__nav:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.calendar-widget__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  text-align: center;
+}
+
+.calendar-widget__day-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 4px 0;
+}
+
+.calendar-widget__day {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  padding: 6px 0;
+  border-radius: var(--radius-sm);
+}
+
+.calendar-widget__day--today {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+}
+
+.calendar-widget__day--empty {
+  visibility: hidden;
+}

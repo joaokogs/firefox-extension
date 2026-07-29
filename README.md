@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="prismi-icon.png" alt="Prismi" width="64" height="64">
+  <img src=".github/images/prismi-icon.png" alt="Prismi" width="64" height="64">
 </p>
 
 <h1 align="center">Prismi</h1>
@@ -24,7 +24,7 @@ Prismi turns the most familiar page in your browser into a small system for the 
 Your collection is waiting in every new tab, ready when the next task starts.
 
 <p align="center">
-  <img src="Preview.jpg" alt="Prismi dashboard preview" width="680" style="border-radius: 8px;">
+  <img src=".github/images/Preview.jpg" alt="Prismi dashboard preview" width="680" style="border-radius: 8px;">
 </p>
 
 ## A calmer starting point
@@ -57,12 +57,12 @@ Prismi works on desktop Firefox, Chrome, Opera, Brave, and most Chromium-based b
 
 Prismi is free and private by design: no ads, tracking, subscriptions, or feature caps. Your saved links remain under your control, are stored locally in your browser, and can be exported.
 
-Read the full [Privacy Policy](PRIVACY.md).
+Read the full [Privacy Policy](docs/PRIVACY.md).
 
 ## Support the project
 
 <p align="center">
-  <img src="prismi-2.png" alt="Prismi" width="400">
+  <img src=".github/images/prismi-2.png" alt="Prismi" width="400">
 </p>
 
 Prismi is free and open source. If you find it useful, a star on GitHub helps other people discover the project.

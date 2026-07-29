@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { useI18n } from '@shared/i18n';
 import { createPortal } from 'preact/compat';
 import type { LinkItem, LinksWidget } from '@shared/types';
-import { getFaviconUrl } from '@shared/storage';
-import { AnyIcon } from './AnyIcon';
+import { getFaviconUrl } from '@shared/utils/url';
+import { AnyIcon } from '@shared/icons';
 import { GripVertical, MoreVertical, Pencil, Trash2 } from 'lucide-preact';
 
 interface LinkDragState {

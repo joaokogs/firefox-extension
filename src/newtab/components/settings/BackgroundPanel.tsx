@@ -1,9 +1,9 @@
 import { useRef, useState, useEffect, useCallback } from 'preact/hooks';
 import { HexColorPicker } from 'react-colorful';
 import type { AppSettings, WallpaperSetting } from '@shared/types';
-import { DEFAULT_WALLPAPERS } from '@shared/types';
+import { DEFAULT_WALLPAPERS } from '@shared/types/constants';
 import { useI18n } from '@shared/i18n';
-import { useThemeStore } from '../store/useThemeStore';
+import { useThemeStore } from '../../store/useThemeStore';
 import { X, Sun, Moon, Upload, Trash2 } from 'lucide-preact';
 
 const MAX_UPLOADS = 5;

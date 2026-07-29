@@ -7,7 +7,7 @@ import { CalendarWidgetView } from './CalendarWidget';
 import { ClockWidgetView } from './ClockWidget';
 import { WeatherWidgetView } from './WeatherWidget';
 import { TodoWidgetView, type TodoDragState } from './TodoWidget';
-import { useColumnCount } from '../hooks/useColumnCount';
+import { useColumnCount } from '../../hooks/useColumnCount';
 
 interface WidgetGridProps {
   widgets: Widget[];

@@ -3,7 +3,7 @@ import { writeFile } from 'fs/promises';
 import { resolve } from 'path';
 
 const SIZES = [16, 32, 48, 96, 128];
-const SOURCE_ICON = resolve('prismi-icon.png');
+const SOURCE_ICON = resolve('.github/images/prismi-icon.png');
 
 async function main() {
   for (const size of SIZES) {

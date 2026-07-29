@@ -1,6 +1,6 @@
 import type { TopWidgetConfig } from '@shared/types';
-import { ClockWidgetView } from './ClockWidget';
-import { WeatherWidgetView } from './WeatherWidget';
+import { ClockWidgetView } from '../widgets/ClockWidget';
+import { WeatherWidgetView } from '../widgets/WeatherWidget';
 
 interface TopInfoWidgetsProps {
   configs: TopWidgetConfig[];

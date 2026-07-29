@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Search, X, Bookmark, Clock, Globe } from 'lucide-preact';
-import { SEARCH_ENGINES } from '@shared/types';
+import { SEARCH_ENGINES } from '@shared/types/constants';
 import type { LinkItem, SearchEngine } from '@shared/types';
 import { useI18n } from '@shared/i18n';
 

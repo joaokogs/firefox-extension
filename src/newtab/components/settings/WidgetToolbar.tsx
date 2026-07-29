@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'preact/hooks';
 import { CalendarDays, Clock3, Cloud, Search, CheckSquare, type LucideIcon } from 'lucide-preact';
 import type { WidgetType, TopWidgetConfig } from '@shared/types';
-import { CityAutocomplete } from './CityAutocomplete';
+import { CityAutocomplete } from '../ui/CityAutocomplete';
 import { useI18n } from '@shared/i18n';
 
 interface WidgetOption {
-  type: WidgetType | 'board' | 'notes' | 'search';
+  type: WidgetType | 'search';
   label: string;
   icon: LucideIcon;
   hasToggle?: boolean;
@@ -86,9 +86,7 @@ export function WidgetToolbar({
         <div className="widget-toolbar__list">
           {filterOptions(BLOCK_WIDGETS).map((option) => {
           const WidgetIcon = option.icon;
-          const isActive = option.type !== 'board' && option.type !== 'notes'
-            ? isWidgetActive(option.type as WidgetType)
-            : false;
+          const isActive = isWidgetActive(option.type as WidgetType);
 
           return (
             <div key={option.type} className="widget-toolbar__item">
@@ -127,9 +125,7 @@ export function WidgetToolbar({
         <div className="widget-toolbar__list">
           {filterOptions(HEADER_WIDGETS).map((option) => {
           const WidgetIcon = option.icon;
-          const isActive = option.type !== 'board' && option.type !== 'notes'
-            ? isWidgetActive(option.type as WidgetType)
-            : false;
+          const isActive = isWidgetActive(option.type as WidgetType);
 
           return (
             <div key={option.type} className="widget-toolbar__item">

@@ -1,9 +1,3 @@
-/**
- * Thin browser API wrapper.
- * Preact and the build pipeline import this module so we can switch
- * polyfills or keep it dependency-free without touching components.
- */
-
 import browserApi from 'webextension-polyfill';
 
 export const browser = browserApi;

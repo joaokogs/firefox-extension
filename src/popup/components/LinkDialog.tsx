@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import type { LinkItem } from '@shared/types';
-import { normalizeUrl } from '@shared/storage';
+import { normalizeUrl } from '@shared/utils/url';
 import { useI18n } from '@shared/i18n';
 import { X } from 'lucide-preact';
 

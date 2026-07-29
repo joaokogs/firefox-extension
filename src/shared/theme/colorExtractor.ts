@@ -1,4 +1,4 @@
-import type { ThemeConfig, WallpaperSetting } from './types';
+import type { ThemeConfig, WallpaperSetting } from '@shared/types';
 
 function parseHex(hex: string): [number, number, number] {
   const clean = hex.replace('#', '');

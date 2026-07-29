@@ -1,0 +1,103 @@
+export type WidgetType = 'links' | 'calendar' | 'clock' | 'weather' | 'todo';
+
+export interface LinkItem {
+  id: string;
+  title: string;
+  url: string;
+  icon?: string;
+  favicon?: string;
+}
+
+export interface BaseWidget {
+  id: string;
+  type: WidgetType;
+  title: string;
+  colSpan: number;
+  order: number;
+  height?: number;
+  col?: number;
+}
+
+export interface LinksWidget extends BaseWidget {
+  type: 'links';
+  items: LinkItem[];
+}
+
+export interface CalendarWidget extends BaseWidget {
+  type: 'calendar';
+}
+
+export interface ClockWidget extends BaseWidget {
+  type: 'clock';
+  timezone?: string;
+  label?: string;
+}
+
+export interface WeatherWidget extends BaseWidget {
+  type: 'weather';
+  city?: string;
+}
+
+export interface TodoItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+export interface TodoWidget extends BaseWidget {
+  type: 'todo';
+  items: TodoItem[];
+}
+
+export type Widget = LinksWidget | CalendarWidget | ClockWidget | WeatherWidget | TodoWidget;
+
+export interface Board {
+  id: string;
+  title: string;
+  widgets: Widget[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface ThemeConfig {
+  primaryColor: string;
+  boardColor: string;
+  boardOpacity: number;
+  boardBlur: number;
+  derivedFromWallpaper: boolean;
+}
+
+export interface AppSettings {
+  theme: 'light' | 'dark' | 'system';
+  wallpaper: WallpaperSetting;
+  lastBoardId?: string;
+  topWidgets?: TopWidgetConfig[];
+  editMode?: boolean;
+  openInNewTab?: boolean;
+  recentSearches?: string[];
+  uploadedBackgrounds?: string[];
+  locale?: string;
+}
+
+export interface WallpaperSetting {
+  type: 'gradient' | 'url' | 'solid';
+  value: string;
+}
+
+export type TopWidgetType = 'clock' | 'weather' | 'search';
+
+export type SearchEngine = 'google' | 'yahoo' | 'bing' | 'duckduckgo';
+
+export interface TopWidgetConfig {
+  type: TopWidgetType;
+  city?: string;
+  timezone?: string;
+  label?: string;
+  searchEngine?: SearchEngine;
+}
+
+export interface AppData {
+  boards: Board[];
+  settings: AppSettings;
+  installedAt: number;
+}

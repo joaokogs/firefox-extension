@@ -1,8 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { ThemeConfig, WallpaperSetting } from '@shared/types';
-import { DEFAULT_THEME } from '@shared/types';
-import { extractColorsFromWallpaper } from '@shared/colorExtractor';
+import { DEFAULT_THEME } from '@shared/types/constants';
+import { extractColorsFromWallpaper } from '@shared/theme';
 
 export interface ThemeState {
   themeMode: 'light' | 'dark' | 'system';

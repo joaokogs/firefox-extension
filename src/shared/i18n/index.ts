@@ -6,7 +6,7 @@ import { ptBR } from './pt-BR';
 
 export type Locale = 'en' | 'pt-BR';
 
-const LOCALE_STORAGE_KEY = 'luma-locale';
+const LOCALE_STORAGE_KEY = 'prismi-locale';
 
 const messages: Record<Locale, Record<string, string>> = {
   en,

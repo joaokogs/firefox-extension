@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import { useI18n } from '@shared/i18n';
-import { ICON_PICKER_LIST, getLucideIcon, getFaIconDef } from './AnyIcon';
+import { ICON_PICKER_LIST, getLucideIcon, getFaIconDef } from '@shared/icons';
 
 interface IconPickerProps {
   selected?: string | null;

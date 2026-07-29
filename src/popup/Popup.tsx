@@ -3,23 +3,16 @@ import type { AppData, LinksWidget, LinkItem } from '@shared/types';
 import {
   loadData,
   saveData,
-  createLink,
-  addLink,
-  createWidget,
-  addWidget,
   getInitialBoardId,
-  getWidgetsForBoard,
-  updateLink,
-  deleteLink,
-  updateWidget,
-  deleteWidget,
-  getFaviconUrl
 } from '@shared/storage';
+import { createWidget, addWidget, updateWidget, deleteWidget, getWidgetsForBoard } from '@shared/storage/widgets';
+import { createLink, addLink, updateLink, deleteLink } from '@shared/storage/links';
+import { getFaviconUrl } from '@shared/utils/url';
 import { queryActiveTab } from '@shared/browser';
 import { useI18n } from '@shared/i18n';
 import { Menu, Settings, Plus, ExternalLink, Pencil, Trash2 } from 'lucide-preact';
-import { LinkDialog } from './LinkDialog';
-import { WidgetDialog } from './WidgetDialog';
+import { LinkDialog } from './components/LinkDialog';
+import { WidgetDialog } from './components/WidgetDialog';
 
 type DialogMode = 'add-link' | { edit: string } | 'widget';
 
