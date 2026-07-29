@@ -82,8 +82,6 @@ Prismi is free and open source. If you find it useful, a star on GitHub helps ot
 </p>
 
 <p align="center">
-  <b><a href="https://github.com/joaokogs/prismi">Star the repository on GitHub</a></b>
-  <br>
   <sub>Open source. No ads or tracking. Your saved links stay under your control.</sub>
 </p>
 
@@ -91,6 +89,8 @@ Prismi is free and open source. If you find it useful, a star on GitHub helps ot
   <a href="https://www.buymeacoffee.com/joaokogs">
     <img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=000000" alt="Buy me a coffee">
   </a>
+  <br>
+  <sub>If you enjoy Prismi, consider buying me a coffee to support development ☕</sub>
 </p>
 
 ## License
