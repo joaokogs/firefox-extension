@@ -11,11 +11,11 @@
 </p>
 
 <p align="center">
-  <a href="https://addons.mozilla.org/pt-BR/firefox/addon/prismi/">
-    <img src="https://img.shields.io/badge/Firefox-FF7139?style=for-the-badge&logo=firefoxbrowser&logoColor=white" alt="Firefox">
+  <a href="https://addons.mozilla.org/pt-BR/firefox/addon/prismi/" style="text-decoration:none;display:inline-block">
+    <img src="https://img.shields.io/badge/Firefox-FF7139?style=for-the-badge&logo=firefoxbrowser&logoColor=white" alt="Firefox" style="display:inline-block">
   </a>
-  <a href="https://chromewebstore.google.com/detail/faohpcjkdlgohpiojcdgnooikififmek?utm_source=item-share-cb">
-    <img src="https://img.shields.io/badge/Chrome-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Chrome">
+  <a href="https://chromewebstore.google.com/detail/faohpcjkdlgohpiojcdgnooikififmek?utm_source=item-share-cb" style="text-decoration:none;display:inline-block">
+    <img src="https://img.shields.io/badge/Chrome-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Chrome" style="display:inline-block">
   </a>
 </p>
 
@@ -72,12 +72,12 @@ Read the full [Privacy Policy](PRIVACY.md).
 Prismi is free and open source. If you find it useful, a star on GitHub helps other people discover the project.
 
 <p align="center">
-  <a href="https://github.com/joaokogs/prismi/stargazers">
-    <img src="https://img.shields.io/github/stars/joaokogs/luma-extension?style=for-the-badge&logo=github&label=Stars&color=FF7139" alt="GitHub stars">
+  <a href="https://github.com/joaokogs/prismi/stargazers" style="text-decoration:none;display:inline-block">
+    <img src="https://img.shields.io/github/stars/joaokogs/prismi?style=for-the-badge&logo=github&label=Stars&color=FF7139" alt="GitHub stars" style="display:inline-block">
   </a>
   &nbsp;&nbsp;
-  <a href="https://github.com/joaokogs/prismi/issues">
-    <img src="https://img.shields.io/github/issues/joaokogs/luma-extension?style=for-the-badge&logo=github&label=Issues&color=818cf8" alt="GitHub issues">
+  <a href="https://github.com/joaokogs/prismi/issues" style="text-decoration:none;display:inline-block">
+    <img src="https://img.shields.io/github/issues/joaokogs/prismi?style=for-the-badge&logo=github&label=Issues&color=818cf8" alt="GitHub issues" style="display:inline-block">
   </a>
 </p>
 
