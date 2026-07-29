@@ -505,8 +505,7 @@ export function App() {
               aria-label={t('app.addWidgets')}
               title={t('app.addWidgets')}
             >
-              <Plus size={18} strokeWidth={2} />
-              <span>{t('app.widgets')}</span>
+              <Plus size={20} strokeWidth={2} />
             </button>
           <button
             className="app-fab-menu__item"
@@ -514,8 +513,7 @@ export function App() {
             aria-label={t('app.customizeAppearance')}
             title={t('app.customizeAppearance')}
           >
-            <Palette size={18} strokeWidth={2} />
-            <span>{t('app.appearance')}</span>
+            <Palette size={20} strokeWidth={2} />
           </button>
           <button
             className="app-fab-menu__item"
@@ -523,8 +521,7 @@ export function App() {
             aria-label={t('app.settings')}
             title={t('app.settings')}
           >
-            <Settings size={18} strokeWidth={2} aria-hidden="true" />
-            <span>{t('app.settings')}</span>
+            <Settings size={20} strokeWidth={2} aria-hidden="true" />
           </button>
         </div>
       </div>

@@ -177,30 +177,25 @@ body {
 .app-fab-menu__item {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  border-radius: var(--radius-lg);
-  color: var(--text-primary);
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  color: var(--text-secondary);
   background: var(--bg-surface-solid);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-lg);
-  font-size: 0.85rem;
-  font-weight: 500;
-  white-space: nowrap;
+  cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
 }
 
-.app-fab-menu__item svg {
-  flex: 0 0 auto;
-}
-
 .app-fab-menu__item:hover {
-  background: var(--bg-surface-hover);
-  color: var(--accent);
+  background: var(--accent);
+  color: #fff;
 }
 
 .app-fab-menu__item:active {
-  transform: scale(0.97);
+  transform: scale(0.92);
 }
 
 .app-header__btn {
