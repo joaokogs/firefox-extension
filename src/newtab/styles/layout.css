@@ -1,0 +1,236 @@
+﻿
+/* App shell */
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
+.app {
+  height: 100vh;
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 28px 28px;
+  overflow: hidden;
+  transition: background var(--transition-base);
+}
+
+/* Header */
+.app-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-shrink: 0;
+}
+/* Top info widgets */
+.top-info-widgets {
+  justify-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.top-info-widget {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 82px;
+  height: 56px;
+  padding: 9px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(var(--surface-blur));
+  -webkit-backdrop-filter: blur(var(--surface-blur));
+  text-align: center;
+  position: relative;
+}
+
+
+.weather-widget,
+.clock-widget {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.weather-widget__city,
+.clock-widget__label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.weather-widget__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.weather-widget__temp,
+.clock-widget__time {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* Floating action bar (right side) */
+.app-fab-bar {
+  position: fixed;
+  right: 28px;
+  bottom: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+  z-index: 99;
+}
+
+.app-fab-bar__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  backdrop-filter: blur(var(--surface-blur));
+  -webkit-backdrop-filter: blur(var(--surface-blur));
+  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+
+.app-fab-bar__btn:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.app-fab-bar__btn:active {
+  transform: scale(0.96);
+}
+
+.app-fab-bar__btn--primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: transparent;
+}
+
+.app-fab-bar__btn--primary:hover {
+  background: var(--accent-hover);
+  color: #fff;
+}
+
+.app-fab-bar__btn--active {
+  background: var(--accent);
+  color: #fff;
+  border-color: transparent;
+}
+
+.app-fab-bar__btn--active:hover {
+  background: var(--accent-hover);
+  color: #fff;
+}
+
+.app-fab-bar__btn--menu {
+  position: relative;
+  z-index: 100;
+}
+
+.app-fab-bar__btn--menu .icon-rotate {
+  transition: transform 0.3s ease;
+}
+
+.app-fab-bar__btn--active .icon-rotate {
+  transform: rotate(90deg);
+}
+
+.app-fab-menu {
+  position: absolute;
+  bottom: 60px;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px) scale(0.95);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.app-fab-menu--open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0) scale(1);
+}
+
+.app-fab-menu__item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  color: var(--text-secondary);
+  background: var(--bg-surface-solid);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+
+.app-fab-menu__item:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.app-fab-menu__item:active {
+  transform: scale(0.92);
+}
+
+.app-header__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(var(--surface-blur));
+  -webkit-backdrop-filter: blur(var(--surface-blur));
+  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+
+.app-header__btn:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.app-header__btn:active {
+  transform: scale(0.96);
+}
+
+.app-header__btn--primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: transparent;
+}
+
+.app-header__btn--primary:hover {
+  background: var(--accent-hover);
+  color: #fff;
+}

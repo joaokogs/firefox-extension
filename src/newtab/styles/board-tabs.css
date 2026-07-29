@@ -1,0 +1,200 @@
+﻿/* Board tabs */
+.board-tabs {
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-md);
+  backdrop-filter: blur(var(--surface-blur));
+  -webkit-backdrop-filter: blur(var(--surface-blur));
+  max-width: 100%;
+  min-width: 0;
+}
+
+.board-tabs__scroll {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+}
+
+.board-tabs__scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.board-tabs__arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.board-tabs__arrow:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.board-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  font-size: 0.92rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  user-select: none;
+  touch-action: none;
+  outline: none;
+}
+
+.board-tab:hover,
+.board-tab:focus-visible {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.board-tab--active {
+  background: var(--bg-active);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.board-tab--dragging {
+  opacity: 0.4;
+}
+
+.board-tab--drop-before::before,
+.board-tab--drop-after::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.board-tab--drop-before::before {
+  left: -1px;
+}
+
+.board-tab--drop-after::after {
+  right: -1px;
+}
+
+.board-tab__drag-handle {
+  cursor: grab;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  opacity: 0.3;
+  transition: opacity var(--transition-fast);
+}
+
+.board-tab:hover .board-tab__drag-handle {
+  opacity: 0.7;
+}
+
+.board-tab:active .board-tab__drag-handle {
+  cursor: grabbing;
+}
+
+.board-tab__input {
+  width: 100px;
+  padding: 4px 8px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface-solid);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.board-tab__actions {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 2px;
+}
+
+.board-tab__kebab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity var(--transition-fast), background var(--transition-fast), color var(--transition-fast);
+}
+
+.board-tab:hover .board-tab__kebab,
+.board-tab--active .board-tab__kebab {
+  opacity: 1;
+}
+
+.board-tab__kebab:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.board-tab__menu {
+  z-index: 1000;
+  min-width: 150px;
+  padding: 6px;
+  background: var(--bg-surface-solid);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: fadeIn 0.12s ease;
+}
+
+.board-tab__menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 500;
+  transition: background var(--transition-fast), color var(--transition-fast);
+  white-space: nowrap;
+}
+
+.board-tab__menu-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.board-tab__menu-item--danger:hover {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--danger);
+}
+
+.board-tab--add {
+  color: var(--accent);
+  padding: 9px 12px;
+  font-weight: 600;
+}
+

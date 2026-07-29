@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="prismi-icon.png" alt="Prismi" width="64" height="64">
+  <img src=".github/images/prismi-icon.png" alt="Prismi" width="64" height="64">
 </p>
 
 <h1 align="center">Prismi</h1>
@@ -11,12 +11,8 @@
 </p>
 
 <p align="center">
-  <a href="https://addons.mozilla.org/pt-BR/firefox/addon/luma-new-tab-with-widgets/">
-    <img src="https://img.shields.io/badge/Firefox-FF7139?style=for-the-badge&logo=firefoxbrowser&logoColor=white" alt="Firefox">
-  </a>
-  <a href="https://chromewebstore.google.com/detail/faohpcjkdlgohpiojcdgnooikififmek?utm_source=item-share-cb">
-    <img src="https://img.shields.io/badge/Chrome-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Chrome">
-  </a>
+  <a href="https://addons.mozilla.org/pt-BR/firefox/addon/prismi/"><img src="https://img.shields.io/badge/Firefox-FF7139?style=for-the-badge&logo=firefoxbrowser&logoColor=white" alt="Firefox"></a>
+  <a href="https://chromewebstore.google.com/detail/faohpcjkdlgohpiojcdgnooikififmek?utm_source=item-share-cb"><img src="https://img.shields.io/badge/Chrome-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Chrome"></a>
 </p>
 
 ---
@@ -28,7 +24,7 @@ Prismi turns the most familiar page in your browser into a small system for the 
 Your collection is waiting in every new tab, ready when the next task starts.
 
 <p align="center">
-  <img src="Preview.jpg" alt="Prismi dashboard preview" width="680" style="border-radius: 8px;">
+  <img src=".github/images/Preview.jpg" alt="Prismi dashboard preview" width="680" style="border-radius: 8px;">
 </p>
 
 ## A calmer starting point
@@ -55,36 +51,36 @@ Your collection is waiting in every new tab, ready when the next task starts.
 
 ## Compatibility
 
-Prismi works on desktop Firefox, Chrome, Edge, Opera, Brave, and most Chromium-based browsers. Mobile browsers are not supported.
+Prismi works on desktop Firefox, Chrome, Opera, Brave, and most Chromium-based browsers. Mobile browsers are not supported.
 
 ## Privacy
 
 Prismi is free and private by design: no ads, tracking, subscriptions, or feature caps. Your saved links remain under your control, are stored locally in your browser, and can be exported.
 
-Read the full [Privacy Policy](PRIVACY.md).
+Read the full [Privacy Policy](docs/PRIVACY.md).
 
 ## Support the project
 
 <p align="center">
-  <img src="prismi-2.png" alt="Prismi" width="400">
+  <img src=".github/images/prismi-2.png" alt="Prismi" width="400">
 </p>
 
 Prismi is free and open source. If you find it useful, a star on GitHub helps other people discover the project.
 
 <p align="center">
-  <a href="https://github.com/joaokogs/prismi/stargazers">
-    <img src="https://img.shields.io/github/stars/joaokogs/luma-extension?style=for-the-badge&logo=github&label=Stars&color=FF7139" alt="GitHub stars">
-  </a>
+  <a href="https://github.com/joaokogs/prismi/stargazers"><img src="https://img.shields.io/github/stars/joaokogs/prismi?style=for-the-badge&logo=github&label=Stars&color=FF7139" alt="GitHub stars"></a>
   &nbsp;&nbsp;
-  <a href="https://github.com/joaokogs/prismi/issues">
-    <img src="https://img.shields.io/github/issues/joaokogs/luma-extension?style=for-the-badge&logo=github&label=Issues&color=818cf8" alt="GitHub issues">
-  </a>
+  <a href="https://github.com/joaokogs/prismi/issues"><img src="https://img.shields.io/github/issues/joaokogs/prismi?style=for-the-badge&logo=github&label=Issues&color=818cf8" alt="GitHub issues"></a>
 </p>
 
 <p align="center">
-  <b><a href="https://github.com/joaokogs/prismi">Star the repository on GitHub</a></b>
-  <br>
   <sub>Open source. No ads or tracking. Your saved links stay under your control.</sub>
+</p>
+
+<p align="center">
+  <a href="https://www.buymeacoffee.com/joaokogs"><img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-FFDD00?style=for-the-badge&logo=buymeacoffee&logoColor=000000" alt="Buy me a coffee"></a>
+  <br>
+  <sub>If you enjoy Prismi, consider buying me a coffee to support development ☕</sub>
 </p>
 
 ## License

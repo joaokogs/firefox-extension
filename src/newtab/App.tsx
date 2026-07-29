@@ -1,56 +1,35 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Settings, Menu, Plus, Palette } from 'lucide-preact';
 import type { AppData, Widget, WidgetType, TopWidgetConfig, SearchEngine } from '@shared/types';
-import { SEARCH_ENGINES } from '@shared/types';
+import { SEARCH_ENGINES } from '@shared/types/constants';
 import { useI18n, setLocale as setI18nLocale } from '@shared/i18n';
 import {
   loadData,
   saveData,
-  createBoard,
-  addBoard,
-  renameBoard,
-  reorderBoard,
-  deleteBoard,
-  addWidget,
-  deleteWidget,
-  updateWidget,
-  addLink,
-  createLink,
-  deleteLink,
-  updateLink,
-  moveLink,
-  addTodoItem,
-  createTodoItem,
-  deleteTodoItem,
-  updateTodoItem,
-  toggleTodoItem,
-  moveTodoItem,
-  updateSettings,
-  getBoardById,
-  getInitialBoardId,
-  getWidgetsForBoard,
-  exportData,
-  importData,
-  createWidget,
-  addRecentSearch,
-  removeRecentSearch,
-  clearRecentSearches
 } from '@shared/storage';
-import { BoardTabs } from './components/BoardTabs';
-import { WidgetGrid } from './components/WidgetGrid';
-import { WidgetEditor } from './components/WidgetEditor';
-import { LinkDialog } from './components/LinkDialog';
-import { SettingsPanel } from './components/SettingsPanel';
-import { BackgroundPanel } from './components/BackgroundPanel';
-import { TopInfoWidgets } from './components/TopInfoWidgets';
-import { WidgetToolbar } from './components/WidgetToolbar';
-import { ConfirmDialog } from './components/ConfirmDialog';
-import { NewTabDialog } from './components/NewTabDialog';
-
-import { SearchBar } from './components/SearchBar';
+import { createBoard, addBoard, renameBoard, reorderBoard, deleteBoard, getBoardById, getInitialBoardId, updateSettings, removeRecentSearch, clearRecentSearches, addRecentSearch } from '@shared/storage/boards';
+import { createWidget, addWidget, deleteWidget, updateWidget, getWidgetsForBoard } from '@shared/storage/widgets';
+import { createLink, addLink, deleteLink, updateLink, moveLink } from '@shared/storage/links';
+import { createTodoItem, addTodoItem, deleteTodoItem, updateTodoItem, toggleTodoItem, moveTodoItem } from '@shared/storage/todos';
+import { exportData, importData } from '@shared/storage/backup';
+import { BoardTabs } from './components/layout/BoardTabs';
+import { WidgetGrid } from './components/widgets/WidgetGrid';
+import { WidgetEditor } from './components/dialogs/WidgetEditor';
+import { LinkDialog } from './components/dialogs/LinkDialog';
+import { SettingsPanel } from './components/settings/SettingsPanel';
+import { BackgroundPanel } from './components/settings/BackgroundPanel';
+import { TopInfoWidgets } from './components/layout/TopInfoWidgets';
+import { WidgetToolbar } from './components/settings/WidgetToolbar';
+import { ConfirmDialog } from './components/dialogs/ConfirmDialog';
+import { NewTabDialog } from './components/dialogs/NewTabDialog';
+import { ModalDialog } from './components/dialogs/ModalDialog';
+import { SearchBar } from './components/layout/SearchBar';
+import { BookmarkFolderPicker, type BookmarkFolder } from './components/dialogs/BookmarkFolderPicker';
 import { useThemeStore, type ThemeState } from './store/useThemeStore';
-import { computeThemeVariables } from '@shared/colorExtractor';
-import './styles.css';
+import { computeThemeVariables } from '@shared/theme';
+import { browser } from '@shared/browser';
+import type { Bookmarks } from 'webextension-polyfill';
+import './styles/index.css';
 
 function looksLikeUrl(str: string): boolean {
   return /^https?:\/\//i.test(str) || /^[a-z0-9][-a-z0-9]*\.[a-z]{2,}(\/|$)/i.test(str);
@@ -69,6 +48,15 @@ interface ConfirmState {
   onConfirm: () => void;
 }
 
+function getBookmarkFolders(nodes: Bookmarks.BookmarkTreeNode[], untitledTitle: string, depth = 0): BookmarkFolder[] {
+  return nodes.flatMap((node) => {
+    if (node.type === 'separator') return [];
+    if (!node.children) return [];
+    const folder = node.parentId ? [{ id: node.id, title: node.title || untitledTitle, depth }] : [];
+    return [...folder, ...getBookmarkFolders(node.children, untitledTitle, depth + 1)];
+  });
+}
+
 export function App() {
   const { t } = useI18n();
   const [data, setData] = useState<AppData | null>(null);
@@ -83,6 +71,8 @@ export function App() {
   const [editingLink, setEditingLink] = useState<{ widgetId: string; linkId: string } | null>(null);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const [showNewTabDialog, setShowNewTabDialog] = useState(false);
+  const [showBookmarkFolders, setShowBookmarkFolders] = useState(false);
+  const [bookmarkFolders, setBookmarkFolders] = useState<BookmarkFolder[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchEngine, setSearchEngine] = useState<SearchEngine>('google');
 
@@ -428,6 +418,42 @@ export function App() {
     }
   };
 
+  const handleOpenBookmarkImporter = async () => {
+    try {
+      const tree = await browser.bookmarks.getTree();
+      const folders = getBookmarkFolders(tree, t('bookmarks.untitledFolder'));
+      if (folders.length === 0) {
+        alert(t('bookmarks.noFolders'));
+        return;
+      }
+      setBookmarkFolders(folders);
+      setShowBookmarkFolders(true);
+    } catch {
+      alert(t('bookmarks.loadError'));
+    }
+  };
+
+  const handleImportBookmarkFolder = async (folder: BookmarkFolder) => {
+    if (!activeBoardId) return;
+
+    try {
+      const bookmarks = await browser.bookmarks.getChildren(folder.id);
+      const items = bookmarks.flatMap((bookmark) =>
+        bookmark.url ? [createLink(bookmark.title, bookmark.url)] : []
+      );
+      if (items.length === 0) {
+        alert(t('bookmarks.noLinks'));
+        return;
+      }
+
+      const widget = { ...createWidget('links', folder.title), items };
+      setData((prev) => (prev && activeBoardId ? addWidget(prev, activeBoardId, widget) : prev));
+      setShowBookmarkFolders(false);
+    } catch {
+      alert(t('bookmarks.importError'));
+    }
+  };
+
   const linkSuggestions = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return [];
@@ -530,8 +556,7 @@ export function App() {
               aria-label={t('app.addWidgets')}
               title={t('app.addWidgets')}
             >
-              <Plus size={18} strokeWidth={2} />
-              <span>{t('app.widgets')}</span>
+              <Plus size={20} strokeWidth={2} />
             </button>
           <button
             className="app-fab-menu__item"
@@ -539,8 +564,7 @@ export function App() {
             aria-label={t('app.customizeAppearance')}
             title={t('app.customizeAppearance')}
           >
-            <Palette size={18} strokeWidth={2} />
-            <span>{t('app.appearance')}</span>
+            <Palette size={20} strokeWidth={2} />
           </button>
           <button
             className="app-fab-menu__item"
@@ -548,8 +572,7 @@ export function App() {
             aria-label={t('app.settings')}
             title={t('app.settings')}
           >
-            <Settings size={18} strokeWidth={2} aria-hidden="true" />
-            <span>{t('app.settings')}</span>
+            <Settings size={20} strokeWidth={2} aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -611,34 +634,57 @@ export function App() {
         />
       )}
 
-      {showBackground && (
+      <ModalDialog
+        open={showBackground}
+        onClose={() => setShowBackground(false)}
+        title={t('background.title')}
+        wide
+      >
         <BackgroundPanel
           settings={data.settings}
           onChange={handleSettingsChange}
-          onClose={() => setShowBackground(false)}
         />
-      )}
+      </ModalDialog>
 
-      {showSettings && (
+      <ModalDialog
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        title={t('settings.title')}
+      >
         <SettingsPanel
           settings={data.settings}
           onChange={handleSettingsChange}
-          onClose={() => setShowSettings(false)}
           onExport={handleExport}
           onImport={handleImport}
+          onImportBookmarks={handleOpenBookmarkImporter}
           onClearRecentSearches={handleClearRecentSearches}
         />
-      )}
+      </ModalDialog>
 
-      {showWidgetToolbar && (
+      <ModalDialog
+        open={showBookmarkFolders}
+        onClose={() => setShowBookmarkFolders(false)}
+        title={t('bookmarks.title')}
+      >
+        <BookmarkFolderPicker
+          folders={bookmarkFolders}
+          onImport={handleImportBookmarkFolder}
+          onClose={() => setShowBookmarkFolders(false)}
+        />
+      </ModalDialog>
+
+      <ModalDialog
+        open={showWidgetToolbar}
+        onClose={() => setShowWidgetToolbar(false)}
+        title={t('app.addWidgets')}
+      >
         <WidgetToolbar
           topWidgets={data.settings.topWidgets || []}
           onToggleWidget={handleToggleWidget}
           onAddWidget={handleAddWidgetFromToolbar}
           onCityChange={handleToolbarCityChange}
-          onClose={() => setShowWidgetToolbar(false)}
         />
-      )}
+      </ModalDialog>
 
       <NewTabDialog
         open={showNewTabDialog}

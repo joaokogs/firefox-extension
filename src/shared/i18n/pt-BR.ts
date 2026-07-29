@@ -71,6 +71,9 @@ export const ptBR: Record<string, string> = {
   'confirm.confirm': 'Confirmar',
   'confirm.cancel': 'Cancelar',
 
+  // ModalDialog
+  'dialog.close': 'Fechar',
+
   // IconPicker
   'iconPicker.selectIcon': 'Selecionar ícone',
   'iconPicker.linkIcon': 'Ícone do link',
@@ -130,6 +133,20 @@ export const ptBR: Record<string, string> = {
   'settings.backup': 'Backup',
   'settings.exportJson': 'Exportar JSON',
   'settings.importJson': 'Importar JSON',
+  'settings.bookmarks': 'Favoritos',
+  'settings.importBookmarks': 'Importar pasta de favoritos',
+
+  // BookmarkFolderPicker
+  'bookmarks.title': 'Importar pasta de favoritos',
+  'bookmarks.description': 'Um widget de links será criado com os favoritos diretos da pasta selecionada.',
+  'bookmarks.folder': 'Pasta de favoritos',
+  'bookmarks.cancel': 'Cancelar',
+  'bookmarks.import': 'Importar pasta',
+  'bookmarks.noFolders': 'Nenhuma pasta de favoritos foi encontrada.',
+  'bookmarks.noLinks': 'A pasta selecionada não possui favoritos para importar.',
+  'bookmarks.loadError': 'Não foi possível carregar os favoritos.',
+  'bookmarks.importError': 'Não foi possível importar a pasta de favoritos.',
+  'bookmarks.untitledFolder': 'Pasta sem título',
 
   // TodoWidget
   'todo.newNote': 'Nova nota...',

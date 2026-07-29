@@ -1,0 +1,27 @@
+﻿.weather-widget,
+.clock-widget {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.weather-widget__city {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.weather-widget__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.weather-widget__temp {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
