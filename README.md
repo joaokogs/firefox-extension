@@ -55,7 +55,7 @@ Your collection is waiting in every new tab, ready when the next task starts.
 
 ## Compatibility
 
-Prismi works on desktop Firefox, Chrome, Edge, Opera, Brave, and most Chromium-based browsers. Mobile browsers are not supported.
+Prismi works on desktop Firefox, Chrome, Opera, Brave, and most Chromium-based browsers. Mobile browsers are not supported.
 
 ## Privacy
 
