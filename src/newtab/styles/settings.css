@@ -32,6 +32,20 @@
   border-color: var(--accent);
 }
 
+.bookmark-folder-picker__field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+}
+
+.bookmark-folder-picker__select {
+  width: 100%;
+  padding: 8px 10px;
+}
+
 .theme-toggle {
   display: flex;
   gap: 8px;

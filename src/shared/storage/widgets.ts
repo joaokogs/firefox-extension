@@ -1,8 +1,14 @@
-import type { AppData, Widget, WidgetType } from '@shared/types';
+import type { AppData, Widget, WidgetType, LinksWidget, CalendarWidget, ClockWidget, WeatherWidget, TodoWidget } from '@shared/types';
 import { generateId } from '@shared/types/defaults';
 import { t } from '@shared/i18n';
 import { updateBoard, updateWidgetInBoard } from './index';
 
+export function createWidget(type: 'links', title: string): LinksWidget;
+export function createWidget(type: 'calendar', title: string): CalendarWidget;
+export function createWidget(type: 'clock', title: string): ClockWidget;
+export function createWidget(type: 'weather', title: string): WeatherWidget;
+export function createWidget(type: 'todo', title: string): TodoWidget;
+export function createWidget(type: WidgetType, title: string): Widget;
 export function createWidget(type: WidgetType, title: string): Widget {
   const base = {
     id: generateId('widget'),

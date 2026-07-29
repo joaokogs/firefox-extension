@@ -24,8 +24,11 @@ import { ConfirmDialog } from './components/dialogs/ConfirmDialog';
 import { NewTabDialog } from './components/dialogs/NewTabDialog';
 import { ModalDialog } from './components/dialogs/ModalDialog';
 import { SearchBar } from './components/layout/SearchBar';
+import { BookmarkFolderPicker, type BookmarkFolder } from './components/dialogs/BookmarkFolderPicker';
 import { useThemeStore, type ThemeState } from './store/useThemeStore';
 import { computeThemeVariables } from '@shared/theme';
+import { browser } from '@shared/browser';
+import type { Bookmarks } from 'webextension-polyfill';
 import './styles/index.css';
 
 function looksLikeUrl(str: string): boolean {
@@ -45,6 +48,15 @@ interface ConfirmState {
   onConfirm: () => void;
 }
 
+function getBookmarkFolders(nodes: Bookmarks.BookmarkTreeNode[], untitledTitle: string, depth = 0): BookmarkFolder[] {
+  return nodes.flatMap((node) => {
+    if (node.type === 'separator') return [];
+    if (!node.children) return [];
+    const folder = node.parentId ? [{ id: node.id, title: node.title || untitledTitle, depth }] : [];
+    return [...folder, ...getBookmarkFolders(node.children, untitledTitle, depth + 1)];
+  });
+}
+
 export function App() {
   const { t } = useI18n();
   const [data, setData] = useState<AppData | null>(null);
@@ -59,6 +71,8 @@ export function App() {
   const [editingLink, setEditingLink] = useState<{ widgetId: string; linkId: string } | null>(null);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const [showNewTabDialog, setShowNewTabDialog] = useState(false);
+  const [showBookmarkFolders, setShowBookmarkFolders] = useState(false);
+  const [bookmarkFolders, setBookmarkFolders] = useState<BookmarkFolder[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchEngine, setSearchEngine] = useState<SearchEngine>('google');
 
@@ -404,6 +418,42 @@ export function App() {
     }
   };
 
+  const handleOpenBookmarkImporter = async () => {
+    try {
+      const tree = await browser.bookmarks.getTree();
+      const folders = getBookmarkFolders(tree, t('bookmarks.untitledFolder'));
+      if (folders.length === 0) {
+        alert(t('bookmarks.noFolders'));
+        return;
+      }
+      setBookmarkFolders(folders);
+      setShowBookmarkFolders(true);
+    } catch {
+      alert(t('bookmarks.loadError'));
+    }
+  };
+
+  const handleImportBookmarkFolder = async (folder: BookmarkFolder) => {
+    if (!activeBoardId) return;
+
+    try {
+      const bookmarks = await browser.bookmarks.getChildren(folder.id);
+      const items = bookmarks.flatMap((bookmark) =>
+        bookmark.url ? [createLink(bookmark.title, bookmark.url)] : []
+      );
+      if (items.length === 0) {
+        alert(t('bookmarks.noLinks'));
+        return;
+      }
+
+      const widget = { ...createWidget('links', folder.title), items };
+      setData((prev) => (prev && activeBoardId ? addWidget(prev, activeBoardId, widget) : prev));
+      setShowBookmarkFolders(false);
+    } catch {
+      alert(t('bookmarks.importError'));
+    }
+  };
+
   const linkSuggestions = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return [];
@@ -606,7 +656,20 @@ export function App() {
           onChange={handleSettingsChange}
           onExport={handleExport}
           onImport={handleImport}
+          onImportBookmarks={handleOpenBookmarkImporter}
           onClearRecentSearches={handleClearRecentSearches}
+        />
+      </ModalDialog>
+
+      <ModalDialog
+        open={showBookmarkFolders}
+        onClose={() => setShowBookmarkFolders(false)}
+        title={t('bookmarks.title')}
+      >
+        <BookmarkFolderPicker
+          folders={bookmarkFolders}
+          onImport={handleImportBookmarkFolder}
+          onClose={() => setShowBookmarkFolders(false)}
         />
       </ModalDialog>
 

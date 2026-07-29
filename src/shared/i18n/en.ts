@@ -133,6 +133,20 @@ export const en: Record<string, string> = {
   'settings.backup': 'Backup',
   'settings.exportJson': 'Export JSON',
   'settings.importJson': 'Import JSON',
+  'settings.bookmarks': 'Bookmarks',
+  'settings.importBookmarks': 'Import bookmark folder',
+
+  // BookmarkFolderPicker
+  'bookmarks.title': 'Import bookmark folder',
+  'bookmarks.description': 'A links widget will be created from the bookmarks directly inside the selected folder.',
+  'bookmarks.folder': 'Bookmark folder',
+  'bookmarks.cancel': 'Cancel',
+  'bookmarks.import': 'Import folder',
+  'bookmarks.noFolders': 'No bookmark folders were found.',
+  'bookmarks.noLinks': 'The selected folder has no bookmarks to import.',
+  'bookmarks.loadError': 'Could not load bookmarks.',
+  'bookmarks.importError': 'Could not import the bookmark folder.',
+  'bookmarks.untitledFolder': 'Untitled folder',
 
   // TodoWidget
   'todo.newNote': 'New note...',

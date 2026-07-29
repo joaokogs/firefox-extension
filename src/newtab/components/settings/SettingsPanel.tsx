@@ -1,6 +1,6 @@
 import { useRef } from 'preact/hooks';
 import type { AppSettings } from '@shared/types';
-import { Trash2, Download, Upload } from 'lucide-preact';
+import { Trash2, Download, Upload, Bookmark } from 'lucide-preact';
 import { useI18n, type Locale } from '@shared/i18n';
 
 interface SettingsPanelProps {
@@ -8,10 +8,11 @@ interface SettingsPanelProps {
   onChange: (settings: Partial<AppSettings>) => void;
   onExport: () => void;
   onImport: (file: File) => void;
+  onImportBookmarks: () => void;
   onClearRecentSearches?: () => void;
 }
 
-export function SettingsPanel({ settings, onChange, onExport, onImport, onClearRecentSearches }: SettingsPanelProps) {
+export function SettingsPanel({ settings, onChange, onExport, onImport, onImportBookmarks, onClearRecentSearches }: SettingsPanelProps) {
   const { t, locale, setLocale } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -72,6 +73,15 @@ export function SettingsPanel({ settings, onChange, onExport, onImport, onClearR
         <div className="backup-actions">
           <button className="btn btn--danger" onClick={() => onClearRecentSearches?.()} disabled={!(settings.recentSearches && settings.recentSearches.length > 0)}>
             <Trash2 size={14} strokeWidth={2} /> {t('settings.clearHistory')}
+          </button>
+        </div>
+      </div>
+
+      <div className="dialog__section settings-panel__section">
+        <label className="dialog__section-title">{t('settings.bookmarks')}</label>
+        <div className="backup-actions">
+          <button className="btn btn--secondary" onClick={onImportBookmarks}>
+            <Bookmark size={14} strokeWidth={2} aria-hidden="true" /> {t('settings.importBookmarks')}
           </button>
         </div>
       </div>
