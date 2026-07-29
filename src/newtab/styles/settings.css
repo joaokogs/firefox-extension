@@ -305,15 +305,6 @@
   color: var(--accent-hover);
 }
 
-/* Modal subtitle */
-.modal__subtitle {
-  display: block;
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  margin-top: 2px;
-}
-
 /* Link dialog icon picker row */
 .link-dialog__icon-row {
   display: flex;
