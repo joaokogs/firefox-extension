@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
 import { CalendarDays, Clock3, Cloud, Search, CheckSquare, type LucideIcon } from 'lucide-preact';
 import type { WidgetType, TopWidgetConfig } from '@shared/types';
 import { CityAutocomplete } from '../ui/CityAutocomplete';
@@ -18,15 +18,13 @@ interface WidgetToolbarProps {
   onToggleWidget: (type: WidgetType) => void;
   onAddWidget: (type: WidgetType) => void;
   onCityChange: (city: string) => void;
-  onClose: () => void;
 }
 
 export function WidgetToolbar({
   topWidgets,
   onToggleWidget,
   onAddWidget,
-  onCityChange,
-  onClose
+  onCityChange
 }: WidgetToolbarProps) {
   const { t } = useI18n();
 
@@ -44,7 +42,6 @@ export function WidgetToolbar({
   ];
 
   const [cityInput, setCityInput] = useState('');
-  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const weatherWidget = topWidgets.find((w) => w.type === 'weather');
@@ -52,16 +49,6 @@ export function WidgetToolbar({
       setCityInput(weatherWidget.city);
     }
   }, [topWidgets]);
-
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [onClose]);
 
   const isWidgetActive = (type: WidgetType) => {
     return topWidgets.some((w) => w.type === type);
@@ -76,13 +63,9 @@ export function WidgetToolbar({
   };
 
   return (
-    <div className="widget-toolbar" ref={panelRef}>
-      <div className="widget-toolbar__header">
-        <h3>{t('widgetToolbar.title')}</h3>
-      </div>
-
+    <div className="dialog__body">
       <div className="widget-toolbar__group">
-        <h4 className="widget-toolbar__group-title">{t('widgetToolbar.blocks')}</h4>
+        <h4 className="dialog__section-title">{t('widgetToolbar.blocks')}</h4>
         <div className="widget-toolbar__list">
           {filterOptions(BLOCK_WIDGETS).map((option) => {
           const WidgetIcon = option.icon;
@@ -117,11 +100,11 @@ export function WidgetToolbar({
             </div>
           );
         })}
-      </div>
+        </div>
       </div>
 
       <div className="widget-toolbar__group">
-        <h4 className="widget-toolbar__group-title">{t('widgetToolbar.header')}</h4>
+        <h4 className="dialog__section-title">{t('widgetToolbar.header')}</h4>
         <div className="widget-toolbar__list">
           {filterOptions(HEADER_WIDGETS).map((option) => {
           const WidgetIcon = option.icon;
@@ -156,7 +139,7 @@ export function WidgetToolbar({
             </div>
           );
         })}
-      </div>
+        </div>
 
           {isWidgetActive('weather') && (
             <div className="widget-toolbar__city">
@@ -176,7 +159,6 @@ export function WidgetToolbar({
             </div>
           )}
       </div>
-
     </div>
   );
 }

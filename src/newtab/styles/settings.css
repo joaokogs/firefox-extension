@@ -1,57 +1,5 @@
-﻿/* Settings panel */
-.settings-panel {
-  position: fixed;
-  top: 90px;
-  right: 24px;
-  width: 340px;
-  max-height: calc(100vh - 120px);
-  overflow-y: auto;
-  padding: 20px;
-  background: var(--bg-surface-solid);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
-  z-index: 101;
-  animation: slideUp 0.2s ease;
-}
-
-.settings-panel__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-
-.settings-panel__header h3 {
-  margin: 0;
-  font-size: 1.1rem;
-}
-
-.settings-panel__close {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  color: var(--text-muted);
-}
-
-.settings-panel__close:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
-}
-
-.settings-panel__section {
+﻿.settings-panel__section {
   margin-bottom: 24px;
-}
-
-.settings-panel__label {
-  display: block;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  margin-bottom: 10px;
 }
 
 .settings-panel__toggle-row {
@@ -74,35 +22,14 @@
   font-size: 0.8125rem;
   padding: 4px 8px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
-  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  background: var(--bg-body);
   color: var(--text-primary);
   cursor: pointer;
   outline: none;
 }
 .settings-panel__select:focus {
-  border-color: var(--primary);
-}
-
-.settings-panel__label-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.settings-panel__add {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  color: var(--accent);
-  background: var(--bg-hover);
-}
-
-.settings-panel__add:hover {
-  background: var(--bg-active);
+  border-color: var(--accent);
 }
 
 .theme-toggle {
@@ -460,15 +387,6 @@
 
   .widgets-grid {
     column-count: 1;
-  }
-
-  .settings-panel {
-    top: auto;
-    right: 16px;
-    left: 16px;
-    bottom: 16px;
-    width: auto;
-    max-height: 70vh;
   }
 
   .widget-editor__types {

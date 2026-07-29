@@ -1,43 +1,24 @@
-import { useRef, useEffect } from 'preact/hooks';
+import { useRef } from 'preact/hooks';
 import type { AppSettings } from '@shared/types';
-import { X, Trash2, Download, Upload } from 'lucide-preact';
+import { Trash2, Download, Upload } from 'lucide-preact';
 import { useI18n, type Locale } from '@shared/i18n';
 
 interface SettingsPanelProps {
   settings: AppSettings;
   onChange: (settings: Partial<AppSettings>) => void;
-  onClose: () => void;
   onExport: () => void;
   onImport: (file: File) => void;
   onClearRecentSearches?: () => void;
 }
 
-export function SettingsPanel({ settings, onChange, onClose, onExport, onImport, onClearRecentSearches }: SettingsPanelProps) {
+export function SettingsPanel({ settings, onChange, onExport, onImport, onClearRecentSearches }: SettingsPanelProps) {
   const { t, locale, setLocale } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [onClose]);
 
   return (
-    <div className="settings-panel" ref={panelRef} role="dialog" aria-label={t('settings.title')}>
-      <div className="settings-panel__header">
-        <h3>{t('settings.title')}</h3>
-        <button className="settings-panel__close" onClick={onClose} aria-label={t('settings.close')}>
-          <X size={18} />
-        </button>
-      </div>
-
-      <div className="settings-panel__section">
-        <label className="settings-panel__label">{t('settings.language')}</label>
+    <div className="dialog__body">
+      <div className="dialog__section settings-panel__section">
+        <label className="dialog__section-title">{t('settings.language')}</label>
         <div className="settings-panel__toggle-row">
           <span className="settings-panel__toggle-desc">{t('settings.languageDesc')}</span>
           <select
@@ -56,8 +37,8 @@ export function SettingsPanel({ settings, onChange, onClose, onExport, onImport,
         </div>
       </div>
 
-      <div className="settings-panel__section">
-        <label className="settings-panel__label">{t('settings.editMode')}</label>
+      <div className="dialog__section settings-panel__section">
+        <label className="dialog__section-title">{t('settings.editMode')}</label>
         <div className="settings-panel__toggle-row">
           <span className="settings-panel__toggle-desc">{t('settings.editModeDesc')}</span>
           <label className="widget-toolbar__toggle">
@@ -71,8 +52,8 @@ export function SettingsPanel({ settings, onChange, onClose, onExport, onImport,
         </div>
       </div>
 
-      <div className="settings-panel__section">
-        <label className="settings-panel__label">{t('settings.openInNewTab')}</label>
+      <div className="dialog__section settings-panel__section">
+        <label className="dialog__section-title">{t('settings.openInNewTab')}</label>
         <div className="settings-panel__toggle-row">
           <span className="settings-panel__toggle-desc">{t('settings.openInNewTabDesc')}</span>
           <label className="widget-toolbar__toggle">
@@ -86,8 +67,8 @@ export function SettingsPanel({ settings, onChange, onClose, onExport, onImport,
         </div>
       </div>
 
-      <div className="settings-panel__section">
-        <label className="settings-panel__label">{t('settings.searchHistory')}</label>
+      <div className="dialog__section settings-panel__section">
+        <label className="dialog__section-title">{t('settings.searchHistory')}</label>
         <div className="backup-actions">
           <button className="btn btn--danger" onClick={() => onClearRecentSearches?.()} disabled={!(settings.recentSearches && settings.recentSearches.length > 0)}>
             <Trash2 size={14} strokeWidth={2} /> {t('settings.clearHistory')}
@@ -95,8 +76,8 @@ export function SettingsPanel({ settings, onChange, onClose, onExport, onImport,
         </div>
       </div>
 
-      <div className="settings-panel__section">
-        <label className="settings-panel__label">{t('settings.backup')}</label>
+      <div className="dialog__section settings-panel__section">
+        <label className="dialog__section-title">{t('settings.backup')}</label>
         <div className="backup-actions">
           <button className="btn btn--secondary" onClick={onExport}>
             <Download size={14} strokeWidth={2} /> {t('settings.exportJson')}

@@ -1,39 +1,27 @@
-import { useRef, useState, useEffect, useCallback } from 'preact/hooks';
+import { useState, useRef, useCallback } from 'preact/hooks';
 import { HexColorPicker } from 'react-colorful';
 import type { AppSettings, WallpaperSetting } from '@shared/types';
 import { DEFAULT_WALLPAPERS } from '@shared/types/constants';
 import { useI18n } from '@shared/i18n';
 import { useThemeStore } from '../../store/useThemeStore';
-import { X, Sun, Moon, Upload, Trash2 } from 'lucide-preact';
+import { Sun, Moon, Upload, Trash2 } from 'lucide-preact';
 
 const MAX_UPLOADS = 5;
 
 interface BackgroundPanelProps {
   settings: AppSettings;
   onChange: (settings: Partial<AppSettings>) => void;
-  onClose: () => void;
 }
 
-export function BackgroundPanel({ settings, onChange, onClose }: BackgroundPanelProps) {
+export function BackgroundPanel({ settings, onChange }: BackgroundPanelProps) {
   const { t } = useI18n();
   const [applying, setApplying] = useState(false);
   const [dragOver, setDragOver] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const themeConfig = useThemeStore((s) => s.themeConfig);
   const updateThemeConfig = useThemeStore((s) => s.updateThemeConfig);
   const applyFromWallpaper = useThemeStore((s) => s.applyFromWallpaper);
-
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        onClose();
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [onClose]);
 
   const handleWallpaperSelect = useCallback(async (wp: WallpaperSetting) => {
     onChange({ wallpaper: wp });
@@ -152,16 +140,9 @@ export function BackgroundPanel({ settings, onChange, onClose }: BackgroundPanel
   const canUpload = uploadedBackgrounds.length < MAX_UPLOADS;
 
   return (
-    <div className="settings-panel" ref={panelRef} role="dialog" aria-label={t('background.title')}>
-      <div className="settings-panel__header">
-        <h3>{t('background.title')}</h3>
-        <button className="settings-panel__close" onClick={onClose} aria-label={t('background.close')}>
-          <X size={18} />
-        </button>
-      </div>
-
-      <div className="settings-panel__section">
-        <label className="settings-panel__label">{t('background.theme')}</label>
+    <div className="dialog__body">
+      <div className="dialog__section settings-panel__section">
+        <label className="dialog__section-title">{t('background.theme')}</label>
         <div className="theme-toggle">
           <button
             className={settings.theme === 'light' ? 'active' : ''}
@@ -189,8 +170,8 @@ export function BackgroundPanel({ settings, onChange, onClose }: BackgroundPanel
         </div>
       </div>
 
-      <div className="settings-panel__section">
-        <label className="settings-panel__label">{t('background.wallpaper')}</label>
+      <div className="dialog__section settings-panel__section">
+        <label className="dialog__section-title">{t('background.wallpaper')}</label>
         <div className="wallpaper-grid">
           {DEFAULT_WALLPAPERS.map((wp, index) => (
             <button
@@ -270,8 +251,8 @@ export function BackgroundPanel({ settings, onChange, onClose }: BackgroundPanel
 
       </div>
 
-      <div className="settings-panel__section">
-        <label className="settings-panel__label">{t('background.primaryColor')}</label>
+      <div className="dialog__section settings-panel__section">
+        <label className="dialog__section-title">{t('background.primaryColor')}</label>
         <div className="theme-color-picker">
           <HexColorPicker
             color={themeConfig.primaryColor}
@@ -299,8 +280,8 @@ export function BackgroundPanel({ settings, onChange, onClose }: BackgroundPanel
         </div>
       </div>
 
-      <div className="settings-panel__section">
-        <label className="settings-panel__label">{t('background.boardColor')}</label>
+      <div className="dialog__section settings-panel__section">
+        <label className="dialog__section-title">{t('background.boardColor')}</label>
         <div className="theme-color-picker">
           <HexColorPicker
             color={themeConfig.boardColor}
@@ -328,8 +309,8 @@ export function BackgroundPanel({ settings, onChange, onClose }: BackgroundPanel
         </div>
       </div>
 
-      <div className="settings-panel__section">
-        <label className="settings-panel__label">
+      <div className="dialog__section settings-panel__section">
+        <label className="dialog__section-title">
           {t('background.opacity', { value: Math.round(themeConfig.boardOpacity * 100) })}
         </label>
         <input
@@ -346,8 +327,8 @@ export function BackgroundPanel({ settings, onChange, onClose }: BackgroundPanel
         />
       </div>
 
-      <div className="settings-panel__section">
-        <label className="settings-panel__label">
+      <div className="dialog__section settings-panel__section">
+        <label className="dialog__section-title">
           {t('background.blur', { value: themeConfig.boardBlur })}
         </label>
         <input
@@ -364,7 +345,7 @@ export function BackgroundPanel({ settings, onChange, onClose }: BackgroundPanel
         />
       </div>
 
-      <div className="settings-panel__section">
+      <div className="dialog__section settings-panel__section">
         <button
           className="btn btn--primary"
           style={{ width: '100%' }}

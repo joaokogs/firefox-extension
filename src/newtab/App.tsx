@@ -22,6 +22,7 @@ import { TopInfoWidgets } from './components/layout/TopInfoWidgets';
 import { WidgetToolbar } from './components/settings/WidgetToolbar';
 import { ConfirmDialog } from './components/dialogs/ConfirmDialog';
 import { NewTabDialog } from './components/dialogs/NewTabDialog';
+import { ModalDialog } from './components/dialogs/ModalDialog';
 import { SearchBar } from './components/layout/SearchBar';
 import { useThemeStore, type ThemeState } from './store/useThemeStore';
 import { computeThemeVariables } from '@shared/theme';
@@ -583,34 +584,44 @@ export function App() {
         />
       )}
 
-      {showBackground && (
+      <ModalDialog
+        open={showBackground}
+        onClose={() => setShowBackground(false)}
+        title={t('background.title')}
+        wide
+      >
         <BackgroundPanel
           settings={data.settings}
           onChange={handleSettingsChange}
-          onClose={() => setShowBackground(false)}
         />
-      )}
+      </ModalDialog>
 
-      {showSettings && (
+      <ModalDialog
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        title={t('settings.title')}
+      >
         <SettingsPanel
           settings={data.settings}
           onChange={handleSettingsChange}
-          onClose={() => setShowSettings(false)}
           onExport={handleExport}
           onImport={handleImport}
           onClearRecentSearches={handleClearRecentSearches}
         />
-      )}
+      </ModalDialog>
 
-      {showWidgetToolbar && (
+      <ModalDialog
+        open={showWidgetToolbar}
+        onClose={() => setShowWidgetToolbar(false)}
+        title={t('app.addWidgets')}
+      >
         <WidgetToolbar
           topWidgets={data.settings.topWidgets || []}
           onToggleWidget={handleToggleWidget}
           onAddWidget={handleAddWidgetFromToolbar}
           onCityChange={handleToolbarCityChange}
-          onClose={() => setShowWidgetToolbar(false)}
         />
-      )}
+      </ModalDialog>
 
       <NewTabDialog
         open={showNewTabDialog}

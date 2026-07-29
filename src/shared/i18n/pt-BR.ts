@@ -71,6 +71,9 @@ export const ptBR: Record<string, string> = {
   'confirm.confirm': 'Confirmar',
   'confirm.cancel': 'Cancelar',
 
+  // ModalDialog
+  'dialog.close': 'Fechar',
+
   // IconPicker
   'iconPicker.selectIcon': 'Selecionar ícone',
   'iconPicker.linkIcon': 'Ícone do link',

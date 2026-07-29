@@ -71,6 +71,9 @@ export const en: Record<string, string> = {
   'confirm.confirm': 'Confirm',
   'confirm.cancel': 'Cancel',
 
+  // ModalDialog
+  'dialog.close': 'Close',
+
   // IconPicker
   'iconPicker.selectIcon': 'Select icon',
   'iconPicker.linkIcon': 'Link icon',
