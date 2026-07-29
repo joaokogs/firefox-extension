@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://addons.mozilla.org/pt-BR/firefox/addon/prismi/"><img src="https://img.shields.io/badge/Firefox-FF7139?style=for-the-badge&logo=firefoxbrowser&logoColor=white" alt="Firefox"></a>
-  <a href="https://chromewebstore.google.com/detail/faohpcjkdlgohpiojcdgnooikififmek?utm_source=item-share-cb"><img src="https://img.shields.io/badge/Chrome-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Chrome"></a>
+  <a href="https://chromewebstore.google.com/detail/prismi-new-tab-with-widge/faohpcjkdlgohpiojcdgnooikififmek?utm_source=item-share-cb"><img src="https://img.shields.io/badge/Chrome-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Chrome"></a>
 </p>
 
 ---
