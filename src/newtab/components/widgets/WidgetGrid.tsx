@@ -41,6 +41,42 @@ interface LinkDragState {
   fromWidgetId: string | null;
 }
 
+interface GridPosition {
+  column: number;
+  row: number;
+}
+
+function getResponsiveWidgetPositions(widgets: Widget[], columnCount: number): Map<string, GridPosition> {
+  const sourceColumns = Math.max(
+    1,
+    ...widgets.map((widget) => widget.layoutColumns ?? 0),
+    ...widgets
+      .filter((widget) => widget.layoutColumns === undefined)
+      .map((widget) => (widget.col ?? 0) + 1)
+  );
+  const nextRows = new Map<number, number>();
+  const positions = new Map<string, GridPosition>();
+
+  widgets
+    .map((widget, index) => ({
+      widget,
+      index,
+      column: Math.min(Math.max(widget.col ?? 0, 0), sourceColumns - 1),
+      row: Math.max(widget.order, 0)
+    }))
+    .sort((a, b) => a.column - b.column || a.row - b.row || a.index - b.index)
+    .forEach(({ widget, column: sourceColumn }) => {
+      const column = sourceColumns === 1
+        ? 0
+        : Math.round(sourceColumn * (columnCount - 1) / (sourceColumns - 1));
+      const row = nextRows.get(column) ?? 0;
+      nextRows.set(column, row + 1);
+      positions.set(widget.id, { column, row });
+    });
+
+  return positions;
+}
+
 export function WidgetGrid({
   widgets,
   openInNewTab,
@@ -66,18 +102,22 @@ export function WidgetGrid({
   const [drag, setDrag] = useState<DragTarget>({ widgetId: null, col: null, targetId: null, position: null });
   const [linkDrag, setLinkDrag] = useState<LinkDragState>({ linkId: null, fromWidgetId: null });
   const [todoDrag, setTodoDrag] = useState<TodoDragState>({ todoId: null, fromWidgetId: null });
+  const widgetPositions = useMemo(
+    () => getResponsiveWidgetPositions(widgets, columnCount),
+    [widgets, columnCount]
+  );
 
   const columns = useMemo(() => {
     const cols: Widget[][] = Array.from({ length: columnCount }, () => []);
     for (const w of widgets) {
-      const col = Math.min(Math.max(w.col ?? 0, 0), columnCount - 1);
+      const col = widgetPositions.get(w.id)?.column ?? 0;
       cols[col].push(w);
     }
     for (const col of cols) {
-      col.sort((a, b) => a.order - b.order);
+      col.sort((a, b) => (widgetPositions.get(a.id)?.row ?? 0) - (widgetPositions.get(b.id)?.row ?? 0));
     }
     return cols;
-  }, [widgets, columnCount]);
+  }, [widgets, columnCount, widgetPositions]);
 
   const handleDragStart = (e: DragEvent, id: string) => {
     setDrag({ widgetId: id, col: null, targetId: null, position: null });
@@ -95,7 +135,7 @@ export function WidgetGrid({
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const midY = rect.top + rect.height / 2;
     const position = e.clientY < midY ? 'before' : 'after';
-    const col = Math.min(Math.max(widget.col ?? 0, 0), columnCount - 1);
+    const col = widgetPositions.get(widget.id)?.column ?? 0;
     setDrag({ widgetId: drag.widgetId, col, targetId: widget.id, position });
   };
 
@@ -125,16 +165,20 @@ export function WidgetGrid({
     const byCol: Widget[][] = Array.from({ length: columnCount }, () => []);
     const copy = widgets.map((w) => ({ ...w }));
     for (const w of copy) {
-      const c = Math.min(Math.max(w.col ?? 0, 0), columnCount - 1);
+      const c = widgetPositions.get(w.id)?.column ?? 0;
       byCol[c].push(w);
     }
     for (const col of byCol) {
-      col.sort((a, b) => a.order - b.order);
+      col.sort((a, b) => (widgetPositions.get(a.id)?.row ?? 0) - (widgetPositions.get(b.id)?.row ?? 0));
     }
     fn(byCol);
-    for (const col of byCol) {
-      col.forEach((w, i) => { w.order = i; });
-    }
+    byCol.forEach((col, column) => {
+      col.forEach((w, i) => {
+        w.col = column;
+        w.order = i;
+        w.layoutColumns = columnCount;
+      });
+    });
     const result = byCol.flat();
     onReorder(result);
   };
@@ -147,7 +191,7 @@ export function WidgetGrid({
       return;
     }
 
-    const targetCol = Math.min(Math.max(targetWidget.col ?? 0, 0), columnCount - 1);
+    const targetCol = widgetPositions.get(targetWidget.id)?.column ?? 0;
     const position = drag.position;
 
     commitReorder((byCol) => {
@@ -288,7 +332,7 @@ export function WidgetGrid({
         >
           {colWidgets.length === 0 && drag.col === colIndex && drag.position === 'into' && <DropIndicator />}
           {colWidgets.map((widget) => {
-            const isTarget = drag.widgetId && drag.targetId === widget.id && drag.col === (widget.col ?? 0);
+            const isTarget = drag.widgetId && drag.targetId === widget.id && drag.col === (widgetPositions.get(widget.id)?.column ?? 0);
             return (
               <div key={widget.id} className="widget-drop-wrapper">
                 {isTarget && drag.position === 'before' && <DropIndicator />}

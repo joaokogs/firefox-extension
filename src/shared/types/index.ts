@@ -16,6 +16,7 @@ export interface BaseWidget {
   order: number;
   height?: number;
   col?: number;
+  layoutColumns?: number;
 }
 
 export interface LinksWidget extends BaseWidget {

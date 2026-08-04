@@ -404,15 +404,28 @@ export function App() {
   };
 
   const handleExport = () => {
-    if (data) exportData(data);
+    if (data) exportData(data, themeConfig);
   };
 
   const handleImport = async (file: File) => {
     try {
       const imported = await importData(file);
-      setData(imported);
-      saveData(imported);
-      setActiveBoardId(getInitialBoardId(imported));
+      if (imported.theme) {
+        useThemeStore.getState().updateThemeConfig(imported.theme);
+      }
+      const nextData = imported.theme && data
+        ? {
+            ...imported.data,
+            settings: {
+              ...data.settings,
+              topWidgets: imported.data.settings.topWidgets,
+              lastBoardId: imported.data.settings.lastBoardId
+            }
+          }
+        : imported.data;
+      setData(nextData);
+      saveData(nextData);
+      setActiveBoardId(getInitialBoardId(nextData));
     } catch (err) {
       alert(err instanceof Error ? err.message : t('app.importError'));
     }
