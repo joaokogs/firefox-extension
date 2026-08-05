@@ -3,6 +3,7 @@ import { createPortal } from 'preact/compat';
 import type { Board } from '@shared/types';
 import { useI18n } from '@shared/i18n';
 import { ChevronLeft, ChevronRight, GripVertical, MoreVertical, Pencil, Trash2, Plus } from 'lucide-preact';
+import { notifyMenuOpened, subscribeToMenuClose } from '../../utils/menu';
 
 interface BoardTabsProps {
   boards: Board[];
@@ -85,6 +86,11 @@ export function BoardTabs({ boards, activeId, onSelect, onAdd, onRename, onDelet
     return () => document.removeEventListener('mousedown', handler);
   }, [menuOpenId]);
 
+  useEffect(() => {
+    if (!menuOpenId) return;
+    return subscribeToMenuClose(() => setMenuOpenId(null));
+  }, [menuOpenId]);
+
   const startRename = (board: Board) => {
     setEditingId(board.id);
     setEditValue(board.title);
@@ -104,6 +110,7 @@ export function BoardTabs({ boards, activeId, onSelect, onAdd, onRename, onDelet
   };
 
   const openMenu = (boardId: string) => {
+    notifyMenuOpened();
     const btn = kebabRefs.current[boardId];
     triggerRef.current = btn ?? null;
     if (btn) {
@@ -115,6 +122,7 @@ export function BoardTabs({ boards, activeId, onSelect, onAdd, onRename, onDelet
 
   const handleContextMenu = (e: MouseEvent, boardId: string) => {
     e.preventDefault();
+    notifyMenuOpened();
     setMenuPos({ top: e.clientY, right: window.innerWidth - e.clientX });
     setMenuOpenId(boardId);
   };

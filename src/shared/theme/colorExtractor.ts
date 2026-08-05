@@ -1,4 +1,5 @@
 import type { ThemeConfig, WallpaperSetting } from '@shared/types';
+import { getBackgroundBlob } from '@shared/storage/backgrounds';
 
 function parseHex(hex: string): [number, number, number] {
   const clean = hex.replace('#', '');
@@ -136,6 +137,25 @@ export async function extractColorsFromWallpaper(
   if (type === 'url') {
     try {
       return await extractDominantColorFromImage(value);
+    } catch {
+      return { primaryColor: isDark ? '#818cf8' : '#4f46e5', boardColor: isDark ? '#1e293b' : '#ffffff' };
+    }
+  }
+
+  if (type === 'asset') {
+    if (wallpaper.mediaType === 'video') {
+      return { primaryColor: isDark ? '#818cf8' : '#4f46e5', boardColor: isDark ? '#1e293b' : '#ffffff' };
+    }
+
+    try {
+      const blob = await getBackgroundBlob(value);
+      if (!blob) throw new Error('Background asset not found');
+      const objectUrl = URL.createObjectURL(blob);
+      try {
+        return await extractDominantColorFromImage(objectUrl);
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
     } catch {
       return { primaryColor: isDark ? '#818cf8' : '#4f46e5', boardColor: isDark ? '#1e293b' : '#ffffff' };
     }

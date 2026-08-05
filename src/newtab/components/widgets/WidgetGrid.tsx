@@ -12,6 +12,7 @@ import { useColumnCount } from '../../hooks/useColumnCount';
 interface WidgetGridProps {
   widgets: Widget[];
   openInNewTab: boolean;
+  onOpenLink?: (url: string) => void;
   onReorder: (widgets: Widget[]) => void;
   onEditWidget: (widget: Widget) => void;
   onDeleteWidget: (widgetId: string) => void;
@@ -80,6 +81,7 @@ function getResponsiveWidgetPositions(widgets: Widget[], columnCount: number): M
 export function WidgetGrid({
   widgets,
   openInNewTab,
+  onOpenLink,
   onReorder,
   onEditWidget,
   onDeleteWidget,
@@ -353,6 +355,7 @@ export function WidgetGrid({
                     linkDrag={linkDrag}
                     todoDrag={todoDrag}
                     openInNewTab={openInNewTab}
+                    onOpenLink={onOpenLink}
                     onDeleteLink={isEditing ? (linkId) => onDeleteLink(widget.id, linkId) : undefined}
                     onEditLink={isEditing && onEditLink ? (linkId) => onEditLink(widget.id, linkId) : undefined}
                     onLinkDragStart={isEditing ? (e, linkId) => handleLinkDragStart(e, linkId, widget.id) : undefined}
@@ -395,6 +398,7 @@ function WidgetContent({
   widget,
   linkDrag,
   openInNewTab,
+  onOpenLink,
   onDeleteLink,
   onEditLink,
   onLinkDragStart,
@@ -413,6 +417,7 @@ function WidgetContent({
   linkDrag: LinkDragState;
   todoDrag: TodoDragState;
   openInNewTab: boolean;
+  onOpenLink?: (url: string) => void;
   onDeleteLink?: (linkId: string) => void;
   onEditLink?: (linkId: string) => void;
   onLinkDragStart?: (e: DragEvent, linkId: string) => void;
@@ -433,6 +438,7 @@ function WidgetContent({
           widget={widget}
           linkDrag={linkDrag}
           openInNewTab={openInNewTab}
+          onOpenLink={onOpenLink}
           onDeleteLink={onDeleteLink}
           onEditLink={onEditLink}
           onLinkDragStart={onLinkDragStart}

@@ -7,6 +7,8 @@ body {
 }
 
 .app {
+  position: relative;
+  isolation: isolate;
   height: 100vh;
   max-height: 100vh;
   display: flex;
@@ -14,6 +16,20 @@ body {
   padding: 20px 28px 28px;
   overflow: hidden;
   transition: background var(--transition-base);
+}
+
+.app--animated-wallpaper {
+  background-attachment: scroll !important;
+}
+
+.app--animated-wallpaper .board-tabs__scroll,
+.app--animated-wallpaper .app-header__search,
+.app--animated-wallpaper .top-info-widget,
+.app--animated-wallpaper .app-fab-bar__btn,
+.app--animated-wallpaper .app-header__btn,
+.app--animated-wallpaper .widget-card {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 /* Header */

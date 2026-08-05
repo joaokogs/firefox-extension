@@ -8,7 +8,7 @@ import {
 import { createWidget, addWidget, updateWidget, deleteWidget, getWidgetsForBoard } from '@shared/storage/widgets';
 import { createLink, addLink, updateLink, deleteLink } from '@shared/storage/links';
 import { getFaviconUrl } from '@shared/utils/url';
-import { queryActiveTab } from '@shared/browser';
+import { openUrl, queryActiveTab } from '@shared/browser';
 import { useI18n } from '@shared/i18n';
 import { Menu, Settings, Plus, ExternalLink, Pencil, Trash2 } from 'lucide-preact';
 import { LinkDialog } from './components/LinkDialog';
@@ -315,6 +315,11 @@ function LinkRow({
   const { t } = useI18n();
   const [imageError, setImageError] = useState(false);
   const favicon = link.favicon && !imageError ? link.favicon : getFaviconUrl(link.url);
+  const handleOpen = (e: MouseEvent) => {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    void openUrl(link.url, data?.settings.openInNewTab !== false);
+  };
 
   return (
     <li className="popup__link-row">
@@ -339,6 +344,7 @@ function LinkRow({
         rel="noopener noreferrer"
         className="popup__link-text"
         title={link.title}
+        onClick={handleOpen}
       >
         {link.title}
       </a>
