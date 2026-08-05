@@ -80,7 +80,7 @@ See [BUILD.md](BUILD.md) for the full build layout and verification notes.
 
 ## Compatibility
 
-Prismi works on desktop Firefox, Chrome, Opera, Brave, and most Chromium-based browsers. Mobile browsers are not supported.
+Prismi compatible on desktop Firefox, Chrome, Edge, Brave, and most Chromium-based browsers. Mobile browsers are not supported.
 
 ## Privacy
 
