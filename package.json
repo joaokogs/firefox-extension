@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build:icons": "node scripts/build-icons.js",
+    "build": "npm run build:firefox",
     "build:firefox": "npm run build:icons && tsc && vite build",
     "build:chrome": "npm run build:icons && tsc && vite build && node scripts/build-chrome.js",
     "preview": "vite preview",

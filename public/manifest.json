@@ -15,17 +15,16 @@
   "permissions": [
     "tabs",
     "storage",
-    "activeTab",
     "bookmarks"
   ],
   "host_permissions": [
-    "*://www.google.com/",
-    "*://suggestqueries.google.com/*",
-    "*://api.open-meteo.com/*",
-    "*://geocoding-api.open-meteo.com/*",
-    "*://api.bigdatacloud.net/*",
-    "*://api.bing.com/*",
-    "*://duckduckgo.com/*"
+    "https://www.google.com/*",
+    "https://suggestqueries.google.com/*",
+    "https://api.open-meteo.com/*",
+    "https://geocoding-api.open-meteo.com/*",
+    "https://api.bigdatacloud.net/*",
+    "https://api.bing.com/*",
+    "https://duckduckgo.com/*"
   ],
   "chrome_url_overrides": {
     "newtab": "newtab.html"

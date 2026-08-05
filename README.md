@@ -76,6 +76,14 @@ npm run build
 
 The resulting extension is written to `dist/`. The contents of `dist/` are the files to submit to Firefox Add-ons. No source files are transpiled, concatenated, minified, or generated in this source package; generated files are created only by `npm run build`.
 
+### Build the Chrome package
+
+```bash
+npm run build:chrome
+```
+
+This creates the unpacked package in `dist-chrome/` and the upload-ready ZIP at `release/prismi-dashboard-v1.5.0-chrome.zip`. The ZIP has `manifest.json` at its root and removes Firefox-only metadata.
+
 See [BUILD.md](BUILD.md) for the full build layout and verification notes.
 
 ## Compatibility

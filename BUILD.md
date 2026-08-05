@@ -20,7 +20,7 @@ npm ci
 # 4. Remove previous build output
 npm run clean
 
-# 5. Run the build
+# 5. Run the Firefox build
 npm run build
 ```
 
@@ -47,13 +47,31 @@ dist/
 
 The `dist/` folder is the exact package to submit to the Firefox Add-ons store.
 
+## Chrome/Chromium Build
+
+Run the Chrome build to create both the unpacked extension and the ZIP ready for the Chrome Web Store:
+
+```bash
+npm run build:chrome
+```
+
+The unpacked Chrome extension is written to `dist-chrome/`. The ZIP is written to:
+
+```
+release/prismi-dashboard-v1.5.0-chrome.zip
+```
+
+The ZIP contains `manifest.json` at its root and excludes Firefox-only metadata.
+
 ## Build Scripts (package.json)
 
 | Script | Description |
 |---|---|
 | `npm run build` | Full build: generates icons, runs TypeScript check, bundles with Vite |
 | `npm run dev` | Development server with hot reload |
-| `npm run clean` | Removes `dist/` directory |
+| `npm run build:firefox` | Builds the Firefox package in `dist/` |
+| `npm run build:chrome` | Builds `dist-chrome/` and creates the Chrome ZIP in `release/` |
+| `npm run clean` | Removes `dist/` and `dist-chrome/` |
 
 ## Verification
 
@@ -62,6 +80,7 @@ To verify the build is identical to the submitted version:
 ```bash
 npm run clean
 npm run build
+npm run build:chrome
 ```
 
 ## Notes
@@ -71,4 +90,4 @@ npm run build
 - TypeScript is used only for type-checking (source is bundled by Vite)
 - No source files are transpiled, concatenated, or minified outside of the build process
 - Third-party libraries are referenced via npm and are not included in this source package
-- Generated files such as `dist/` and resized icon PNGs are created by the build script
+- Generated files such as `dist/`, `dist-chrome/`, the Chrome ZIP, and resized icon PNGs are created by the build script
