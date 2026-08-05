@@ -1,4 +1,4 @@
-# Build Instructions — Prismi Dashboard v1.4.0
+# Build Instructions — Prismi Dashboard v1.5.0
 
 ## System Requirements
 
@@ -14,10 +14,13 @@
 # 2. Extract the source package and open the directory
 cd prismi-dashboard
 
-# 3. Install dependencies
-npm install
+# 3. Install the locked dependencies
+npm ci
 
-# 4. Run the build
+# 4. Remove previous build output
+npm run clean
+
+# 5. Run the build
 npm run build
 ```
 
@@ -67,4 +70,5 @@ npm run build
 - The extension uses Vite 5 as the bundler
 - TypeScript is used only for type-checking (source is bundled by Vite)
 - No source files are transpiled, concatenated, or minified outside of the build process
-- Third-party libraries are referenced via npm and are not modified
+- Third-party libraries are referenced via npm and are not included in this source package
+- Generated files such as `dist/` and resized icon PNGs are created by the build script

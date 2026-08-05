@@ -49,6 +49,35 @@ Your collection is waiting in every new tab, ready when the next task starts.
 | **2. Create a board** | Start with a context you return to, such as a project, reading list, or everyday tools. |
 | **3. Save and return** | Save useful tabs, links, or notes in one click and find them again whenever you open a new tab. |
 
+## Build From Source
+
+This repository contains the editable source code for Prismi Dashboard v1.5.0. It does not include vendored third-party libraries or production build output.
+
+### Requirements
+
+- Windows 10 or later, macOS, or Linux
+- Node.js 20.x or later
+- npm 10.x or later (included with Node.js)
+- Internet access to install the locked npm dependencies
+
+Install Node.js 20 or later from [nodejs.org](https://nodejs.org/). npm is installed automatically with Node.js.
+
+### Reproduce the Firefox build
+
+From the root of this source package:
+
+```bash
+npm ci
+npm run clean
+npm run build
+```
+
+`npm ci` installs the exact dependency versions recorded in `package-lock.json` and applies the repository patches. `npm run build` generates the icons, checks the TypeScript source, hardens the supported third-party runtimes, and bundles the extension with Vite.
+
+The resulting extension is written to `dist/`. The contents of `dist/` are the files to submit to Firefox Add-ons. No source files are transpiled, concatenated, minified, or generated in this source package; generated files are created only by `npm run build`.
+
+See [BUILD.md](BUILD.md) for the full build layout and verification notes.
+
 ## Compatibility
 
 Prismi works on desktop Firefox, Chrome, Opera, Brave, and most Chromium-based browsers. Mobile browsers are not supported.
