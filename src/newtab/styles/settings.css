@@ -79,6 +79,8 @@
 }
 
 .wallpaper-thumb {
+  position: relative;
+  overflow: hidden;
   aspect-ratio: 1;
   border-radius: var(--radius-md);
   border: 2px solid transparent;
@@ -182,6 +184,13 @@
   margin-left: auto;
   font-size: 0.72rem;
   opacity: 0.6;
+}
+
+.wallpaper-upload-error {
+  margin-top: -6px;
+  margin-bottom: 14px;
+  color: var(--danger);
+  font-size: 0.75rem;
 }
 
 .top-widgets-list {

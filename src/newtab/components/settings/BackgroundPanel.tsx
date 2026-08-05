@@ -1,12 +1,78 @@
-import { useState, useRef, useCallback } from 'preact/hooks';
+import { useState, useRef, useCallback, useEffect } from 'preact/hooks';
 import { HexColorPicker } from 'react-colorful';
-import type { AppSettings, WallpaperSetting } from '@shared/types';
+import type { AppSettings, StoredBackground, UploadedBackground, WallpaperSetting } from '@shared/types';
 import { DEFAULT_WALLPAPERS } from '@shared/types/constants';
 import { useI18n } from '@shared/i18n';
+import { deleteBackground, getBackgroundBlob, saveBackground } from '@shared/storage/backgrounds';
 import { useThemeStore } from '../../store/useThemeStore';
 import { Sun, Moon, Upload, Trash2 } from 'lucide-preact';
 
 const MAX_UPLOADS = 5;
+const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+
+function isUploadedBackground(value: StoredBackground): value is UploadedBackground {
+  return typeof value !== 'string';
+}
+
+function getWallpaperForBackground(background: StoredBackground): WallpaperSetting {
+  return isUploadedBackground(background)
+    ? { type: 'asset', value: background.id, mediaType: background.kind }
+    : { type: 'url', value: background };
+}
+
+async function createPreviewUrl(blob: Blob, isGif: boolean): Promise<string> {
+  const sourceUrl = URL.createObjectURL(blob);
+  if (!isGif) return sourceUrl;
+
+  try {
+    const bitmap = await createImageBitmap(blob);
+    const scale = Math.min(1, 320 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext('2d');
+    if (!context) {
+      bitmap.close();
+      return sourceUrl;
+    }
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const preview = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.78));
+    if (!preview) return sourceUrl;
+    URL.revokeObjectURL(sourceUrl);
+    return URL.createObjectURL(preview);
+  } catch {
+    return sourceUrl;
+  }
+}
+
+async function optimizeImage(file: File): Promise<Blob> {
+  if (file.type === 'image/gif') return file;
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    const maxDimension = 1920;
+    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+    const width = Math.max(1, Math.round(bitmap.width * scale));
+    const height = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext('2d', { alpha: false });
+    if (!context) {
+      bitmap.close();
+      return file;
+    }
+    context.drawImage(bitmap, 0, 0, width, height);
+    bitmap.close();
+    const compressed = await new Promise<Blob | null>((resolve) => {
+      canvas.toBlob(resolve, 'image/jpeg', 0.82);
+    });
+    return compressed ?? file;
+  } catch {
+    return file;
+  }
+}
 
 interface BackgroundPanelProps {
   settings: AppSettings;
@@ -16,12 +82,47 @@ interface BackgroundPanelProps {
 export function BackgroundPanel({ settings, onChange }: BackgroundPanelProps) {
   const { t } = useI18n();
   const [applying, setApplying] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [assetUrls, setAssetUrls] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const themeConfig = useThemeStore((s) => s.themeConfig);
   const updateThemeConfig = useThemeStore((s) => s.updateThemeConfig);
   const applyFromWallpaper = useThemeStore((s) => s.applyFromWallpaper);
+
+  const uploadedBackgrounds = settings.uploadedBackgrounds || [];
+  const assetIds = uploadedBackgrounds.filter(isUploadedBackground).map((background) => background.id).join('|');
+
+  useEffect(() => {
+    let active = true;
+    const urls: Record<string, string> = {};
+    const assets = uploadedBackgrounds.filter(isUploadedBackground);
+
+    Promise.all(assets.map(async (asset) => {
+      try {
+        const blob = await getBackgroundBlob(asset.id);
+        if (blob) urls[asset.id] = await createPreviewUrl(blob, asset.mimeType === 'image/gif');
+      } catch {
+        // A missing asset can still be removed from the list.
+      }
+    })).then(() => {
+      if (!active) {
+        Object.values(urls).forEach((url) => URL.revokeObjectURL(url));
+        return;
+      }
+      setAssetUrls((previous) => {
+        Object.values(previous).forEach((url) => URL.revokeObjectURL(url));
+        return urls;
+      });
+    });
+
+    return () => {
+      active = false;
+      Object.values(urls).forEach((url) => URL.revokeObjectURL(url));
+    };
+  }, [assetIds]);
 
   const handleWallpaperSelect = useCallback(async (wp: WallpaperSetting) => {
     onChange({ wallpaper: wp });
@@ -41,28 +142,39 @@ export function BackgroundPanel({ settings, onChange }: BackgroundPanelProps) {
   }, [settings.wallpaper, settings.theme, applyFromWallpaper]);
 
   const handleFiles = useCallback(async (files: FileList | File[]) => {
-    const fileArray = Array.from(files).filter(f => f.type.startsWith('image/'));
+    const fileArray = Array.from(files).filter((file) => file.type.startsWith('image/'));
     if (fileArray.length === 0) return;
 
     const current = settings.uploadedBackgrounds || [];
     const available = MAX_UPLOADS - current.length;
     if (available <= 0) return;
 
-    const toUpload = fileArray.slice(0, available);
-    const results: string[] = [];
+    setUploadError(null);
+    setUploading(true);
+    const results: UploadedBackground[] = [];
 
-    for (const file of toUpload) {
+    for (const file of fileArray.slice(0, available)) {
+      if (file.size > MAX_UPLOAD_BYTES) {
+        setUploadError(t('background.fileTooLarge'));
+        continue;
+      }
+
       try {
-        const dataUrl = await readFileAsDataURL(file);
-        results.push(dataUrl);
+        const kind = 'image' as const;
+        const blob = await optimizeImage(file);
+        if (blob.size > MAX_UPLOAD_BYTES) {
+          setUploadError(t('background.fileTooLarge'));
+          continue;
+        }
+        results.push(await saveBackground(blob, file, kind));
       } catch {
-        // skip failed reads
+        setUploadError(t('background.uploadError'));
       }
     }
 
-    if (results.length === 0) return;
-    onChange({ uploadedBackgrounds: [...current, ...results] });
-  }, [settings.uploadedBackgrounds, onChange]);
+    if (results.length > 0) onChange({ uploadedBackgrounds: [...current, ...results] });
+    setUploading(false);
+  }, [settings.uploadedBackgrounds, onChange, t]);
 
   const handleFileInput = useCallback((e: Event) => {
     const input = e.target as HTMLInputElement;
@@ -72,14 +184,20 @@ export function BackgroundPanel({ settings, onChange }: BackgroundPanelProps) {
     }
   }, [handleFiles]);
 
-  const handleDeleteUploaded = useCallback((index: number) => {
+  const handleDeleteUploaded = useCallback(async (index: number) => {
     const current = settings.uploadedBackgrounds || [];
     const updated = current.filter((_, i) => i !== index);
     onChange({ uploadedBackgrounds: updated });
 
     const deleted = current[index];
-    if (deleted && settings.wallpaper.type === 'url' && settings.wallpaper.value === deleted) {
-      onChange({ wallpaper: DEFAULT_WALLPAPERS[0] });
+    if (isUploadedBackground(deleted)) {
+      await deleteBackground(deleted.id).catch(() => undefined);
+    }
+    if (deleted) {
+      const deletedWallpaper = getWallpaperForBackground(deleted);
+      if (settings.wallpaper.type === deletedWallpaper.type && settings.wallpaper.value === deletedWallpaper.value) {
+        onChange({ wallpaper: DEFAULT_WALLPAPERS[0] });
+      }
     }
   }, [settings.uploadedBackgrounds, settings.wallpaper, onChange]);
 
@@ -100,43 +218,9 @@ export function BackgroundPanel({ settings, onChange }: BackgroundPanelProps) {
     setDragOver(false);
   }, []);
 
-  const readFileAsDataURL = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const img = new Image();
-        img.onload = () => {
-          let w = img.width;
-          let h = img.height;
-          const MAX_DIM = 1920;
-          if (w > MAX_DIM || h > MAX_DIM) {
-            const ratio = Math.min(MAX_DIM / w, MAX_DIM / h);
-            w = Math.round(w * ratio);
-            h = Math.round(h * ratio);
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = w;
-          canvas.height = h;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            resolve(reader.result as string);
-            return;
-          }
-          ctx.drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL('image/jpeg', 0.85));
-        };
-        img.onerror = () => resolve(reader.result as string);
-        img.src = reader.result as string;
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
   const isSelected = (wp: WallpaperSetting) =>
     settings.wallpaper.type === wp.type && settings.wallpaper.value === wp.value;
 
-  const uploadedBackgrounds = settings.uploadedBackgrounds || [];
   const canUpload = uploadedBackgrounds.length < MAX_UPLOADS;
 
   return (
@@ -184,32 +268,38 @@ export function BackgroundPanel({ settings, onChange }: BackgroundPanelProps) {
               title={t('background.wallpaperN', { n: index + 1 })}
             />
           ))}
-          {uploadedBackgrounds.map((dataUrl, index) => (
-            <div key={`uploaded-${index}`} className="wallpaper-thumb-wrapper">
-              <button
-                className={`wallpaper-thumb ${isSelected({ type: 'url', value: dataUrl }) ? 'wallpaper-thumb--active' : ''}`}
-                style={{ backgroundImage: `url(${dataUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}
-                onClick={() => handleWallpaperSelect({ type: 'url', value: dataUrl })}
-                disabled={applying}
-                aria-label={t('background.selectImage', { n: index + 1 })}
-                title={t('background.imageN', { n: index + 1 })}
-              />
-              <button
-                className="wallpaper-thumb__delete"
-                onClick={(e) => { e.stopPropagation(); handleDeleteUploaded(index); }}
-                aria-label={t('background.deleteImage', { n: index + 1 })}
-                title={t('background.delete')}
-              >
-                <Trash2 size={12} />
-              </button>
-            </div>
-          ))}
+          {uploadedBackgrounds.map((background, index) => {
+            const wallpaper = getWallpaperForBackground(background);
+            const mediaUrl = isUploadedBackground(background) ? assetUrls[background.id] : background;
+
+            return (
+              <div key={`uploaded-${index}`} className="wallpaper-thumb-wrapper">
+                <button
+                  className={`wallpaper-thumb ${isSelected(wallpaper) ? 'wallpaper-thumb--active' : ''}`}
+                  style={mediaUrl ? { backgroundImage: `url("${mediaUrl}")`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' } : undefined}
+                  onClick={() => handleWallpaperSelect(wallpaper)}
+                  disabled={applying || uploading}
+                  aria-label={t('background.selectImage', { n: index + 1 })}
+                  title={t('background.imageN', { n: index + 1 })}
+                />
+                <button
+                  className="wallpaper-thumb__delete"
+                  onClick={(e) => { e.stopPropagation(); void handleDeleteUploaded(index); }}
+                  aria-label={t('background.deleteImage', { n: index + 1 })}
+                  title={t('background.delete')}
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            );
+          })}
           {canUpload && (
             <button
               className="wallpaper-upload"
               onClick={() => fileInputRef.current?.click()}
               aria-label={t('background.uploadImageLabel')}
               title={t('background.uploadImage')}
+              disabled={uploading}
               onDrop={handleDrop}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
@@ -242,12 +332,13 @@ export function BackgroundPanel({ settings, onChange }: BackgroundPanelProps) {
             onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
           >
             <Upload size={18} />
-            <span>{t('background.dragOrClick')}</span>
+            <span>{uploading ? t('background.uploading') : t('background.dragOrClick')}</span>
             <span className="wallpaper-dropzone__hint">
               {t('background.usedSlots', { used: uploadedBackgrounds.length, total: MAX_UPLOADS })}
             </span>
           </div>
         )}
+        {uploadError && <div className="wallpaper-upload-error" role="status">{uploadError}</div>}
 
       </div>
 

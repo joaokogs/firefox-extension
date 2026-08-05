@@ -16,6 +16,7 @@ export interface BaseWidget {
   order: number;
   height?: number;
   col?: number;
+  layoutColumns?: number;
 }
 
 export interface LinksWidget extends BaseWidget {
@@ -75,13 +76,23 @@ export interface AppSettings {
   editMode?: boolean;
   openInNewTab?: boolean;
   recentSearches?: string[];
-  uploadedBackgrounds?: string[];
+  uploadedBackgrounds?: StoredBackground[];
   locale?: string;
 }
 
+export interface UploadedBackground {
+  id: string;
+  kind: 'image' | 'video';
+  mimeType: string;
+  name: string;
+}
+
+export type StoredBackground = UploadedBackground | string;
+
 export interface WallpaperSetting {
-  type: 'gradient' | 'url' | 'solid';
+  type: 'gradient' | 'url' | 'solid' | 'asset';
   value: string;
+  mediaType?: 'image' | 'video';
 }
 
 export type TopWidgetType = 'clock' | 'weather' | 'search';

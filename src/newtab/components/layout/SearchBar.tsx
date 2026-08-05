@@ -3,6 +3,7 @@ import { Search, X, Bookmark, Clock, Globe } from 'lucide-preact';
 import { SEARCH_ENGINES } from '@shared/types/constants';
 import type { LinkItem, SearchEngine } from '@shared/types';
 import { useI18n } from '@shared/i18n';
+import { notifyMenuOpened, subscribeToMenuClose } from '../../utils/menu';
 
 type DropdownItem =
   | { type: 'link'; text: string; link: LinkItem }
@@ -123,6 +124,14 @@ export function SearchBar({
   }, [open, engineDropdownOpen]);
 
   useEffect(() => {
+    if (!open && !engineDropdownOpen) return;
+    return subscribeToMenuClose(() => {
+      setOpen(false);
+      setEngineDropdownOpen(false);
+    });
+  }, [open, engineDropdownOpen]);
+
+  useEffect(() => {
     setHighlighted(-1);
   }, [dropdownItems.length]);
 
@@ -138,6 +147,7 @@ export function SearchBar({
   }, [searchQuery, searchEngine]);
 
   const handleInput = (val: string) => {
+    notifyMenuOpened();
     onSearchQueryChange(val);
     setOpen(true);
   };
@@ -188,7 +198,10 @@ export function SearchBar({
         <Search size={22} strokeWidth={2} className="app-header__search-icon" />
         <button
           className="search-engine-btn"
-          onClick={() => setEngineDropdownOpen((s) => !s)}
+          onClick={() => {
+            if (!engineDropdownOpen) notifyMenuOpened();
+            setEngineDropdownOpen((s) => !s);
+          }}
           aria-label={t('searchBar.changeEngine')}
           title={currentEngine?.name}
         >

@@ -12,6 +12,8 @@ export type {
   Board,
   ThemeConfig,
   AppSettings,
+  UploadedBackground,
+  StoredBackground,
   WallpaperSetting,
   TopWidgetType,
   SearchEngine,

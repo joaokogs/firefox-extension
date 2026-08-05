@@ -5,6 +5,7 @@ import type { LinkItem, LinksWidget } from '@shared/types';
 import { getFaviconUrl } from '@shared/utils/url';
 import { AnyIcon } from '@shared/icons';
 import { GripVertical, MoreVertical, Pencil, Trash2 } from 'lucide-preact';
+import { notifyMenuOpened, subscribeToMenuClose } from '../../utils/menu';
 
 interface LinkDragState {
   linkId: string | null;
@@ -15,6 +16,7 @@ interface LinksWidgetProps {
   widget: LinksWidget;
   linkDrag: LinkDragState;
   openInNewTab?: boolean;
+  onOpenLink?: (url: string) => void;
   onDeleteLink?: (linkId: string) => void;
   onEditLink?: (linkId: string) => void;
   onLinkDragStart?: (e: DragEvent, linkId: string) => void;
@@ -31,6 +33,7 @@ export function LinksWidgetView({
   widget,
   linkDrag,
   openInNewTab = true,
+  onOpenLink,
   onDeleteLink,
   onEditLink,
   onLinkDragStart,
@@ -130,6 +133,7 @@ export function LinksWidgetView({
           className={getItemDropClasses(link.id)}
             isDragging={linkDrag.linkId === link.id}
             openInNewTab={openInNewTab}
+            onOpenLink={onOpenLink}
             onDelete={onDeleteLink}
           onEdit={onEditLink}
           onDragStart={onLinkDragStart}
@@ -145,6 +149,7 @@ function LinkRow({
   className,
   isDragging,
   openInNewTab = true,
+  onOpenLink,
   onDelete,
   onEdit,
   onDragStart,
@@ -154,6 +159,7 @@ function LinkRow({
   className?: string;
   isDragging?: boolean;
   openInNewTab?: boolean;
+  onOpenLink?: (url: string) => void;
   onDelete?: (id: string) => void;
   onEdit?: (id: string) => void;
   onDragStart?: (e: DragEvent, linkId: string) => void;
@@ -184,7 +190,13 @@ function LinkRow({
     return () => document.removeEventListener('mousedown', handler);
   }, [menuOpen]);
 
+  useEffect(() => {
+    if (!menuOpen) return;
+    return subscribeToMenuClose(() => setMenuOpen(false));
+  }, [menuOpen]);
+
   const openMenu = () => {
+    notifyMenuOpened();
     if (kebabRef.current) {
       const rect = kebabRef.current.getBoundingClientRect();
       setMenuPos({ top: rect.bottom + 2, right: window.innerWidth - rect.right });
@@ -225,6 +237,12 @@ function LinkRow({
     onDragEnd?.();
   };
 
+  const handleOpen = (e: MouseEvent) => {
+    if (!onOpenLink || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    onOpenLink(link.url);
+  };
+
   return (
     <li
       className={`${className || 'links-widget__item'}${isDragging ? ' links-widget__item--dragging' : ''}`}
@@ -240,6 +258,7 @@ function LinkRow({
         rel="noopener noreferrer"
         className="links-widget__link"
         aria-label={t('linksWidget.open', { title: link.title })}
+        onClick={handleOpen}
       >
         <span className="links-widget__drag-handle" aria-hidden="true">
           <GripVertical size={12} />

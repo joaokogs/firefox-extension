@@ -3,6 +3,7 @@ import { createPortal } from 'preact/compat';
 import type { Widget } from '@shared/types';
 import { MoreVertical, Plus, Pencil, Trash2 } from 'lucide-preact';
 import { useI18n } from '@shared/i18n';
+import { notifyMenuOpened, subscribeToMenuClose } from '../../utils/menu';
 
 interface WidgetCardProps {
   widget: Widget;
@@ -61,6 +62,11 @@ export function WidgetCard({
   }, [menuOpen]);
 
   useEffect(() => {
+    if (!menuOpen) return;
+    return subscribeToMenuClose(() => setMenuOpen(false));
+  }, [menuOpen]);
+
+  useEffect(() => {
     if (!isResizing) return;
 
     const onMouseMove = (e: MouseEvent) => {
@@ -86,6 +92,7 @@ export function WidgetCard({
   }, [isResizing, tempHeight]);
 
   const openMenu = () => {
+    notifyMenuOpened();
     if (kebabRef.current) {
       const rect = kebabRef.current.getBoundingClientRect();
       setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });

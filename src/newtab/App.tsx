@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Settings, Menu, Plus, Palette } from 'lucide-preact';
-import type { AppData, Widget, WidgetType, TopWidgetConfig, SearchEngine } from '@shared/types';
-import { SEARCH_ENGINES } from '@shared/types/constants';
+import type { AppData, UploadedBackground, Widget, WidgetType, TopWidgetConfig, SearchEngine } from '@shared/types';
+import { DEFAULT_WALLPAPERS, SEARCH_ENGINES } from '@shared/types/constants';
 import { useI18n, setLocale as setI18nLocale } from '@shared/i18n';
 import {
   loadData,
   saveData,
+  STORAGE_KEY,
 } from '@shared/storage';
+import { deleteBackground, getBackgroundBlob } from '@shared/storage/backgrounds';
 import { createBoard, addBoard, renameBoard, reorderBoard, deleteBoard, getBoardById, getInitialBoardId, updateSettings, removeRecentSearch, clearRecentSearches, addRecentSearch } from '@shared/storage/boards';
 import { createWidget, addWidget, deleteWidget, updateWidget, getWidgetsForBoard } from '@shared/storage/widgets';
 import { createLink, addLink, deleteLink, updateLink, moveLink } from '@shared/storage/links';
@@ -26,9 +28,10 @@ import { ModalDialog } from './components/dialogs/ModalDialog';
 import { SearchBar } from './components/layout/SearchBar';
 import { BookmarkFolderPicker, type BookmarkFolder } from './components/dialogs/BookmarkFolderPicker';
 import { useThemeStore, type ThemeState } from './store/useThemeStore';
+import { notifyMenuOpened, subscribeToMenuClose } from './utils/menu';
 import { computeThemeVariables } from '@shared/theme';
-import { browser } from '@shared/browser';
-import type { Bookmarks } from 'webextension-polyfill';
+import { browser, openUrl } from '@shared/browser';
+import type { Bookmarks, Storage } from 'webextension-polyfill';
 import './styles/index.css';
 
 function looksLikeUrl(str: string): boolean {
@@ -57,6 +60,27 @@ function getBookmarkFolders(nodes: Bookmarks.BookmarkTreeNode[], untitledTitle: 
   });
 }
 
+async function removeVideoBackgrounds(data: AppData): Promise<AppData> {
+  const uploaded = data.settings.uploadedBackgrounds || [];
+  const videoAssets = uploaded.filter((background): background is UploadedBackground =>
+    typeof background !== 'string' && background.kind === 'video'
+  );
+  const videoIds = new Set(videoAssets.map((background) => background.id));
+  const wallpaper = data.settings.wallpaper;
+  if (wallpaper.type === 'asset' && wallpaper.mediaType === 'video') videoIds.add(wallpaper.value);
+  if (videoIds.size === 0) return data;
+
+  await Promise.all(Array.from(videoIds).map((id) => deleteBackground(id).catch(() => undefined)));
+  return {
+    ...data,
+    settings: {
+      ...data.settings,
+      uploadedBackgrounds: uploaded.filter((background) => typeof background === 'string' || !videoIds.has(background.id)),
+      wallpaper: wallpaper.type === 'asset' && videoIds.has(wallpaper.value) ? DEFAULT_WALLPAPERS[0] : wallpaper
+    }
+  };
+}
+
 export function App() {
   const { t } = useI18n();
   const [data, setData] = useState<AppData | null>(null);
@@ -75,15 +99,18 @@ export function App() {
   const [bookmarkFolders, setBookmarkFolders] = useState<BookmarkFolder[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchEngine, setSearchEngine] = useState<SearchEngine>('google');
+  const [wallpaperObjectUrl, setWallpaperObjectUrl] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
-    loadData().then((loaded) => {
+    loadData().then(async (loaded) => {
       if (!mounted) return;
-      setData(loaded);
-      setActiveBoardId(getInitialBoardId(loaded));
-      if (loaded.settings.locale) {
-        setI18nLocale(loaded.settings.locale as any);
+      const cleaned = await removeVideoBackgrounds(loaded);
+      if (!mounted) return;
+      setData(cleaned);
+      setActiveBoardId(getInitialBoardId(cleaned));
+      if (cleaned.settings.locale) {
+        setI18nLocale(cleaned.settings.locale as any);
       }
     });
     return () => {
@@ -107,6 +134,21 @@ export function App() {
       if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
     };
   }, [data]);
+
+  useEffect(() => {
+    const handleStorageChange = (changes: Record<string, Storage.StorageChange>, areaName: string) => {
+      if (areaName !== 'local') return;
+      const next = changes[STORAGE_KEY]?.newValue as AppData | undefined;
+      if (!next || !next.boards || !next.settings) return;
+      if (latestDataRef.current && JSON.stringify(latestDataRef.current) === JSON.stringify(next)) return;
+
+      setData(next);
+      setActiveBoardId((current) => next.boards.some((board) => board.id === current) ? current : getInitialBoardId(next));
+    };
+
+    browser.storage.onChanged.addListener(handleStorageChange);
+    return () => browser.storage.onChanged.removeListener(handleStorageChange);
+  }, []);
 
   useEffect(() => {
     const flush = () => {
@@ -163,11 +205,54 @@ export function App() {
   }, [menuOpen]);
 
   useEffect(() => {
+    if (!menuOpen) return;
+    return subscribeToMenuClose(() => setMenuOpen(false));
+  }, [menuOpen]);
+
+  useEffect(() => {
     const searchWidget = data?.settings.topWidgets?.find((w) => w.type === 'search');
     if (searchWidget?.searchEngine) {
       setSearchEngine(searchWidget.searchEngine);
     }
   }, [data?.settings.topWidgets]);
+
+  const wallpaperType = data?.settings.wallpaper.type;
+  const wallpaperValue = data?.settings.wallpaper.value;
+  const animatedWallpaper = useMemo(() => {
+    if (!data) return false;
+    if (data.settings.wallpaper.type === 'url') return /\.gif(?:[?#]|$)/i.test(data.settings.wallpaper.value);
+    if (data.settings.wallpaper.type !== 'asset') return false;
+    return data.settings.uploadedBackgrounds?.some((background) =>
+      typeof background !== 'string' && background.id === data.settings.wallpaper.value && background.mimeType === 'image/gif'
+    ) ?? false;
+  }, [data]);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl: string | null = null;
+
+    if (wallpaperType !== 'asset' || !wallpaperValue) {
+      setWallpaperObjectUrl(null);
+      return;
+    }
+
+    getBackgroundBlob(wallpaperValue).then((blob) => {
+      if (!active) return;
+      if (!blob) {
+        setWallpaperObjectUrl(null);
+        return;
+      }
+      objectUrl = URL.createObjectURL(blob);
+      setWallpaperObjectUrl(objectUrl);
+    }).catch(() => {
+      if (active) setWallpaperObjectUrl(null);
+    });
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [wallpaperType, wallpaperValue]);
 
   const handleEngineChange = (engine: SearchEngine) => {
     setSearchEngine(engine);
@@ -404,15 +489,28 @@ export function App() {
   };
 
   const handleExport = () => {
-    if (data) exportData(data);
+    if (data) exportData(data, themeConfig);
   };
 
   const handleImport = async (file: File) => {
     try {
       const imported = await importData(file);
-      setData(imported);
-      saveData(imported);
-      setActiveBoardId(getInitialBoardId(imported));
+      if (imported.theme) {
+        useThemeStore.getState().updateThemeConfig(imported.theme);
+      }
+      const nextData = imported.theme && data
+        ? {
+            ...imported.data,
+            settings: {
+              ...data.settings,
+              topWidgets: imported.data.settings.topWidgets,
+              lastBoardId: imported.data.settings.lastBoardId
+            }
+          }
+        : imported.data;
+      setData(nextData);
+      saveData(nextData);
+      setActiveBoardId(getInitialBoardId(nextData));
     } catch (err) {
       alert(err instanceof Error ? err.message : t('app.importError'));
     }
@@ -485,23 +583,26 @@ export function App() {
   const handleSearch = (query: string) => {
     const q = query.trim();
     if (!q) return;
-    const target = data?.settings.openInNewTab !== false ? '_blank' : '_self';
     if (looksLikeUrl(q)) {
-      window.open(ensureProtocol(q), target);
+      void openUrl(ensureProtocol(q), data.settings.openInNewTab !== false);
     } else {
       const engineUrl = SEARCH_ENGINES.find((e) => e.id === searchEngine)?.url || SEARCH_ENGINES[0].url;
-      window.open(`${engineUrl}${encodeURIComponent(q)}`, target);
+      void openUrl(`${engineUrl}${encodeURIComponent(q)}`, data.settings.openInNewTab !== false);
     }
     setData((prev) => (prev ? addRecentSearch(prev, q) : prev));
   };
 
   return (
     <div
-      className="app"
+      className={`app${animatedWallpaper ? ' app--animated-wallpaper' : ''}`}
       style={{
         background:
-          data.settings.wallpaper.type === 'url'
-            ? `url(${data.settings.wallpaper.value}) center/cover no-repeat fixed`
+          data.settings.wallpaper.type === 'asset'
+            ? (wallpaperObjectUrl
+              ? `url("${wallpaperObjectUrl}") center/cover no-repeat`
+              : 'var(--bg-body)')
+            : data.settings.wallpaper.type === 'url'
+            ? `url(${data.settings.wallpaper.value}) center/cover no-repeat`
             : data.settings.wallpaper.value
       }}
     >
@@ -524,8 +625,7 @@ export function App() {
             onEngineChange={handleEngineChange}
             onSearch={handleSearch}
             onOpenLink={(url) => {
-              const target = data?.settings.openInNewTab !== false ? '_blank' : '_self';
-              window.open(ensureProtocol(url), target);
+              void openUrl(ensureProtocol(url), data.settings.openInNewTab !== false);
             }}
             recentSearches={data.settings.recentSearches || []}
             linkSuggestions={linkSuggestions}
@@ -542,7 +642,10 @@ export function App() {
       <div className="app-fab-bar">
         <button
           className={`app-fab-bar__btn app-fab-bar__btn--menu ${menuOpen ? 'app-fab-bar__btn--active' : ''}`}
-          onClick={() => setMenuOpen((s) => !s)}
+          onClick={() => {
+             if (!menuOpen) notifyMenuOpened();
+             setMenuOpen((s) => !s);
+           }}
           aria-label={menuOpen ? t('app.closeMenu') : t('app.openMenu')}
           title={menuOpen ? t('app.closeMenu') : t('app.menu')}
         >
@@ -582,6 +685,7 @@ export function App() {
           <WidgetGrid
             widgets={widgets}
             openInNewTab={data.settings.openInNewTab !== false}
+            onOpenLink={(url) => void openUrl(ensureProtocol(url), data.settings.openInNewTab !== false)}
             onReorder={handleReorder}
             onEditWidget={setEditingWidget}
             onDeleteWidget={handleDeleteWidget}
