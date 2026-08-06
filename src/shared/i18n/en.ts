@@ -10,6 +10,8 @@ export const en: Record<string, string> = {
   'app.importError': 'Error importing',
   'app.addWidgets': 'Add widgets',
   'app.customizeAppearance': 'Customize appearance',
+  'app.account': 'Account',
+  'app.openAccount': 'Open account',
 
   // BoardTabs
   'boardTabs.boards': 'Boards',
@@ -294,6 +296,30 @@ export const en: Record<string, string> = {
   'storage.invalidFileFormat': 'Invalid file: incorrect data format.',
   'storage.invalidFileParse': 'Invalid file: could not parse JSON.',
   'storage.backupFilename': 'prismi-dashboard-backup-{date}.json',
+
+  // Auth
+  'auth.title': 'Account',
+  'auth.email': 'Email',
+  'auth.password': 'Password',
+  'auth.confirmPassword': 'Confirm password',
+  'auth.signIn': 'Sign in',
+  'auth.signUp': 'Create account',
+  'auth.signOut': 'Sign out',
+  'auth.signInWithGoogle': 'Continue with Google',
+  'auth.loading': 'Loading...',
+  'auth.noAccount': "Don't have an account? Create one",
+  'auth.hasAccount': 'Already have an account? Sign in',
+  'auth.emailConfirmation': 'Check your email for the confirmation link.',
+  'auth.passwordMismatch': 'Passwords do not match.',
+  'auth.errorSignIn': 'Could not sign in. Check your credentials.',
+  'auth.errorSignUp': 'Could not create account.',
+  'auth.errorSignOut': 'Could not sign out.',
+  'auth.errorGoogle': 'Could not sign in with Google.',
+  'auth.errorNotConfigured': 'Authentication is not configured yet.',
+  'auth.errorInvalidCredentials': 'The email or password is incorrect.',
+  'auth.errorEmailNotConfirmed': 'Confirm your email before signing in.',
+  'auth.errorUserExists': 'An account with this email already exists.',
+  'auth.errorGoogleConfig': 'Google sign-in is not configured for this browser.',
 
   // Language
   'settings.language': 'Language',

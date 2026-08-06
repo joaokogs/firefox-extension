@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { Settings, Menu, Plus, Palette } from 'lucide-preact';
+import { Settings, Menu, Plus, Palette, User } from 'lucide-preact';
 import type { AppData, UploadedBackground, Widget, WidgetType, TopWidgetConfig, SearchEngine } from '@shared/types';
 import { DEFAULT_WALLPAPERS, SEARCH_ENGINES } from '@shared/types/constants';
 import { useI18n, setLocale as setI18nLocale } from '@shared/i18n';
@@ -19,6 +19,7 @@ import { WidgetGrid } from './components/widgets/WidgetGrid';
 import { WidgetEditor } from './components/dialogs/WidgetEditor';
 import { LinkDialog } from './components/dialogs/LinkDialog';
 import { SettingsPanel } from './components/settings/SettingsPanel';
+import { AuthPanel } from './components/settings/AuthPanel';
 import { BackgroundPanel } from './components/settings/BackgroundPanel';
 import { TopInfoWidgets } from './components/layout/TopInfoWidgets';
 import { WidgetToolbar } from './components/settings/WidgetToolbar';
@@ -87,6 +88,7 @@ export function App() {
   const [activeBoardId, setActiveBoardId] = useState<string | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+  const [showAccount, setShowAccount] = useState(false);
   const [showBackground, setShowBackground] = useState(false);
   const [showWidgetToolbar, setShowWidgetToolbar] = useState(false);
   const [isAddingWidget, setIsAddingWidget] = useState(false);
@@ -677,6 +679,14 @@ export function App() {
           >
             <Settings size={20} strokeWidth={2} aria-hidden="true" />
           </button>
+          <button
+            className="app-fab-menu__item"
+            onClick={() => { setShowAccount(true); setMenuOpen(false); }}
+            aria-label={t('app.openAccount')}
+            title={t('app.account')}
+          >
+            <User size={20} strokeWidth={2} aria-hidden="true" />
+          </button>
         </div>
       </div>
 
@@ -763,6 +773,14 @@ export function App() {
           onImportBookmarks={handleOpenBookmarkImporter}
           onClearRecentSearches={handleClearRecentSearches}
         />
+      </ModalDialog>
+
+      <ModalDialog
+        open={showAccount}
+        onClose={() => setShowAccount(false)}
+        title={t('auth.title')}
+      >
+        <AuthPanel />
       </ModalDialog>
 
       <ModalDialog

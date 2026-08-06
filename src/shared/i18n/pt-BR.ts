@@ -10,6 +10,8 @@ export const ptBR: Record<string, string> = {
   'app.importError': 'Erro ao importar',
   'app.addWidgets': 'Adicionar widgets',
   'app.customizeAppearance': 'Personalizar aparência',
+  'app.account': 'Conta',
+  'app.openAccount': 'Abrir conta',
 
   // BoardTabs
   'boardTabs.boards': 'Boards',
@@ -294,6 +296,30 @@ export const ptBR: Record<string, string> = {
   'storage.invalidFileFormat': 'Arquivo inválido: formato de dados incorreto.',
   'storage.invalidFileParse': 'Arquivo inválido: não foi possível fazer o parse do JSON.',
   'storage.backupFilename': 'prismi-dashboard-backup-{date}.json',
+
+  // Auth
+  'auth.title': 'Conta',
+  'auth.email': 'Email',
+  'auth.password': 'Senha',
+  'auth.confirmPassword': 'Confirmar senha',
+  'auth.signIn': 'Entrar',
+  'auth.signUp': 'Criar conta',
+  'auth.signOut': 'Sair',
+  'auth.signInWithGoogle': 'Continuar com Google',
+  'auth.loading': 'Carregando...',
+  'auth.noAccount': 'Não tem conta? Criar uma',
+  'auth.hasAccount': 'Já tem conta? Entrar',
+  'auth.emailConfirmation': 'Verifique seu email para o link de confirmação.',
+  'auth.passwordMismatch': 'As senhas não coincidem.',
+  'auth.errorSignIn': 'Não foi possível entrar. Verifique suas credenciais.',
+  'auth.errorSignUp': 'Não foi possível criar a conta.',
+  'auth.errorSignOut': 'Não foi possível sair.',
+  'auth.errorGoogle': 'Não foi possível entrar com o Google.',
+  'auth.errorNotConfigured': 'A autenticação ainda não está configurada.',
+  'auth.errorInvalidCredentials': 'O email ou a senha estão incorretos.',
+  'auth.errorEmailNotConfirmed': 'Confirme seu email antes de entrar.',
+  'auth.errorUserExists': 'Já existe uma conta com este email.',
+  'auth.errorGoogleConfig': 'O login do Google não está configurado para este navegador.',
 
   // Language
   'settings.language': 'Idioma',
