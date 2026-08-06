@@ -226,6 +226,9 @@ async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<A
     local = migrateAppData(local);
 
     const remote = await doPull(userId);
+    if (remote) {
+      setState({ lastPullAt: Date.now() });
+    }
     let merged: AppData;
 
     if (remote) {
@@ -426,7 +429,8 @@ async function handleRemoteChange(userId: string, remote: AppData, remoteUpdated
           await doPush(session.user.id, merged);
       }
     }
-    setState({ lastSyncAt: Date.now() });
+    const syncedAt = Date.now();
+    setState({ lastPullAt: syncedAt, lastSyncAt: syncedAt });
   } catch (err) {
     logError('failed to apply remote change', err);
   }

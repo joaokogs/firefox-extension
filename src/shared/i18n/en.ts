@@ -2,6 +2,7 @@ export const en: Record<string, string> = {
   // App
   'app.loading': 'Loading Boards',
   'app.syncing': 'Syncing data...',
+  'app.syncSuccess': 'Data synced!',
   'app.widgets': 'Widgets',
   'app.appearance': 'Appearance',
   'app.settings': 'Settings',

@@ -42,13 +42,13 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
   const [couponSuccess, setCouponSuccess] = useState(false);
   const prevSyncAccessRef = useRef(false);
 
-  const refreshSubscription = async () => {
+  const refreshSubscription = async (syncOnAccessChange = false) => {
     setLoadingSubscription(true);
     try {
       const [nextSubscription, nextSyncAccess] = await Promise.all([getSubscription(), hasSyncAccess()]);
       setSubscription(nextSubscription);
       setSyncAccess(nextSyncAccess);
-      if (nextSyncAccess && !prevSyncAccessRef.current) {
+      if (syncOnAccessChange && nextSyncAccess && !prevSyncAccessRef.current) {
         syncNow();
       }
       prevSyncAccessRef.current = nextSyncAccess;
@@ -62,7 +62,7 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
   useEffect(() => {
     setError('');
     setCouponSuccess(false);
-    // Reset per-session so syncNow fires when the newly signed-in account gains access.
+    // Track access for a possible transition after coupon redemption.
     prevSyncAccessRef.current = false;
     void refreshSubscription();
   }, [session.user.id]);
@@ -100,7 +100,7 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
       await redeemPromotionalCoupon(couponCode);
       setCouponCode('');
       setCouponSuccess(true);
-      await refreshSubscription();
+      await refreshSubscription(true);
     } catch (err: unknown) {
       setError(t(getPaymentErrorKey(err)));
     } finally {

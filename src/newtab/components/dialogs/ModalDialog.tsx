@@ -84,7 +84,7 @@ export function ModalDialog({ open, onClose, title, children, wide, ariaLabel }:
 
   if (!open) return null;
 
-  const handleOverlayClick = (e: Event) => {
+  const handleOverlayMouseDown = (e: MouseEvent) => {
     if (e.target === overlayRef.current) {
       onCloseRef.current();
     }
@@ -94,7 +94,7 @@ export function ModalDialog({ open, onClose, title, children, wide, ariaLabel }:
     <div
       className="modal-overlay modal-overlay--dialog"
       ref={overlayRef}
-      onClick={handleOverlayClick}
+      onMouseDown={handleOverlayMouseDown}
       role="dialog"
       aria-modal="true"
       aria-label={ariaLabel || undefined}

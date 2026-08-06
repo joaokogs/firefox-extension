@@ -45,6 +45,7 @@ import {
 } from '@shared/sync';
 import type { SyncState } from '@shared/sync/types';
 import { migrateAppData } from '@shared/sync/migrate';
+import { showSyncToast } from './solidToast';
 import './styles/index.css';
 
 function looksLikeUrl(str: string): boolean {
@@ -115,6 +116,7 @@ export function App() {
   const [searchEngine, setSearchEngine] = useState<SearchEngine>('google');
   const [wallpaperObjectUrl, setWallpaperObjectUrl] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncState['status']>(() => getSyncState().status);
+  const lastPullAtRef = useRef<number | undefined>(getSyncState().lastPullAt);
 
   useEffect(() => {
     let mounted = true;
@@ -213,8 +215,14 @@ export function App() {
   useEffect(() => {
     return onSyncStateChange((s) => {
       setSyncStatus(s.status);
+      if (s.lastPullAt && s.lastPullAt !== lastPullAtRef.current) {
+        lastPullAtRef.current = s.lastPullAt;
+        if (!initSyncPendingRef.current) {
+          showSyncToast(t('app.syncSuccess'));
+        }
+      }
     });
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (data && activeBoardId && data.settings.lastBoardId !== activeBoardId) {

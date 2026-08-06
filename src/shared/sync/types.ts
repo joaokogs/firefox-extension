@@ -16,5 +16,6 @@ export interface SyncState {
   status: 'idle' | 'syncing' | 'offline' | 'error';
   lastError?: string;
   lastErrorCategory?: SyncErrorCategory;
+  lastPullAt?: number;
   lastSyncAt?: number;
 }
