@@ -5,7 +5,10 @@ export {
   STORAGE_KEY,
   updateBoard,
   updateWidgetInBoard,
+  onStorageFailure,
+  notifyStorageFailure,
 } from './storage/index';
+export type { WriteResult } from './storage/index';
 
 export {
   createBoard,

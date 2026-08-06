@@ -4,6 +4,7 @@ import {
   loadData,
   saveData,
   getInitialBoardId,
+  onStorageFailure,
 } from '@shared/storage';
 import { createWidget, addWidget, updateWidget, deleteWidget, getWidgetsForBoard } from '@shared/storage/widgets';
 import { createLink, addLink, updateLink, deleteLink } from '@shared/storage/links';
@@ -26,6 +27,7 @@ export function Popup() {
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [dialog, setDialog] = useState<DialogMode | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [storageFailure, setStorageFailure] = useState(false);
   const { t } = useI18n();
 
   useEffect(() => {
@@ -42,6 +44,12 @@ export function Popup() {
       }
     });
     queryActiveTab().then(setTabInfo);
+  }, []);
+
+  useEffect(() => {
+    return onStorageFailure(() => {
+      setStorageFailure(true);
+    });
   }, []);
 
   const activeBoard = data?.boards.find((b) => b.id === activeBoardId);
@@ -66,97 +74,153 @@ export function Popup() {
     if (!tabInfo?.url || !activeBoardId || !data) return;
     setStatus('saving');
 
-    let next = data;
-    let widgetId = selectedWidgetId;
+    try {
+      let next = data;
+      let widgetId = selectedWidgetId;
 
-    if (!widgetId) {
-      const widget = createWidget('links', activeBoard?.title || 'Links');
-      next = addWidget(next, activeBoardId, widget);
-      widgetId = widget.id;
-      const inserted = next.boards.find((b) => b.id === activeBoardId)?.widgets.find((w) => w.id === widgetId);
-      if (inserted) await recordOperation('widget', `${activeBoardId}/${widgetId}`, 'put', inserted);
+      if (!widgetId) {
+        const widget = createWidget('links', activeBoard?.title || 'Links');
+        next = addWidget(next, activeBoardId, widget);
+        widgetId = widget.id;
+        const inserted = next.boards.find((b) => b.id === activeBoardId)?.widgets.find((w) => w.id === widgetId);
+        if (inserted) await recordOperation('widget', `${activeBoardId}/${widgetId}`, 'put', inserted);
+      }
+
+      const link = createLink(tabInfo.title, tabInfo.url);
+      if (tabInfo.favicon) link.favicon = tabInfo.favicon;
+      next = addLink(next, activeBoardId, widgetId, link);
+      await recordOperation('link', `${activeBoardId}/${widgetId}/${link.id}`, 'put', link);
+
+      const saveResult = await saveData(next);
+      if (!saveResult.ok) {
+        setStorageFailure(true);
+        setStatus('idle');
+        return;
+      }
+      setData(next);
+      setStatus('saved');
+      notifyLocalMutation();
+      setTimeout(() => window.close(), 900);
+    } catch (err) {
+      console.error('[Popup] save failed:', err instanceof Error ? err.message : String(err));
+      setStorageFailure(true);
+      setStatus('idle');
     }
-
-    const link = createLink(tabInfo.title, tabInfo.url);
-    if (tabInfo.favicon) link.favicon = tabInfo.favicon;
-    next = addLink(next, activeBoardId, widgetId, link);
-    await recordOperation('link', `${activeBoardId}/${widgetId}/${link.id}`, 'put', link);
-
-    await saveData(next);
-    setData(next);
-    setStatus('saved');
-    notifyLocalMutation();
-    setTimeout(() => window.close(), 900);
   };
 
   const handleAddLink = async (title: string, url: string) => {
     if (!data || !activeBoardId) return;
 
-    let next = data;
-    let widgetId = selectedWidgetId;
+    try {
+      let next = data;
+      let widgetId = selectedWidgetId;
 
-    if (!widgetId) {
-      const widget = createWidget('links', 'Links');
-      next = addWidget(next, activeBoardId, widget);
-      widgetId = widget.id;
-      setSelectedWidgetId(widgetId);
-      const inserted = next.boards.find((b) => b.id === activeBoardId)?.widgets.find((w) => w.id === widgetId);
-      if (inserted) await recordOperation('widget', `${activeBoardId}/${widgetId}`, 'put', inserted);
+      if (!widgetId) {
+        const widget = createWidget('links', 'Links');
+        next = addWidget(next, activeBoardId, widget);
+        widgetId = widget.id;
+        setSelectedWidgetId(widgetId);
+        const inserted = next.boards.find((b) => b.id === activeBoardId)?.widgets.find((w) => w.id === widgetId);
+        if (inserted) await recordOperation('widget', `${activeBoardId}/${widgetId}`, 'put', inserted);
+      }
+
+      const link = createLink(title, url);
+      next = addLink(next, activeBoardId, widgetId, link);
+      await recordOperation('link', `${activeBoardId}/${widgetId}/${link.id}`, 'put', link);
+
+      const saveResult = await saveData(next);
+      if (!saveResult.ok) {
+        setStorageFailure(true);
+        return;
+      }
+      setData(next);
+      notifyLocalMutation();
+      setDialog(null);
+    } catch (err) {
+      console.error('[Popup] addLink failed:', err instanceof Error ? err.message : String(err));
+      setStorageFailure(true);
     }
-
-    const link = createLink(title, url);
-    next = addLink(next, activeBoardId, widgetId, link);
-    await recordOperation('link', `${activeBoardId}/${widgetId}/${link.id}`, 'put', link);
-
-    await saveData(next);
-    setData(next);
-    notifyLocalMutation();
-    setDialog(null);
   };
 
   const handleEditLink = async (linkId: string, title: string, url: string) => {
     if (!data || !activeBoardId || !selectedWidgetId) return;
 
-    const next = updateLink(data, activeBoardId, selectedWidgetId, linkId, { title, url });
-    await recordOperation('link', `${activeBoardId}/${selectedWidgetId}/${linkId}`, 'patch', { title, url });
-    await saveData(next);
-    setData(next);
-    notifyLocalMutation();
-    setDialog(null);
+    try {
+      const next = updateLink(data, activeBoardId, selectedWidgetId, linkId, { title, url });
+      await recordOperation('link', `${activeBoardId}/${selectedWidgetId}/${linkId}`, 'patch', { title, url });
+      const saveResult = await saveData(next);
+      if (!saveResult.ok) {
+        setStorageFailure(true);
+        return;
+      }
+      setData(next);
+      notifyLocalMutation();
+      setDialog(null);
+    } catch (err) {
+      console.error('[Popup] editLink failed:', err instanceof Error ? err.message : String(err));
+      setStorageFailure(true);
+    }
   };
 
   const handleDeleteLink = async (linkId: string) => {
     if (!data || !activeBoardId || !selectedWidgetId) return;
 
-    const next = deleteLink(data, activeBoardId, selectedWidgetId, linkId);
-    await recordOperation('link', `${activeBoardId}/${selectedWidgetId}/${linkId}`, 'delete', null);
-    await saveData(next);
-    setData(next);
-    notifyLocalMutation();
+    try {
+      const next = deleteLink(data, activeBoardId, selectedWidgetId, linkId);
+      await recordOperation('link', `${activeBoardId}/${selectedWidgetId}/${linkId}`, 'delete', null);
+      const saveResult = await saveData(next);
+      if (!saveResult.ok) {
+        setStorageFailure(true);
+        return;
+      }
+      setData(next);
+      notifyLocalMutation();
+    } catch (err) {
+      console.error('[Popup] deleteLink failed:', err instanceof Error ? err.message : String(err));
+      setStorageFailure(true);
+    }
   };
 
   const handleWidgetSave = async (title: string) => {
     if (!data || !activeBoardId || !selectedWidgetId) return;
 
-    const next = updateWidget(data, activeBoardId, selectedWidgetId, { title });
-    await recordOperation('widget', `${activeBoardId}/${selectedWidgetId}`, 'patch', { title });
-    await saveData(next);
-    setData(next);
-    notifyLocalMutation();
-    setDialog(null);
+    try {
+      const next = updateWidget(data, activeBoardId, selectedWidgetId, { title });
+      await recordOperation('widget', `${activeBoardId}/${selectedWidgetId}`, 'patch', { title });
+      const saveResult = await saveData(next);
+      if (!saveResult.ok) {
+        setStorageFailure(true);
+        return;
+      }
+      setData(next);
+      notifyLocalMutation();
+      setDialog(null);
+    } catch (err) {
+      console.error('[Popup] widgetSave failed:', err instanceof Error ? err.message : String(err));
+      setStorageFailure(true);
+    }
   };
 
   const handleWidgetDelete = async () => {
     if (!data || !activeBoardId || !selectedWidgetId) return;
 
-    let next = deleteWidget(data, activeBoardId, selectedWidgetId);
-    await recordOperation('widget', `${activeBoardId}/${selectedWidgetId}`, 'delete', null);
-    const remaining = getWidgetsForBoard(next, activeBoardId).filter((w): w is LinksWidget => w.type === 'links');
-    setSelectedWidgetId(remaining[0]?.id);
-    await saveData(next);
-    setData(next);
-    notifyLocalMutation();
-    setDialog(null);
+    try {
+      let next = deleteWidget(data, activeBoardId, selectedWidgetId);
+      await recordOperation('widget', `${activeBoardId}/${selectedWidgetId}`, 'delete', null);
+      const remaining = getWidgetsForBoard(next, activeBoardId).filter((w): w is LinksWidget => w.type === 'links');
+      setSelectedWidgetId(remaining[0]?.id);
+      const saveResult = await saveData(next);
+      if (!saveResult.ok) {
+        setStorageFailure(true);
+        return;
+      }
+      setData(next);
+      notifyLocalMutation();
+      setDialog(null);
+    } catch (err) {
+      console.error('[Popup] widgetDelete failed:', err instanceof Error ? err.message : String(err));
+      setStorageFailure(true);
+    }
   };
 
   const editingLink = useMemo(() => {
@@ -183,6 +247,19 @@ export function Popup() {
 
   return (
     <div className="popup">
+      {storageFailure && (
+        <div className="popup__storage-warning" role="alert">
+          <span>{t('popup.storageFailure')}</span>
+          <button
+            className="popup__storage-warning__dismiss"
+            onClick={() => setStorageFailure(false)}
+            aria-label={t('popup.dismiss')}
+          >
+            x
+          </button>
+        </div>
+      )}
+
       <div className="popup__header">
         <button
           className={`popup__menu-btn ${menuOpen ? 'popup__menu-btn--open' : ''}`}

@@ -20,6 +20,8 @@ export interface SyncState {
   lastPullAt?: number;
   lastSyncAt?: number;
   pendingOperations?: number;
+  deadLetterCount?: number;
+  storageFailure?: boolean;
 }
 
 export type SyncAction = 'put' | 'patch' | 'move' | 'delete';
@@ -34,6 +36,16 @@ export interface SyncOperation {
   action: SyncAction;
   payload: unknown;
   createdAt: number;
+  failedAttempts?: number;
+  firstFailedAt?: number;
+  lastFailedAt?: number;
+}
+
+export interface DeadLetterEntry {
+  op: SyncOperation;
+  owner: string;
+  reason: string;
+  timestamp: number;
 }
 
 export interface OutboxState {
@@ -41,4 +53,6 @@ export interface OutboxState {
   nextSequence: number;
   operations: SyncOperation[];
   lastKnownRevision: number;
+  deadLetters?: DeadLetterEntry[];
+  committedOpIds?: string[];
 }

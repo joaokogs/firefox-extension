@@ -12,8 +12,10 @@ export function migrateAppData(data: AppData, fallbackTimestamp?: number): AppDa
 
   const boardIds = new Set<string>();
   const boards = base.boards.map((board) => migrateBoard(board, fallback, boardIds));
+
   return { ...base, boards };
 }
+
 
 function migrateBoard(board: Board, fallback: number, usedBoardIds: Set<string>): Board {
   const legacyBoard = board as Board & { id?: string; createdAt?: number; updatedAt?: number };

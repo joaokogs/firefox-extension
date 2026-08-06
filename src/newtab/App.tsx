@@ -7,8 +7,9 @@ import {
   loadData,
   saveData,
   STORAGE_KEY,
+  onStorageFailure,
 } from '@shared/storage';
-import { deleteBackground, getBackgroundBlob } from '@shared/storage/backgrounds';
+import { deleteBackground, getBackgroundBlob, gcOrphanedAssets } from '@shared/storage/backgrounds';
 import { createBoard, addBoard, renameBoard, reorderBoard, deleteBoard, getBoardById, getInitialBoardId, updateSettings, removeRecentSearch, clearRecentSearches, addRecentSearch } from '@shared/storage/boards';
 import { createWidget, addWidget, deleteWidget, updateWidget, getWidgetsForBoard } from '@shared/storage/widgets';
 import { createLink, addLink, deleteLink, updateLink, moveLink } from '@shared/storage/links';
@@ -42,6 +43,7 @@ import {
   setRemoteAppliedHandler,
   getSyncState,
   onSyncStateChange,
+  retryDeadLetters,
 } from '@shared/sync';
 import type { SyncState } from '@shared/sync/types';
 import { migrateAppData } from '@shared/sync/migrate';
@@ -56,6 +58,17 @@ function looksLikeUrl(str: string): boolean {
 function ensureProtocol(str: string): string {
   if (/^https?:\/\//i.test(str)) return str;
   return `https://${str}`;
+}
+
+function safeRecordOperation(
+  entity: Parameters<typeof recordOperation>[0],
+  entityId: string,
+  action: Parameters<typeof recordOperation>[2],
+  payload: unknown,
+): void {
+  void recordOperation(entity, entityId, action, payload).catch((err) => {
+    console.error('[App] recordOperation failed:', err instanceof Error ? err.message : String(err));
+  });
 }
 
 interface ConfirmState {
@@ -122,7 +135,11 @@ export function App() {
   const [searchEngine, setSearchEngine] = useState<SearchEngine>('google');
   const [wallpaperObjectUrl, setWallpaperObjectUrl] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncState['status']>(() => getSyncState().status);
+  const [storageFailure, setStorageFailure] = useState(false);
+  const [pendingOps, setPendingOps] = useState(0);
+  const [deadLetterOps, setDeadLetterOps] = useState(0);
   const lastPullAtRef = useRef<number | undefined>(getSyncState().lastPullAt);
+  const gcIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -151,7 +168,7 @@ export function App() {
         .then((merged) => {
           if (!merged.settings.themeConfig) {
             const themeConfig = getThemeConfigForPersist();
-            recordOperation('themeConfig', 'themeConfig', 'put', themeConfig);
+            safeRecordOperation('themeConfig', 'themeConfig', 'put', themeConfig);
             const backfilled: AppData = {
               ...merged,
               settings: { ...merged.settings, themeConfig },
@@ -223,6 +240,33 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    return onStorageFailure(() => {
+      setStorageFailure(true);
+    });
+  }, []);
+
+  useEffect(() => {
+    const runGc = () => {
+      if (!latestDataRef.current) return;
+      const uploaded = latestDataRef.current.settings.uploadedBackgrounds ?? [];
+      const wallpaper = latestDataRef.current?.settings.wallpaper;
+      const refs = new Set<string>();
+
+      for (const bg of uploaded) {
+        if (typeof bg !== 'string') refs.add(bg.id);
+      }
+      if (wallpaper?.type === 'asset') refs.add(wallpaper.value);
+
+      gcOrphanedAssets(refs).catch(() => undefined);
+    };
+
+    gcIntervalRef.current = setInterval(runGc, 60 * 60 * 1000);
+    return () => {
+      if (gcIntervalRef.current) clearInterval(gcIntervalRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
     return setupOnlineListener();
   }, []);
 
@@ -235,6 +279,13 @@ export function App() {
   useEffect(() => {
     return onSyncStateChange((s) => {
       setSyncStatus(s.status);
+      setPendingOps(s.pendingOperations ?? 0);
+      setDeadLetterOps(s.deadLetterCount ?? 0);
+      if (s.storageFailure) {
+        setStorageFailure(true);
+      } else if (s.status === 'idle' && s.lastSyncAt) {
+        setStorageFailure(false);
+      }
       if (s.lastPullAt && s.lastPullAt !== lastPullAtRef.current) {
         lastPullAtRef.current = s.lastPullAt;
         if (!initSyncPendingRef.current) {
@@ -307,7 +358,7 @@ export function App() {
         if (!prevData) return prevData;
         const themeConfig = getThemeConfigForPersist();
         if (JSON.stringify(prevData.settings.themeConfig) === JSON.stringify(themeConfig)) return prevData;
-        recordOperation('themeConfig', 'themeConfig', 'patch', themeConfig);
+        safeRecordOperation('themeConfig', 'themeConfig', 'patch', themeConfig);
         return updateSettings(prevData, { themeConfig });
       });
     });
@@ -378,7 +429,7 @@ export function App() {
     if (!next.some((w) => w.type === 'search')) {
       next.push({ type: 'search', searchEngine: engine });
     }
-    recordOperation('topWidgets', 'topWidgets', 'patch', next);
+    safeRecordOperation('topWidgets', 'topWidgets', 'patch', next);
     handleSettingsChange({ topWidgets: next });
   };
 
@@ -407,7 +458,7 @@ export function App() {
     setData((prev) => {
       if (!prev) return prev;
       const next = addBoard(prev, board);
-      recordOperation('board', board.id, 'put', board);
+      safeRecordOperation('board', board.id, 'put', board);
       return next;
     });
     setActiveBoardId(board.id);
@@ -418,7 +469,7 @@ export function App() {
     setData((prev) => {
       if (!prev) return prev;
       const next = renameBoard(prev, id, title);
-      recordOperation('board', id, 'patch', { title: title.trim() });
+      safeRecordOperation('board', id, 'patch', { title: title.trim() });
       return next;
     });
   };
@@ -427,7 +478,7 @@ export function App() {
     setData((prev) => {
       if (!prev) return prev;
       const next = reorderBoard(prev, id, toIndex);
-      recordOperation('board', id, 'move', { toIndex });
+      safeRecordOperation('board', id, 'move', { toIndex });
       return next;
     });
   };
@@ -442,7 +493,7 @@ export function App() {
         setData((prev) => {
           if (!prev) return prev;
           const next = deleteBoard(prev, id);
-          recordOperation('board', id, 'delete', null);
+          safeRecordOperation('board', id, 'delete', null);
           setActiveBoardId(getInitialBoardId(next));
           return next;
         });
@@ -457,7 +508,7 @@ export function App() {
       if (!prev || !activeBoardId) return prev;
       const next = addWidget(prev, activeBoardId, widget);
       const inserted = next.boards.find((b) => b.id === activeBoardId)?.widgets.find((w) => w.id === widget.id);
-      if (inserted) recordOperation('widget', `${activeBoardId}/${widget.id}`, 'put', inserted);
+      if (inserted) safeRecordOperation('widget', `${activeBoardId}/${widget.id}`, 'put', inserted);
       return next;
     });
     setIsAddingWidget(false);
@@ -477,7 +528,7 @@ export function App() {
       if (widget.colSpan !== undefined) payload.colSpan = widget.colSpan;
       if (widget.height !== undefined) payload.height = widget.height;
       if (Object.keys(payload).length > 0) {
-        recordOperation('widget', `${activeBoardId}/${widget.id}`, 'patch', payload);
+        safeRecordOperation('widget', `${activeBoardId}/${widget.id}`, 'patch', payload);
       }
       return next;
     });
@@ -495,7 +546,7 @@ export function App() {
           setData((prev) => {
             if (!prev || !activeBoardId) return prev;
             const next = deleteWidget(prev, activeBoardId, widgetId);
-            recordOperation('widget', `${activeBoardId}/${widgetId}`, 'delete', null);
+            safeRecordOperation('widget', `${activeBoardId}/${widgetId}`, 'delete', null);
             return next;
           });
         }
@@ -512,7 +563,7 @@ export function App() {
       if (!board) return prev;
       for (let i = 0; i < nextWidgets.length; i++) {
         const w = nextWidgets[i];
-        recordOperation('widget', `${activeBoardId}/${w.id}`, 'move', {
+        safeRecordOperation('widget', `${activeBoardId}/${w.id}`, 'move', {
           toIndex: i,
           col: w.col,
           layoutColumns: w.layoutColumns,
@@ -534,7 +585,7 @@ export function App() {
     setData((prev) => {
       if (!prev || !activeBoardId) return prev;
       const next = updateWidget(prev, activeBoardId, widgetId, { height });
-      recordOperation('widget', `${activeBoardId}/${widgetId}`, 'patch', { height });
+      safeRecordOperation('widget', `${activeBoardId}/${widgetId}`, 'patch', { height });
       return next;
     });
   };
@@ -544,7 +595,7 @@ export function App() {
     setData((prev) => {
       if (!prev || !activeBoardId) return prev;
       const next = moveLink(prev, activeBoardId, fromWidgetId, toWidgetId, linkId, toIndex);
-      recordOperation('link', `${activeBoardId}/${fromWidgetId}/${linkId}`, 'move', { toWidgetId, toIndex });
+      safeRecordOperation('link', `${activeBoardId}/${fromWidgetId}/${linkId}`, 'move', { toWidgetId, toIndex });
       return next;
     });
   };
@@ -554,7 +605,7 @@ export function App() {
     setData((prev) => {
       if (!prev || !activeBoardId) return prev;
       const next = deleteLink(prev, activeBoardId, widgetId, linkId);
-      recordOperation('link', `${activeBoardId}/${widgetId}/${linkId}`, 'delete', null);
+      safeRecordOperation('link', `${activeBoardId}/${widgetId}/${linkId}`, 'delete', null);
       return next;
     });
   };
@@ -565,7 +616,7 @@ export function App() {
     setData((prev) => {
       if (!prev || !activeBoardId) return prev;
       const next = addLink(prev, activeBoardId, widgetId, link);
-      recordOperation('link', `${activeBoardId}/${widgetId}/${link.id}`, 'put', link);
+      safeRecordOperation('link', `${activeBoardId}/${widgetId}/${link.id}`, 'put', link);
       return next;
     });
     setAddingLinkWidget(null);
@@ -588,7 +639,7 @@ export function App() {
         url,
         icon: icon || undefined
       });
-      recordOperation('link', `${activeBoardId}/${widgetId}/${linkId}`, 'patch', payload);
+      safeRecordOperation('link', `${activeBoardId}/${widgetId}/${linkId}`, 'patch', payload);
       return next;
     });
     setEditingLink(null);
@@ -600,7 +651,7 @@ export function App() {
     setData((prev) => {
       if (!prev || !activeBoardId) return prev;
       const next = addTodoItem(prev, activeBoardId, widgetId, todo);
-      recordOperation('todo', `${activeBoardId}/${widgetId}/${todo.id}`, 'put', todo);
+      safeRecordOperation('todo', `${activeBoardId}/${widgetId}/${todo.id}`, 'put', todo);
       return next;
     });
   };
@@ -613,7 +664,7 @@ export function App() {
       const board = next.boards.find(b => b.id === activeBoardId);
       const widget = board?.widgets.find(w => w.id === widgetId);
       const todoItem = widget && widget.type === 'todo' ? widget.items.find(t => t.id === todoId) : undefined;
-      recordOperation('todo', `${activeBoardId}/${widgetId}/${todoId}`, 'patch', { done: todoItem?.done });
+      safeRecordOperation('todo', `${activeBoardId}/${widgetId}/${todoId}`, 'patch', { done: todoItem?.done });
       return next;
     });
   };
@@ -623,7 +674,7 @@ export function App() {
     setData((prev) => {
       if (!prev || !activeBoardId) return prev;
       const next = updateTodoItem(prev, activeBoardId, widgetId, todoId, { text: text.trim() });
-      recordOperation('todo', `${activeBoardId}/${widgetId}/${todoId}`, 'patch', { text: text.trim() });
+      safeRecordOperation('todo', `${activeBoardId}/${widgetId}/${todoId}`, 'patch', { text: text.trim() });
       return next;
     });
   };
@@ -633,7 +684,7 @@ export function App() {
     setData((prev) => {
       if (!prev || !activeBoardId) return prev;
       const next = deleteTodoItem(prev, activeBoardId, widgetId, todoId);
-      recordOperation('todo', `${activeBoardId}/${widgetId}/${todoId}`, 'delete', null);
+      safeRecordOperation('todo', `${activeBoardId}/${widgetId}/${todoId}`, 'delete', null);
       return next;
     });
   };
@@ -643,7 +694,7 @@ export function App() {
     setData((prev) => {
       if (!prev || !activeBoardId) return prev;
       const next = moveTodoItem(prev, activeBoardId, fromWidgetId, toWidgetId, todoId, toIndex);
-      recordOperation('todo', `${activeBoardId}/${fromWidgetId}/${todoId}`, 'move', { toWidgetId, toIndex });
+      safeRecordOperation('todo', `${activeBoardId}/${fromWidgetId}/${todoId}`, 'move', { toWidgetId, toIndex });
       return next;
     });
   };
@@ -665,17 +716,17 @@ export function App() {
       const next = updateSettings(prev, settings);
       const { topWidgets, themeConfig, ...other } = settings;
       if (topWidgets !== undefined) {
-        recordOperation('topWidgets', 'topWidgets', 'patch', topWidgets);
+        safeRecordOperation('topWidgets', 'topWidgets', 'patch', topWidgets);
       }
       if (themeConfig !== undefined) {
-        recordOperation('themeConfig', 'themeConfig', 'patch', themeConfig);
+        safeRecordOperation('themeConfig', 'themeConfig', 'patch', themeConfig);
       }
       const restSettings: Record<string, unknown> = { ...other as Record<string, unknown> };
       for (const key of LOCAL_ONLY_SETTINGS_KEYS) {
         delete restSettings[key];
       }
       if (Object.keys(restSettings).length > 0) {
-        recordOperation('settings', 'settings', 'patch', restSettings);
+        safeRecordOperation('settings', 'settings', 'patch', restSettings);
       }
       return next;
     });
@@ -687,13 +738,13 @@ export function App() {
     
     if (exists) {
       const next = currentTopWidgets.filter((w) => w.type !== type);
-      recordOperation('topWidgets', 'topWidgets', 'patch', next);
+      safeRecordOperation('topWidgets', 'topWidgets', 'patch', next);
       handleSettingsChange({ topWidgets: next });
     } else {
       const newWidget: TopWidgetConfig = { type: type as any };
       if (type === 'weather') newWidget.city = 'New York';
       const next = [...currentTopWidgets, newWidget];
-      recordOperation('topWidgets', 'topWidgets', 'patch', next);
+      safeRecordOperation('topWidgets', 'topWidgets', 'patch', next);
       handleSettingsChange({ topWidgets: next });
     }
   };
@@ -705,7 +756,7 @@ export function App() {
       if (!prev || !activeBoardId) return prev;
       const next = addWidget(prev, activeBoardId, widget);
       const inserted = next.boards.find((b) => b.id === activeBoardId)?.widgets.find((w) => w.id === widget.id);
-      if (inserted) recordOperation('widget', `${activeBoardId}/${widget.id}`, 'put', inserted);
+      if (inserted) safeRecordOperation('widget', `${activeBoardId}/${widget.id}`, 'put', inserted);
       return next;
     });
   };
@@ -715,7 +766,7 @@ export function App() {
     const next = currentTopWidgets.map((w) => 
       w.type === 'weather' ? { ...w, city } : w
     );
-    recordOperation('topWidgets', 'topWidgets', 'patch', next);
+    safeRecordOperation('topWidgets', 'topWidgets', 'patch', next);
     handleSettingsChange({ topWidgets: next });
   };
 
@@ -742,18 +793,18 @@ export function App() {
         const importedIds = new Set(migrated.boards.map((b) => b.id));
         for (const board of data.boards) {
           if (!importedIds.has(board.id)) {
-            recordOperation('board', board.id, 'delete', null);
+            safeRecordOperation('board', board.id, 'delete', null);
           }
         }
       }
       for (const board of migrated.boards) {
-        recordOperation('board', board.id, 'put', board);
+        safeRecordOperation('board', board.id, 'put', board);
       }
       if (migrated.settings.themeConfig) {
-        recordOperation('themeConfig', 'themeConfig', 'patch', migrated.settings.themeConfig);
+        safeRecordOperation('themeConfig', 'themeConfig', 'patch', migrated.settings.themeConfig);
       }
       if (migrated.settings.topWidgets) {
-        recordOperation('topWidgets', 'topWidgets', 'patch', migrated.settings.topWidgets);
+        safeRecordOperation('topWidgets', 'topWidgets', 'patch', migrated.settings.topWidgets);
       }
       const restSettings: Record<string, unknown> = {};
       for (const key of Object.keys(migrated.settings)) {
@@ -761,7 +812,7 @@ export function App() {
         restSettings[key] = (migrated.settings as unknown as Record<string, unknown>)[key];
       }
       if (Object.keys(restSettings).length > 0) {
-        recordOperation('settings', 'settings', 'patch', restSettings);
+        safeRecordOperation('settings', 'settings', 'patch', restSettings);
       }
       setData(migrated);
       saveData(migrated);
@@ -804,7 +855,7 @@ export function App() {
         if (!prev || !activeBoardId) return prev;
         const next = addWidget(prev, activeBoardId, widget);
         const inserted = next.boards.find((b) => b.id === activeBoardId)?.widgets.find((w) => w.id === widget.id);
-        if (inserted) recordOperation('widget', `${activeBoardId}/${widget.id}`, 'put', inserted);
+        if (inserted) safeRecordOperation('widget', `${activeBoardId}/${widget.id}`, 'put', inserted);
         return next;
       });
       setShowBookmarkFolders(false);
@@ -867,6 +918,19 @@ export function App() {
             : data.settings.wallpaper.value
       }}
     >
+      {storageFailure && (
+        <div className="app-storage-warning" role="alert">
+          <span>{t('app.storageFailure')}</span>
+          <button
+            className="app-storage-warning__dismiss"
+            onClick={() => setStorageFailure(false)}
+            aria-label={t('app.dismiss')}
+          >
+            x
+          </button>
+        </div>
+      )}
+
       <header className="app-header">
         <BoardTabs
           boards={data.boards}
@@ -914,9 +978,32 @@ export function App() {
           {syncStatus === 'syncing' && (
             <span className="app-sync-spinner" role="status" aria-label={t('app.syncing')} />
           )}
+          {(pendingOps > 0 || deadLetterOps > 0) && (
+            <span className="app-sync-badge" aria-label={t('app.pendingChanges')}>
+              {deadLetterOps > 0 ? '!' : pendingOps}
+            </span>
+          )}
         </button>
 
         <div className={`app-fab-menu ${menuOpen ? 'app-fab-menu--open' : ''}`}>
+          {deadLetterOps > 0 && (
+            <button
+              className="app-fab-menu__item app-fab-menu__item--retry"
+              onClick={() => {
+                void retryDeadLetters().catch(() => setStorageFailure(true));
+                setMenuOpen(false);
+              }}
+              aria-label={t('app.retryDeadLetters')}
+              title={t('app.retryDeadLetters')}
+            >
+              {t('app.retryDeadLetters')} ({deadLetterOps})
+            </button>
+          )}
+          {pendingOps > 0 && (
+            <span className="app-fab-menu__pending">
+              {t('app.pendingChanges')}: {pendingOps}
+            </span>
+          )}
             <button
               className="app-fab-menu__item"
               onClick={() => { setShowWidgetToolbar(true); setMenuOpen(false); }}

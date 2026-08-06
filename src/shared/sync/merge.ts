@@ -1,6 +1,72 @@
 import type { AppData, Board, Widget, SyncTombstones, LinkItem, TodoItem, LinksWidget, TodoWidget } from '@shared/types';
 import { DEFAULT_WALLPAPERS } from '@shared/types/constants';
 
+const TOMBSTONE_TTL_MS = 90 * 24 * 60 * 60 * 1000;
+
+export function pruneTombstones(data: AppData): AppData {
+  if (!data._tombstones) return data;
+
+  const now = Date.now();
+  const cutoff = now - TOMBSTONE_TTL_MS;
+
+  const tombstones = data._tombstones;
+  const deletedBoards = tombstones.deletedBoards ?? {};
+  const deletedWidgets = tombstones.deletedWidgets ?? {};
+  const deletedLinks = tombstones.deletedLinks ?? {};
+  const deletedTodos = tombstones.deletedTodos ?? {};
+
+  const aliveBoardIds = new Set(data.boards.map((b) => b.id));
+
+  const prunedBoards: Record<string, number> = {};
+  for (const [boardId, ts] of Object.entries(deletedBoards)) {
+    if (ts > cutoff) {
+      prunedBoards[boardId] = ts;
+    }
+  }
+
+  function isBoardActive(boardId: string): boolean {
+    if (aliveBoardIds.has(boardId)) return true;
+    return boardId in prunedBoards;
+  }
+
+  const prunedWidgets: Record<string, number> = {};
+  for (const [key, ts] of Object.entries(deletedWidgets)) {
+    if (ts <= cutoff) continue;
+    const boardId = key.split('/')[0];
+    if (isBoardActive(boardId)) {
+      prunedWidgets[key] = ts;
+    }
+  }
+
+  const prunedLinks: Record<string, number> = {};
+  for (const [key, ts] of Object.entries(deletedLinks)) {
+    if (ts <= cutoff) continue;
+    const boardId = key.split('/')[0];
+    if (isBoardActive(boardId)) {
+      prunedLinks[key] = ts;
+    }
+  }
+
+  const prunedTodos: Record<string, number> = {};
+  for (const [key, ts] of Object.entries(deletedTodos)) {
+    if (ts <= cutoff) continue;
+    const boardId = key.split('/')[0];
+    if (isBoardActive(boardId)) {
+      prunedTodos[key] = ts;
+    }
+  }
+
+  return {
+    ...data,
+    _tombstones: {
+      deletedBoards: prunedBoards,
+      deletedWidgets: prunedWidgets,
+      deletedLinks: prunedLinks,
+      deletedTodos: prunedTodos,
+    },
+  };
+}
+
 function emptyTombstones(): SyncTombstones {
   return {
     deletedBoards: {},

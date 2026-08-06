@@ -14,6 +14,14 @@ export const ptBR: Record<string, string> = {
   'app.customizeAppearance': 'Personalizar aparência',
   'app.account': 'Conta',
   'app.openAccount': 'Abrir conta',
+  'app.storageFailure': 'Falha ao salvar dados localmente. As alterações podem não persistir.',
+  'app.dismiss': 'Fechar',
+  'app.pendingChanges': 'Alterações pendentes',
+  'app.retryDeadLetters': 'Tentar sincronizações com falha',
+
+  // Popup
+  'popup.storageFailure': 'Falha ao salvar dados. Alterações podem não persistir.',
+  'popup.dismiss': 'Fechar',
 
   // BoardTabs
   'boardTabs.boards': 'Boards',

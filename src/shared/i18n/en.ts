@@ -14,6 +14,14 @@ export const en: Record<string, string> = {
   'app.customizeAppearance': 'Customize appearance',
   'app.account': 'Account',
   'app.openAccount': 'Open account',
+  'app.storageFailure': 'Failed to save data locally. Changes might not persist.',
+  'app.dismiss': 'Dismiss',
+  'app.pendingChanges': 'Pending changes',
+  'app.retryDeadLetters': 'Retry failed syncs',
+
+  // Popup
+  'popup.storageFailure': 'Failed to save data. Changes might not persist.',
+  'popup.dismiss': 'Close',
 
   // BoardTabs
   'boardTabs.boards': 'Boards',

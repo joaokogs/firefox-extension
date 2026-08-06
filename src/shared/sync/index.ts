@@ -1,7 +1,7 @@
 import { browser } from '@shared/browser';
 import { getSession, subscribeAuthState } from '@shared/auth/auth';
 import { hasSyncAccess } from '@shared/payments/payments';
-import { loadData, saveData } from '@shared/storage';
+import { loadData, saveData, onStorageFailure } from '@shared/storage';
 import { supabase } from '@shared/supabase/client';
 import {
   fetchRemote,
@@ -22,7 +22,13 @@ import {
   ackOperations,
   setOutboxOwner,
   claimAndMergeOutbox,
+  classifyDeadLetters,
+  getDeadLetterCount,
+  markOperationsCommitted,
+  requeueDeadLetters,
+  clearCommittedInMemory,
 } from './outbox';
+import { pruneTombstones } from './merge';
 
 let state: SyncState = { status: 'idle' };
 let realtimeCleanup: (() => void) | null = null;
@@ -34,29 +40,55 @@ let syncNowInFlight = false;
 let syncChain: Promise<unknown> = Promise.resolve();
 let activeFullSync: { userId: string; promise: Promise<AppData> } | null = null;
 let currentOwner: string | undefined;
+let storageFailureUnsubscribe: (() => void) | null = null;
 
 const OWNER_STASH_KEY = 'syncOwnerData';
+const MAX_OWNER_STASH = 10;
 
-async function readOwnerStash(): Promise<Record<string, AppData>> {
+interface OwnerStashMeta {
+  data: AppData;
+  savedAt: number;
+}
+
+type OwnerStashRaw = Record<string, AppData | OwnerStashMeta>;
+
+function isStashMeta(entry: AppData | OwnerStashMeta): entry is OwnerStashMeta {
+  return typeof entry === 'object' && entry !== null && 'savedAt' in entry && 'data' in entry;
+}
+
+async function readOwnerStash(): Promise<Record<string, OwnerStashMeta>> {
   try {
     const result = await browser.storage.local.get(OWNER_STASH_KEY);
-    return (result[OWNER_STASH_KEY] as Record<string, AppData> | undefined) ?? {};
+    const raw = (result[OWNER_STASH_KEY] as OwnerStashRaw | undefined) ?? {};
+    const migrated: Record<string, OwnerStashMeta> = {};
+    for (const [key, value] of Object.entries(raw)) {
+      if (isStashMeta(value)) {
+        migrated[key] = value;
+      } else {
+        migrated[key] = { data: value as AppData, savedAt: 0 };
+      }
+    }
+    return migrated;
   } catch {
     return {};
   }
 }
 
-async function writeOwnerStash(map: Record<string, AppData>): Promise<void> {
+async function writeOwnerStash(map: Record<string, OwnerStashMeta>): Promise<void> {
   await browser.storage.local.set({ [OWNER_STASH_KEY]: map });
 }
 
-function capStash(map: Record<string, AppData>): Record<string, AppData> {
-  const keys = Object.keys(map);
-  if (keys.length <= 10) return map;
-  for (const key of keys.slice(0, keys.length - 10)) {
-    delete map[key];
+function capStash(map: Record<string, OwnerStashMeta>): Record<string, OwnerStashMeta> {
+  const entries = Object.entries(map);
+  if (entries.length <= MAX_OWNER_STASH) return map;
+
+  entries.sort((a, b) => b[1].savedAt - a[1].savedAt);
+
+  const result: Record<string, OwnerStashMeta> = {};
+  for (const [key, value] of entries.slice(0, MAX_OWNER_STASH)) {
+    result[key] = value;
   }
-  return map;
+  return result;
 }
 
 function setState(update: Partial<SyncState>): void {
@@ -194,33 +226,32 @@ async function resolveOwnerForSync(
     return { ...local, _owner: userId };
   }
   if (local._owner !== userId) {
-    const previousOwner = currentOwner;
     currentOwner = userId;
     setOutboxOwner(userId);
 
     const stash = await readOwnerStash();
     try {
-      stash[local._owner] = local;
+      stash[local._owner] = { data: local, savedAt: Date.now() };
       const remote = await fetchRemote(userId);
       if (remote.data) {
         await updateLastKnownRevision(remote.revision, userId);
         await writeOwnerStash(capStash(stash));
+        await claimAndMergeOutbox(userId);
         return { ...remote.data, _owner: userId };
       }
       const previous = stash[userId];
       await writeOwnerStash(capStash(stash));
+      await claimAndMergeOutbox(userId);
       if (previous) {
-        return { ...previous, _owner: userId };
+        return { ...previous.data, _owner: userId };
       }
       const defaults = migrateAppData(getDefaultData());
       return { ...defaults, _owner: userId };
     } catch (err) {
-      currentOwner = previousOwner;
-      setOutboxOwner(previousOwner);
       await writeOwnerStash(capStash(stash)).catch(() => undefined);
       const previous = stash[userId];
       if (previous) {
-        return { ...previous, _owner: userId };
+        return { ...previous.data, _owner: userId };
       }
       throw err;
     }
@@ -320,8 +351,6 @@ function applyBoardOp(data: AppData, op: SyncOperation): AppData | null {
   }
   return null;
 }
-
-// --- widget/link/todo/settings/themeConfig/topWidgets apply functions unchanged ---
 
 function applyWidgetOp(data: AppData, op: SyncOperation): AppData | null {
   const parts = op.entityId.split('/');
@@ -568,9 +597,14 @@ async function pushAndAck(
   const pushResult = await pushSnapshotWithRevision(userId, data, baseRevision);
   if (pushResult.accepted) {
     if (appliedOpIds.size > 0) {
-      await ackOperations(appliedOpIds, pushResult.revision, userId);
+      markOperationsCommitted(appliedOpIds, userId);
+      try {
+        await ackOperations(appliedOpIds, pushResult.revision, userId);
+      } catch {
+        logError('pushAndAck', new Error('ackOperations failed after push accepted; operations committed in memory'));
+      }
     }
-    setState({ lastSyncAt: Date.now() });
+    setState({ lastSyncAt: Date.now(), storageFailure: false });
   }
   return { accepted: pushResult.accepted, revision: pushResult.revision };
 }
@@ -586,14 +620,28 @@ async function applyNewOperationsAfterPush(
   return preserveLocalOnly(applied.data, live);
 }
 
+function filterUnclassified(ops: SyncOperation[], classified: Set<string>): SyncOperation[] {
+  const result: SyncOperation[] = [];
+  for (const op of ops) {
+    if (!classified.has(op.opId)) {
+      classified.add(op.opId);
+      result.push(op);
+    }
+  }
+  return result;
+}
+
 async function revisionSyncCycle(userId: string, incomingLocal?: AppData): Promise<AppData> {
   if (activeFullSync?.userId === userId) {
     return activeFullSync.promise;
   }
 
   const run = async (): Promise<AppData> => {
+    const classifiedInCycle = new Set<string>();
+
     let local = incomingLocal ?? (await currentLocalData());
     local = migrateAppData(local);
+    local = pruneTombstones(local);
 
     const knownRevision = await getLastKnownRevision(userId);
     const pendingOps = await getPendingOperations(userId);
@@ -604,11 +652,13 @@ async function revisionSyncCycle(userId: string, incomingLocal?: AppData): Promi
     if (remote.data) {
       const remoteRevision = remote.revision;
       let appliedOpIds = new Set<string>();
+      let unapplied: SyncOperation[] = [];
 
       if (pendingOps.length > 0) {
         const applied = applyOperationsToData(remote.data, pendingOps);
         merged = applied.data;
         appliedOpIds = applied.appliedOpIds;
+        unapplied = applied.unapplied;
       } else {
         merged = { ...remote.data };
       }
@@ -628,12 +678,16 @@ async function revisionSyncCycle(userId: string, incomingLocal?: AppData): Promi
               const freshOps = await getPendingOperations(userId);
               const rebased = applyOperationsToData(freshRemote.data, freshOps);
               merged = rebased.data;
+              if (rebased.unapplied.length > 0) {
+                const fresh = filterUnclassified(rebased.unapplied, classifiedInCycle);
+                if (fresh.length > 0) await classifyDeadLetters(fresh, userId);
+              }
               merged = { ...merged, _owner: userId };
               merged = preserveLocalOnly(merged, await currentLocalData() ?? local);
               await updateLastKnownRevision(freshRemote.revision, userId);
               const retryResult = await pushAndAck(userId, merged, freshRemote.revision, rebased.appliedOpIds);
               if (!retryResult.accepted) {
-                logError('revisionSyncCycle', new Error('Second retry also stale — keeping outbox, will retry later'));
+                logError('revisionSyncCycle', new Error('Second retry also stale, keeping outbox, will retry later'));
               }
             }
           }
@@ -642,14 +696,21 @@ async function revisionSyncCycle(userId: string, incomingLocal?: AppData): Promi
         }
       }
 
+      if (unapplied.length > 0) {
+        const fresh = filterUnclassified(unapplied, classifiedInCycle);
+        if (fresh.length > 0) await classifyDeadLetters(fresh, userId);
+      }
+
       merged = await applyNewOperationsAfterPush(userId, merged);
-      await saveData(merged);
+      const saveResult = await saveData(merged);
+      if (saveResult.ok) {
+        setState({ storageFailure: false });
+      }
       if (remoteRevision > knownRevision) {
         setState({ lastPullAt: Date.now() });
       }
       remoteAppliedHandler?.(merged);
     } else {
-      // No remote data
       if (pendingOps.length > 0) {
         const applied = applyOperationsToData(local, pendingOps);
         merged = applied.data;
@@ -664,17 +725,27 @@ async function revisionSyncCycle(userId: string, incomingLocal?: AppData): Promi
           }
         }
 
+        if (applied.unapplied.length > 0) {
+          const fresh = filterUnclassified(applied.unapplied, classifiedInCycle);
+          if (fresh.length > 0) await classifyDeadLetters(fresh, userId);
+        }
+
         merged = await applyNewOperationsAfterPush(userId, merged);
-        await saveData(merged);
+        const saveResult = await saveData(merged);
+        if (saveResult.ok) {
+          setState({ storageFailure: false });
+        }
       } else {
-        // Nothing to sync — push initial snapshot so account has data
         merged = { ...local, _owner: userId };
         try {
           await pushAndAck(userId, merged, 0, new Set());
         } catch {
           // Initial push can wait
         }
-        await saveData(merged);
+        const saveResult = await saveData(merged);
+        if (saveResult.ok) {
+          setState({ storageFailure: false });
+        }
       }
     }
 
@@ -696,7 +767,8 @@ async function revisionSyncCycle(userId: string, incomingLocal?: AppData): Promi
 
 async function updatePendingCount(): Promise<void> {
   const count = await getPendingCount(currentOwner);
-  setState({ pendingOperations: count });
+  const dlCount = await getDeadLetterCount(currentOwner);
+  setState({ pendingOperations: count, deadLetterCount: dlCount });
 }
 
 async function drainOutbox(userId: string): Promise<void> {
@@ -756,14 +828,17 @@ export function syncNow(): void {
 export async function initializeSync(initialData?: AppData): Promise<AppData> {
   let local = initialData ?? (await loadData());
   local = migrateAppData(local);
+  local = pruneTombstones(local);
 
   if (!supabase) {
     setState({ status: 'idle' });
     await updatePendingCount();
+    startStorageFailureListener();
     return local;
   }
 
   startAuthListener();
+  startStorageFailureListener();
 
   const can = await canSync();
   if (!can) {
@@ -802,6 +877,23 @@ export function notifyLocalMutation(): void {
   updatePendingCount().catch(() => undefined);
 }
 
+export async function retryDeadLetters(): Promise<number> {
+  const owner = currentOwner;
+  if (!owner) return 0;
+
+  try {
+    const count = await requeueDeadLetters(owner);
+    if (count > 0) {
+      await updatePendingCount();
+      syncNow();
+    }
+    return count;
+  } catch (err) {
+    recordError(err);
+    throw err;
+  }
+}
+
 async function handleRemoteChange(userId: string, remote: AppData, remoteRevision: number, _remoteUpdatedAt?: string): Promise<void> {
   try {
     const session = await getSession();
@@ -819,6 +911,9 @@ async function handleRemoteChange(userId: string, remote: AppData, remoteRevisio
     if (pendingOps.length > 0) {
       const applied = applyOperationsToData(remote, pendingOps);
       merged = applied.data;
+      if (applied.unapplied.length > 0) {
+        await classifyDeadLetters(applied.unapplied, userId);
+      }
     } else {
       merged = { ...remote };
     }
@@ -829,7 +924,10 @@ async function handleRemoteChange(userId: string, remote: AppData, remoteRevisio
     if (sameContent(merged, local)) return;
 
     await updateLastKnownRevision(remoteRevision, userId);
-    await saveData(merged);
+    const saveResult = await saveData(merged);
+    if (saveResult.ok) {
+      setState({ storageFailure: false });
+    }
     remoteAppliedHandler?.(merged);
 
     const syncedAt = Date.now();
@@ -858,6 +956,12 @@ function startAuthListener(): void {
         realtimeCleanup();
         realtimeCleanup = null;
       }
+      unsubscribeRealtime();
+      setOutboxOwner(undefined);
+      currentOwner = undefined;
+      clearCommittedInMemory();
+      await updatePendingCount();
+      setState({ status: 'idle' });
       return;
     }
 
@@ -906,6 +1010,13 @@ export async function syncOnOnline(): Promise<void> {
   }
 }
 
+function startStorageFailureListener(): void {
+  if (storageFailureUnsubscribe) return;
+  storageFailureUnsubscribe = onStorageFailure(() => {
+    setState({ storageFailure: true });
+  });
+}
+
 export function setupOnlineListener(): () => void {
   const handler = () => {
     if (navigator.onLine) {
@@ -937,11 +1048,16 @@ export function cleanup(): void {
     authUnsubscribe();
     authUnsubscribe = null;
   }
+  if (storageFailureUnsubscribe) {
+    storageFailureUnsubscribe();
+    storageFailureUnsubscribe = null;
+  }
   unsubscribeRealtime();
   localDataProvider = null;
   remoteAppliedHandler = null;
   syncNowInFlight = false;
   currentOwner = undefined;
   setOutboxOwner(undefined);
+  clearCommittedInMemory();
   setState({ status: 'idle' });
 }

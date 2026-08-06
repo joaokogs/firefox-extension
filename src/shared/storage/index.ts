@@ -6,6 +6,24 @@ import type { Widget } from '@shared/types';
 
 export const STORAGE_KEY = 'boardsNewTabData';
 
+export type WriteResult =
+  | { ok: true }
+  | { ok: false; error: string };
+
+type StorageFailureListener = (error: string) => void;
+const storageFailureListeners = new Set<StorageFailureListener>();
+
+export function onStorageFailure(listener: StorageFailureListener): () => void {
+  storageFailureListeners.add(listener);
+  return () => { storageFailureListeners.delete(listener); };
+}
+
+export function notifyStorageFailure(error: string): void {
+  for (const listener of storageFailureListeners) {
+    try { listener(error); } catch { /* guard */ }
+  }
+}
+
 export async function loadData(): Promise<AppData> {
   try {
     const result = await browser.storage.local.get(STORAGE_KEY);
@@ -14,16 +32,22 @@ export async function loadData(): Promise<AppData> {
       return saved;
     }
   } catch (err) {
-    console.error('Failed to load data from storage:', err);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Failed to load data from storage:', message);
+    notifyStorageFailure(`read: ${message}`);
   }
   return getDefaultData();
 }
 
-export async function saveData(data: AppData): Promise<void> {
+export async function saveData(data: AppData): Promise<WriteResult> {
   try {
     await browser.storage.local.set({ [STORAGE_KEY]: data });
+    return { ok: true };
   } catch (err) {
-    console.error('Failed to save data:', err);
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Failed to save data:', message);
+    notifyStorageFailure(`write: ${message}`);
+    return { ok: false, error: message };
   }
 }
 
