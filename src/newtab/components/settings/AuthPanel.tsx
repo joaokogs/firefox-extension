@@ -9,6 +9,7 @@ import {
   signInWithGoogle,
 } from '@shared/auth/auth';
 import type { Session } from '@supabase/supabase-js';
+import { PaymentPanel } from './PaymentPanel';
 
 export function AuthPanel() {
   const { t } = useI18n();
@@ -177,6 +178,7 @@ export function AuthPanel() {
             {t('auth.signOut')}
           </button>
         </div>
+        <PaymentPanel session={session} />
       </div>
     );
   }

@@ -28,6 +28,70 @@
   flex-shrink: 0;
 }
 
+.auth-panel__payment {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid color-mix(in srgb, var(--text-muted) 14%, transparent);
+}
+
+.auth-panel__payment-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--text-primary);
+}
+
+.auth-panel__payment-header strong,
+.auth-panel__payment-status {
+  display: block;
+}
+
+.auth-panel__payment-status {
+  margin-top: 3px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.auth-panel__payment-description {
+  margin: 10px 0 12px;
+  color: var(--text-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.auth-panel__payment-button {
+  width: 100%;
+  justify-content: center;
+}
+
+.auth-panel__coupon {
+  margin-top: 18px;
+}
+
+.auth-panel__coupon label {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.auth-panel__coupon-row {
+  display: flex;
+  gap: 8px;
+}
+
+.auth-panel__coupon-row input {
+  min-width: 0;
+  flex: 1;
+}
+
+.auth-panel__coupon-row .btn {
+  flex-shrink: 0;
+  padding-inline: 12px;
+}
+
 .auth-panel__form {
   display: flex;
   flex-direction: column;
