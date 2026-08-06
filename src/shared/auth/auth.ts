@@ -45,7 +45,10 @@ export function subscribeAuthState(callback: AuthStateCallback): () => void {
 }
 
 export async function signInWithEmail(email: string, password: string): Promise<void> {
-  const { error } = await getSupabaseClient().auth.signInWithPassword({ email, password });
+  const { error } = await getSupabaseClient().auth.signInWithPassword({
+    email: email.trim(),
+    password,
+  });
   if (error) throw error;
 }
 
@@ -54,7 +57,7 @@ export async function signUpWithEmail(
   password: string,
 ): Promise<Session | null> {
   const { data, error } = await getSupabaseClient().auth.signUp({
-    email,
+    email: email.trim(),
     password,
   });
   if (error) throw error;

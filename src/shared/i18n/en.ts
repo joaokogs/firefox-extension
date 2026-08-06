@@ -319,6 +319,11 @@ export const en: Record<string, string> = {
   'auth.errorInvalidCredentials': 'The email or password is incorrect.',
   'auth.errorEmailNotConfirmed': 'Confirm your email before signing in.',
   'auth.errorUserExists': 'An account with this email already exists.',
+  'auth.errorWeakPassword': 'The password does not meet the project security requirements.',
+  'auth.errorInvalidEmail': 'Enter a valid email address.',
+  'auth.errorSignupDisabled': 'Email sign-up is disabled.',
+  'auth.errorRateLimit': 'Too many attempts. Wait a few minutes and try again.',
+  'auth.errorInvalidSignupData': 'Check the email and password you entered.',
   'auth.errorGoogleConfig': 'Google sign-in is not configured for this browser.',
 
   // Language

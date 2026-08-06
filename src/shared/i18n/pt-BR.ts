@@ -319,6 +319,11 @@ export const ptBR: Record<string, string> = {
   'auth.errorInvalidCredentials': 'O email ou a senha estão incorretos.',
   'auth.errorEmailNotConfirmed': 'Confirme seu email antes de entrar.',
   'auth.errorUserExists': 'Já existe uma conta com este email.',
+  'auth.errorWeakPassword': 'A senha não atende aos requisitos de segurança do projeto.',
+  'auth.errorInvalidEmail': 'Informe um email válido.',
+  'auth.errorSignupDisabled': 'O cadastro por email está desativado.',
+  'auth.errorRateLimit': 'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
+  'auth.errorInvalidSignupData': 'Verifique o email e a senha informados.',
   'auth.errorGoogleConfig': 'O login do Google não está configurado para este navegador.',
 
   // Language

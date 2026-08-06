@@ -48,11 +48,34 @@ export function AuthPanel() {
   }, [t]);
 
   const getErrorMessage = (err: unknown, fallback: string) => {
-    const message = err instanceof Error ? err.message : '';
+    const authError = (
+      err && typeof err === 'object' ? err : {}
+    ) as { code?: string; message?: string; status?: number };
+    const code = typeof authError.code === 'string' ? authError.code.toLowerCase() : undefined;
+    const message = authError.message || (err instanceof Error ? err.message : '');
 
     if (message === 'SUPABASE_NOT_CONFIGURED') return t('auth.errorNotConfigured');
     if (message === 'GOOGLE_CLIENT_NOT_CONFIGURED') {
       return t('auth.errorGoogleConfig');
+    }
+    if (code === 'weak_password') return t('auth.errorWeakPassword');
+    if (
+      code === 'email_address_invalid' ||
+      code === 'invalid_email' ||
+      (code === 'validation_failed' && /email/i.test(message))
+    ) {
+      return t('auth.errorInvalidEmail');
+    }
+    if (code === 'signup_disabled') return t('auth.errorSignupDisabled');
+    if (
+      code === 'over_email_send_rate_limit' ||
+      code === 'over_request_rate_limit' ||
+      authError.status === 429
+    ) {
+      return t('auth.errorRateLimit');
+    }
+    if (code === 'user_already_exists' || code === 'email_exists') {
+      return t('auth.errorUserExists');
     }
     if (/invalid login credentials/i.test(message)) {
       return t('auth.errorInvalidCredentials');
@@ -60,9 +83,10 @@ export function AuthPanel() {
     if (/email not confirmed/i.test(message)) {
       return t('auth.errorEmailNotConfirmed');
     }
-    if (/user already registered/i.test(message)) {
+    if (/user already registered|already exists/i.test(message)) {
       return t('auth.errorUserExists');
     }
+    if (authError.status === 422) return t('auth.errorInvalidSignupData');
 
     return fallback;
   };
