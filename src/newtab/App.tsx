@@ -33,6 +33,18 @@ import { notifyMenuOpened, subscribeToMenuClose } from './utils/menu';
 import { computeThemeVariables } from '@shared/theme';
 import { browser, openUrl } from '@shared/browser';
 import type { Bookmarks, Storage } from 'webextension-polyfill';
+import {
+  initializeSync,
+  queuePush,
+  setupOnlineListener,
+  cleanup as cleanupSync,
+  setLocalDataProvider,
+  setRemoteAppliedHandler,
+  getSyncState,
+  onSyncStateChange,
+} from '@shared/sync';
+import type { SyncState } from '@shared/sync/types';
+import { migrateAppData } from '@shared/sync/migrate';
 import './styles/index.css';
 
 function looksLikeUrl(str: string): boolean {
@@ -102,18 +114,33 @@ export function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchEngine, setSearchEngine] = useState<SearchEngine>('google');
   const [wallpaperObjectUrl, setWallpaperObjectUrl] = useState<string | null>(null);
+  const [syncStatus, setSyncStatus] = useState<SyncState['status']>(() => getSyncState().status);
 
   useEffect(() => {
     let mounted = true;
+    setLocalDataProvider(() => latestDataRef.current);
+    setRemoteAppliedHandler((next) => {
+      if (!mounted) return;
+      initSyncPendingRef.current = false;
+      lastRemoteAppliedRef.current = next;
+      setData(next);
+      setActiveBoardId((current) => next.boards.some((board) => board.id === current) ? current : getInitialBoardId(next));
+    });
     loadData().then(async (loaded) => {
       if (!mounted) return;
       const cleaned = await removeVideoBackgrounds(loaded);
       if (!mounted) return;
+
       setData(cleaned);
       setActiveBoardId(getInitialBoardId(cleaned));
       if (cleaned.settings.locale) {
         setI18nLocale(cleaned.settings.locale as any);
       }
+
+      initSyncPendingRef.current = true;
+      initializeSync(cleaned).finally(() => {
+        initSyncPendingRef.current = false;
+      });
     });
     return () => {
       mounted = false;
@@ -122,6 +149,8 @@ export function App() {
 
   const saveDebounceRef = useRef<number | null>(null);
   const latestDataRef = useRef<AppData | null>(null);
+  const lastRemoteAppliedRef = useRef<AppData | null>(null);
+  const initSyncPendingRef = useRef(false);
 
   useEffect(() => {
     latestDataRef.current = data;
@@ -129,7 +158,14 @@ export function App() {
       if (saveDebounceRef.current) clearTimeout(saveDebounceRef.current);
       saveDebounceRef.current = window.setTimeout(() => {
         saveDebounceRef.current = null;
-        if (latestDataRef.current) saveData(latestDataRef.current);
+        if (latestDataRef.current) {
+          saveData(latestDataRef.current);
+          const wasRemote = lastRemoteAppliedRef.current === latestDataRef.current;
+          if (wasRemote) lastRemoteAppliedRef.current = null;
+          if (!wasRemote && !initSyncPendingRef.current) {
+            queuePush(latestDataRef.current);
+          }
+        }
       }, 500);
     }
     return () => {
@@ -162,6 +198,22 @@ export function App() {
     };
     window.addEventListener('beforeunload', flush);
     return () => window.removeEventListener('beforeunload', flush);
+  }, []);
+
+  useEffect(() => {
+    return setupOnlineListener();
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      cleanupSync();
+    };
+  }, []);
+
+  useEffect(() => {
+    return onSyncStateChange((s) => {
+      setSyncStatus(s.status);
+    });
   }, []);
 
   useEffect(() => {
@@ -365,7 +417,9 @@ export function App() {
       return {
         ...prev,
         boards: prev.boards.map((b) =>
-          b.id === activeBoardId ? { ...b, widgets: nextWidgets, updatedAt: Date.now() } : b
+          b.id === activeBoardId
+            ? { ...b, widgets: nextWidgets.map((w) => ({ ...w, updatedAt: Date.now() })), updatedAt: Date.now() }
+            : b
         )
       };
     });
@@ -510,9 +564,10 @@ export function App() {
             }
           }
         : imported.data;
-      setData(nextData);
-      saveData(nextData);
-      setActiveBoardId(getInitialBoardId(nextData));
+      const migrated = migrateAppData(nextData);
+      setData(migrated);
+      saveData(migrated);
+      setActiveBoardId(getInitialBoardId(migrated));
     } catch (err) {
       alert(err instanceof Error ? err.message : t('app.importError'));
     }
@@ -652,6 +707,9 @@ export function App() {
           title={menuOpen ? t('app.closeMenu') : t('app.menu')}
         >
           <Menu size={22} strokeWidth={2} />
+          {syncStatus === 'syncing' && (
+            <span className="app-sync-spinner" role="status" aria-label={t('app.syncing')} />
+          )}
         </button>
 
         <div className={`app-fab-menu ${menuOpen ? 'app-fab-menu--open' : ''}`}>

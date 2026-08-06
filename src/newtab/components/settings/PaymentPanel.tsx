@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Session } from '@supabase/supabase-js';
 import { CreditCard, ExternalLink } from 'lucide-preact';
 import { openUrl } from '@shared/browser';
 import { useI18n } from '@shared/i18n';
+import { syncNow } from '@shared/sync';
 import {
   createCheckoutSession,
   createPortalSession,
@@ -39,6 +40,7 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
   const [couponCode, setCouponCode] = useState('');
   const [error, setError] = useState('');
   const [couponSuccess, setCouponSuccess] = useState(false);
+  const prevSyncAccessRef = useRef(false);
 
   const refreshSubscription = async () => {
     setLoadingSubscription(true);
@@ -46,6 +48,10 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
       const [nextSubscription, nextSyncAccess] = await Promise.all([getSubscription(), hasSyncAccess()]);
       setSubscription(nextSubscription);
       setSyncAccess(nextSyncAccess);
+      if (nextSyncAccess && !prevSyncAccessRef.current) {
+        syncNow();
+      }
+      prevSyncAccessRef.current = nextSyncAccess;
     } catch (err: unknown) {
       setError(t(getPaymentErrorKey(err)));
     } finally {
@@ -56,6 +62,8 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
   useEffect(() => {
     setError('');
     setCouponSuccess(false);
+    // Reset per-session so syncNow fires when the newly signed-in account gains access.
+    prevSyncAccessRef.current = false;
     void refreshSubscription();
   }, [session.user.id]);
 

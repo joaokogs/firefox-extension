@@ -23,13 +23,17 @@ export const INITIAL_SAMPLE_BOARDS: Board[] = [
             id: generateId('link'),
             title: 'Prismi',
             url: 'https://prismi.vercel.app/',
-            icon: 'fa:star'
+            icon: 'fa:star',
+            createdAt: Date.now(),
+            updatedAt: Date.now()
           },
           {
             id: generateId('link'),
             title: 'Prismi Repository',
             url: 'https://github.com/joaokogs/prismi',
-            icon: 'fab:github'
+            icon: 'fab:github',
+            createdAt: Date.now(),
+            updatedAt: Date.now()
           }
         ],
         col: 0,
@@ -45,7 +49,9 @@ export const INITIAL_SAMPLE_BOARDS: Board[] = [
           {
             id: generateId('todo'),
             text: 'A reminder to star the repository 🌟',
-            done: false
+            done: false,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
           }
         ],
         height: 406,

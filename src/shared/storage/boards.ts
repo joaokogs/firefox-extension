@@ -45,6 +45,7 @@ export function reorderBoard(data: AppData, boardId: string, toIndex: number): A
 }
 
 export function deleteBoard(data: AppData, boardId: string): AppData {
+  const now = Date.now();
   const boards = data.boards.filter((b) => b.id !== boardId);
   return {
     ...data,
@@ -52,6 +53,13 @@ export function deleteBoard(data: AppData, boardId: string): AppData {
     settings: {
       ...data.settings,
       lastBoardId: boards[0]?.id
+    },
+    _tombstones: {
+      ...data._tombstones,
+      deletedBoards: { ...data._tombstones?.deletedBoards, [boardId]: now },
+      deletedWidgets: { ...data._tombstones?.deletedWidgets },
+      deletedLinks: { ...data._tombstones?.deletedLinks },
+      deletedTodos: { ...data._tombstones?.deletedTodos },
     }
   };
 }
@@ -71,7 +79,8 @@ export function getInitialBoardId(data: AppData): string | undefined {
 export function updateSettings(data: AppData, settings: Partial<AppSettings>): AppData {
   return {
     ...data,
-    settings: { ...data.settings, ...settings }
+    settings: { ...data.settings, ...settings },
+    settingsUpdatedAt: Date.now()
   };
 }
 

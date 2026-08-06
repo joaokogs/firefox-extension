@@ -6,6 +6,8 @@ export interface LinkItem {
   url: string;
   icon?: string;
   favicon?: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface BaseWidget {
@@ -17,6 +19,7 @@ export interface BaseWidget {
   height?: number;
   col?: number;
   layoutColumns?: number;
+  updatedAt?: number;
 }
 
 export interface LinksWidget extends BaseWidget {
@@ -43,6 +46,8 @@ export interface TodoItem {
   id: string;
   text: string;
   done: boolean;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface TodoWidget extends BaseWidget {
@@ -107,8 +112,19 @@ export interface TopWidgetConfig {
   searchEngine?: SearchEngine;
 }
 
+export interface SyncTombstones {
+  deletedBoards: Record<string, number>;
+  deletedWidgets: Record<string, number>;
+  deletedLinks: Record<string, number>;
+  deletedTodos: Record<string, number>;
+}
+
 export interface AppData {
   boards: Board[];
   settings: AppSettings;
   installedAt: number;
+  lastSyncedAt?: number;
+  settingsUpdatedAt?: number;
+  _tombstones?: SyncTombstones;
+  _owner?: string;
 }

@@ -1,6 +1,7 @@
 export const ptBR: Record<string, string> = {
   // App
   'app.loading': 'Carregando Boards',
+  'app.syncing': 'Sincronizando dados...',
   'app.widgets': 'Widgets',
   'app.appearance': 'Aparência',
   'app.settings': 'Configurações',

@@ -19,6 +19,7 @@ export type {
   SearchEngine,
   TopWidgetConfig,
   AppData,
+  SyncTombstones,
 } from './types/index';
 
 export {

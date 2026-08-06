@@ -165,6 +165,7 @@ function getCurrentColumnCount(): number {
 }
 
 function deserializeWidget(widget: TemplateWidget, position: TemplateWidgetPosition, columns: number): Widget {
+  const now = Date.now();
   const base = {
     id: generateId('widget'),
     title: widget.title,
@@ -184,6 +185,8 @@ function deserializeWidget(widget: TemplateWidget, position: TemplateWidgetPosit
           id: generateId('link'),
           title: item.title,
           url: item.url,
+          createdAt: now,
+          updatedAt: now,
           ...(item.icon ? { icon: item.icon } : {})
         }))
       };
@@ -202,7 +205,7 @@ function deserializeWidget(widget: TemplateWidget, position: TemplateWidgetPosit
       return {
         ...base,
         type: 'todo',
-        items: widget.items.map((item) => ({ id: generateId('todo'), text: item.text, done: item.done }))
+        items: widget.items.map((item) => ({ id: generateId('todo'), text: item.text, done: item.done, createdAt: now, updatedAt: now }))
       };
   }
 }

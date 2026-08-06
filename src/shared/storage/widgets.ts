@@ -15,7 +15,8 @@ export function createWidget(type: WidgetType, title: string): Widget {
     type,
     title: title.trim() || defaultWidgetTitle(type),
     colSpan: 1,
-    order: 0
+    order: 0,
+    updatedAt: Date.now()
   };
 
   switch (type) {
@@ -55,15 +56,26 @@ export function addWidget(data: AppData, boardId: string, widget: Widget): AppDa
 }
 
 export function deleteWidget(data: AppData, boardId: string, widgetId: string): AppData {
-  return updateBoard(data, boardId, (board) => ({
-    ...board,
-    widgets: board.widgets.filter((w) => w.id !== widgetId),
-    updatedAt: Date.now()
-  }));
+  const now = Date.now();
+  const tombstoneKey = `${boardId}/${widgetId}`;
+  return {
+    ...updateBoard(data, boardId, (board) => ({
+      ...board,
+      widgets: board.widgets.filter((w) => w.id !== widgetId),
+      updatedAt: now
+    })),
+    _tombstones: {
+      ...data._tombstones,
+      deletedBoards: { ...data._tombstones?.deletedBoards },
+      deletedWidgets: { ...data._tombstones?.deletedWidgets, [tombstoneKey]: now },
+      deletedLinks: { ...data._tombstones?.deletedLinks },
+      deletedTodos: { ...data._tombstones?.deletedTodos },
+    }
+  };
 }
 
 export function updateWidget(data: AppData, boardId: string, widgetId: string, updates: Partial<Omit<Widget, 'id' | 'type'>> & { title?: string; colSpan?: number; order?: number; height?: number; col?: number }): AppData {
-  return updateWidgetInBoard(data, boardId, widgetId, (w) => ({ ...w, ...updates }));
+  return updateWidgetInBoard(data, boardId, widgetId, (w) => ({ ...w, ...updates, updatedAt: Date.now() }));
 }
 
 export function moveWidgetOrder(data: AppData, boardId: string, fromIndex: number, toIndex: number): AppData {
@@ -74,7 +86,7 @@ export function moveWidgetOrder(data: AppData, boardId: string, fromIndex: numbe
       const sorted = [...b.widgets].sort((a, c) => a.order - c.order);
       const [moved] = sorted.splice(fromIndex, 1);
       sorted.splice(toIndex, 0, moved);
-      const reordered = sorted.map((w, i) => ({ ...w, order: i }));
+      const reordered = sorted.map((w, i) => ({ ...w, order: i, updatedAt: Date.now() }));
       return { ...b, widgets: reordered, updatedAt: Date.now() };
     })
   };
@@ -86,10 +98,11 @@ export function reorderWidgets(data: AppData, boardId: string, widgetIds: string
     boards: data.boards.map((b) => {
       if (b.id !== boardId) return b;
       const map = new Map(b.widgets.map((w) => [w.id, w]));
-      const reordered = widgetIds.map((id, i) => {
+      const reordered: Widget[] = [];
+      for (const [i, id] of widgetIds.entries()) {
         const w = map.get(id);
-        return w ? { ...w, order: i } : undefined;
-      }).filter((w): w is Widget => !!w);
+        if (w) reordered.push({ ...w, order: i, updatedAt: Date.now() });
+      }
       return { ...b, widgets: reordered, updatedAt: Date.now() };
     })
   };

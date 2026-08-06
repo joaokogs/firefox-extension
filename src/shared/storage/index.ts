@@ -40,10 +40,16 @@ export function updateBoard(data: AppData, boardId: string, fn: (board: Board) =
   };
 }
 
-export function updateWidgetInBoard(data: AppData, boardId: string, widgetId: string, fn: (widget: Widget) => Widget): AppData {
+export function updateWidgetInBoard(
+  data: AppData,
+  boardId: string,
+  widgetId: string,
+  fn: (widget: Widget) => Widget,
+  updateBoardTimestamp = true,
+): AppData {
   return updateBoard(data, boardId, (board) => ({
     ...board,
     widgets: board.widgets.map((w) => (w.id === widgetId ? fn(w) : w)),
-    updatedAt: Date.now()
+    ...(updateBoardTimestamp ? { updatedAt: Date.now() } : {})
   }));
 }
