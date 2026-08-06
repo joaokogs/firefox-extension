@@ -311,6 +311,7 @@
 }
 
 .field span,
+.field label,
 .widget-editor__label,
 .widget-editor__field span {
   font-size: 0.8125rem;

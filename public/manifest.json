@@ -16,7 +16,8 @@
     "tabs",
     "storage",
     "activeTab",
-    "bookmarks"
+    "bookmarks",
+    "identity"
   ],
   "host_permissions": [
     "*://www.google.com/",
