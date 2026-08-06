@@ -1,5 +1,6 @@
 import type { AppData, Board, AppSettings, TopWidgetConfig } from '@shared/types';
 import { generateId } from '@shared/types/defaults';
+import { LOCAL_ONLY_SETTINGS_KEYS } from '@shared/types/constants';
 import { t } from '@shared/i18n';
 
 export function createBoard(title: string): Board {
@@ -77,10 +78,13 @@ export function getInitialBoardId(data: AppData): string | undefined {
 }
 
 export function updateSettings(data: AppData, settings: Partial<AppSettings>): AppData {
+  const keys = Object.keys(settings) as (keyof AppSettings)[];
+  const isLocalOnly = keys.length > 0 && keys.every((k) => LOCAL_ONLY_SETTINGS_KEYS.includes(k));
+
   return {
     ...data,
     settings: { ...data.settings, ...settings },
-    settingsUpdatedAt: Date.now()
+    ...(isLocalOnly ? {} : { settingsUpdatedAt: Date.now() }),
   };
 }
 

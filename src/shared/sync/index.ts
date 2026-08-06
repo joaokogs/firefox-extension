@@ -3,16 +3,28 @@ import { getSession, subscribeAuthState } from '@shared/auth/auth';
 import { hasSyncAccess } from '@shared/payments/payments';
 import { loadData, saveData } from '@shared/storage';
 import { supabase } from '@shared/supabase/client';
-import { fetchRemote, upsertRemote, subscribeToRealtime, unsubscribeRealtime } from './client';
-import { mergeAppData } from './merge';
+import {
+  fetchRemote,
+  pushSnapshotWithRevision,
+  subscribeToRealtime,
+  unsubscribeRealtime,
+} from './client';
 import { migrateAppData } from './migrate';
-import type { AppData } from '@shared/types';
-import type { SyncState, SyncErrorCategory } from './types';
+import type { AppData, AppSettings } from '@shared/types';
+import { LOCAL_ONLY_SETTINGS_KEYS } from '@shared/types/constants';
+import type { SyncState, SyncErrorCategory, SyncOperation } from './types';
 import { getDefaultData } from '@shared/types/defaults';
+import {
+  getPendingOperations,
+  updateLastKnownRevision,
+  getLastKnownRevision,
+  getPendingCount,
+  ackOperations,
+  setOutboxOwner,
+  claimAndMergeOutbox,
+} from './outbox';
 
 let state: SyncState = { status: 'idle' };
-let pushQueue: AppData | null = null;
-let pushDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 let realtimeCleanup: (() => void) | null = null;
 let authUnsubscribe: (() => void) | null = null;
 let stateListeners: Array<(s: SyncState) => void> = [];
@@ -21,8 +33,7 @@ let remoteAppliedHandler: ((data: AppData) => void) | null = null;
 let syncNowInFlight = false;
 let syncChain: Promise<unknown> = Promise.resolve();
 let activeFullSync: { userId: string; promise: Promise<AppData> } | null = null;
-let pushRetryCount = 0;
-const MAX_PUSH_RETRIES = 5;
+let currentOwner: string | undefined;
 
 const OWNER_STASH_KEY = 'syncOwnerData';
 
@@ -100,9 +111,9 @@ function categorizeError(err: unknown): { message: string; category: SyncErrorCa
   }
 
   if (
-    message.includes('relation') && message.includes('does not exist') ||
+    (message.includes('relation') && message.includes('does not exist')) ||
     message.includes('42P01') ||
-    message.includes('table') && message.includes('missing')
+    (message.includes('table') && message.includes('missing'))
   ) {
     return { message: 'Sync: table missing, may need migration', category: 'table_missing' };
   }
@@ -119,17 +130,32 @@ function categorizeError(err: unknown): { message: string; category: SyncErrorCa
   return { message: `Sync: ${err instanceof Error ? err.message : 'unknown error'}`, category: 'unknown' };
 }
 
-function sameContent(a: AppData, b: AppData): boolean {
-  const aTombstones = a._tombstones;
-  const bTombstones = b._tombstones;
+function stableStringify(value: unknown): string {
+  return JSON.stringify(value, (_key, val) => {
+    if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
+      return Object.keys(val)
+        .sort()
+        .reduce<Record<string, unknown>>((sorted, k) => {
+          sorted[k] = (val as Record<string, unknown>)[k];
+          return sorted;
+        }, {});
+    }
+    return val;
+  });
+}
 
+function syncSettingsDigest(settings: AppSettings): string {
+  const clean = { ...settings };
+  for (const key of LOCAL_ONLY_SETTINGS_KEYS) {
+    delete clean[key];
+  }
+  return stableStringify(clean);
+}
+
+function sameContent(a: AppData, b: AppData): boolean {
   return (
-    JSON.stringify(a.boards) === JSON.stringify(b.boards) &&
-    JSON.stringify(a.settings) === JSON.stringify(b.settings) &&
-    JSON.stringify(aTombstones?.deletedBoards ?? {}) === JSON.stringify(bTombstones?.deletedBoards ?? {}) &&
-    JSON.stringify(aTombstones?.deletedWidgets ?? {}) === JSON.stringify(bTombstones?.deletedWidgets ?? {}) &&
-    JSON.stringify(aTombstones?.deletedLinks ?? {}) === JSON.stringify(bTombstones?.deletedLinks ?? {}) &&
-    JSON.stringify(aTombstones?.deletedTodos ?? {}) === JSON.stringify(bTombstones?.deletedTodos ?? {})
+    stableStringify(a.boards) === stableStringify(b.boards) &&
+    syncSettingsDigest(a.settings) === syncSettingsDigest(b.settings)
   );
 }
 
@@ -141,31 +167,6 @@ async function canSync(): Promise<boolean> {
   } catch {
     return false;
   }
-}
-
-async function doPull(userId: string): Promise<AppData | null> {
-  const result = await fetchRemote(userId);
-  if (!result.data) return null;
-  return migrateAppData(result.data, parseRemoteTimestamp(result.updatedAt));
-}
-
-function doMerge(local: AppData, remote: AppData, remoteUpdatedAt?: string): AppData {
-  // Realtime and older remote snapshots can arrive before the normal pull
-  // migration. Normalize both sides so IDs and timestamps are always present.
-  return mergeAppData(
-    migrateAppData(local),
-    migrateAppData(remote, parseRemoteTimestamp(remoteUpdatedAt)),
-  );
-}
-
-function parseRemoteTimestamp(value: string | null | undefined): number | undefined {
-  if (!value) return undefined;
-  const timestamp = Date.parse(value);
-  return Number.isFinite(timestamp) ? timestamp : undefined;
-}
-
-async function doPush(userId: string, data: AppData): Promise<void> {
-  await upsertRemote(userId, data);
 }
 
 function recordError(err: unknown, fallbackCategory?: SyncErrorCategory): void {
@@ -187,18 +188,24 @@ async function resolveOwnerForSync(
   userId: string,
 ): Promise<AppData> {
   if (!local._owner) {
+    currentOwner = userId;
+    setOutboxOwner(userId);
+    await claimAndMergeOutbox(userId);
     return { ...local, _owner: userId };
   }
   if (local._owner !== userId) {
-    // Account switch: never merge the previous owner's local data into this
-    // account. Stash it first so it can be restored when that user logs back in.
+    const previousOwner = currentOwner;
+    currentOwner = userId;
+    setOutboxOwner(userId);
+
     const stash = await readOwnerStash();
     try {
       stash[local._owner] = local;
-      const remote = await doPull(userId);
-      if (remote) {
+      const remote = await fetchRemote(userId);
+      if (remote.data) {
+        await updateLastKnownRevision(remote.revision, userId);
         await writeOwnerStash(capStash(stash));
-        return { ...remote, _owner: userId };
+        return { ...remote.data, _owner: userId };
       }
       const previous = stash[userId];
       await writeOwnerStash(capStash(stash));
@@ -208,6 +215,8 @@ async function resolveOwnerForSync(
       const defaults = migrateAppData(getDefaultData());
       return { ...defaults, _owner: userId };
     } catch (err) {
+      currentOwner = previousOwner;
+      setOutboxOwner(previousOwner);
       await writeOwnerStash(capStash(stash)).catch(() => undefined);
       const previous = stash[userId];
       if (previous) {
@@ -216,12 +225,368 @@ async function resolveOwnerForSync(
       throw err;
     }
   }
+  currentOwner = userId;
+  setOutboxOwner(userId);
+  await claimAndMergeOutbox(userId);
   return local;
 }
 
-async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<AppData> {
-  // Skip duplicate cycles for the same user (e.g. initializeSync running while
-  // the auth listener also fires with an INITIAL_SESSION event).
+function preserveLocalOnly(merged: AppData, source: AppData): AppData {
+  const result = { ...merged, settings: { ...merged.settings } };
+  for (const key of LOCAL_ONLY_SETTINGS_KEYS) {
+    if (key in source.settings) {
+      (result.settings as Record<string, unknown>)[key] = source.settings[key];
+    }
+  }
+  return result;
+}
+
+type ApplyResult = {
+  data: AppData;
+  unapplied: SyncOperation[];
+  appliedOpIds: Set<string>;
+};
+
+function applyOperationsToData(base: AppData, operations: SyncOperation[]): ApplyResult {
+  let data = structuredClone(base);
+  const unapplied: SyncOperation[] = [];
+  const appliedOpIds = new Set<string>();
+
+  for (const op of operations) {
+    try {
+      const result = applySingleOperation(data, op);
+      if (result) {
+        data = result;
+        appliedOpIds.add(op.opId);
+      } else {
+        unapplied.push(op);
+      }
+    } catch {
+      unapplied.push(op);
+    }
+  }
+
+  return { data, unapplied, appliedOpIds };
+}
+
+function applySingleOperation(data: AppData, op: SyncOperation): AppData | null {
+  switch (op.entity) {
+    case 'board': return applyBoardOp(data, op);
+    case 'widget': return applyWidgetOp(data, op);
+    case 'link': return applyLinkOp(data, op);
+    case 'todo': return applyTodoOp(data, op);
+    case 'settings': return applySettingsOp(data, op);
+    case 'themeConfig': return applyThemeConfigOp(data, op);
+    case 'topWidgets': return applyTopWidgetsOp(data, op);
+    default: return null;
+  }
+}
+
+function applyBoardOp(data: AppData, op: SyncOperation): AppData | null {
+  const boardId = op.entityId;
+  if (op.action === 'put') {
+    const board = op.payload as AppData['boards'][number];
+    const existing = data.boards.findIndex((b) => b.id === boardId);
+    if (existing >= 0) {
+      const boards = [...data.boards];
+      boards[existing] = { ...board, updatedAt: Date.now() };
+      return { ...data, boards };
+    }
+    return { ...data, boards: [...data.boards, { ...board, updatedAt: Date.now() }] };
+  }
+  if (op.action === 'patch') {
+    const idx = data.boards.findIndex((b) => b.id === boardId);
+    if (idx < 0) return null;
+    const boards = [...data.boards];
+    boards[idx] = { ...boards[idx], ...(op.payload as object), updatedAt: Date.now() };
+    return { ...data, boards };
+  }
+  if (op.action === 'delete') {
+    const idx = data.boards.findIndex((b) => b.id === boardId);
+    if (idx < 0) return data;
+    const boards = data.boards.filter((b) => b.id !== boardId);
+    return { ...data, boards, settings: { ...data.settings, lastBoardId: boards[0]?.id } };
+  }
+  if (op.action === 'move') {
+    const { toIndex } = op.payload as { toIndex: number };
+    const idx = data.boards.findIndex((b) => b.id === boardId);
+    if (idx < 0) return null;
+    const clamped = Math.max(0, Math.min(toIndex, data.boards.length - 1));
+    if (idx === clamped) return data;
+    const boards = [...data.boards];
+    const [moved] = boards.splice(idx, 1);
+    boards.splice(clamped, 0, moved);
+    return { ...data, boards };
+  }
+  return null;
+}
+
+// --- widget/link/todo/settings/themeConfig/topWidgets apply functions unchanged ---
+
+function applyWidgetOp(data: AppData, op: SyncOperation): AppData | null {
+  const parts = op.entityId.split('/');
+  const boardId = parts[0];
+  const widgetId = parts[1];
+  const boardIdx = data.boards.findIndex((b) => b.id === boardId);
+  if (boardIdx < 0) return null;
+  const board = data.boards[boardIdx];
+
+  if (op.action === 'put') {
+    const widget = op.payload as AppData['boards'][number]['widgets'][number];
+    const existingIdx = board.widgets.findIndex((w) => w.id === widgetId);
+    const widgets = [...board.widgets];
+    if (existingIdx >= 0) {
+      widgets[existingIdx] = { ...widget, updatedAt: Date.now() };
+    } else {
+      widgets.push({ ...widget, updatedAt: Date.now() });
+    }
+    const boards = [...data.boards];
+    boards[boardIdx] = { ...board, widgets, updatedAt: Date.now() };
+    return { ...data, boards };
+  }
+  if (op.action === 'patch') {
+    const wIdx = board.widgets.findIndex((w) => w.id === widgetId);
+    if (wIdx < 0) return null;
+    const widgets = [...board.widgets];
+    widgets[wIdx] = { ...widgets[wIdx], ...(op.payload as object), updatedAt: Date.now() };
+    const boards = [...data.boards];
+    boards[boardIdx] = { ...board, widgets, updatedAt: Date.now() };
+    return { ...data, boards };
+  }
+  if (op.action === 'delete') {
+    const wIdx = board.widgets.findIndex((w) => w.id === widgetId);
+    if (wIdx < 0) return data;
+    const widgets = board.widgets.filter((w) => w.id !== widgetId);
+    const boards = [...data.boards];
+    boards[boardIdx] = { ...board, widgets, updatedAt: Date.now() };
+    return { ...data, boards };
+  }
+  if (op.action === 'move') {
+    const { toIndex, col, layoutColumns } = op.payload as { toIndex: number; col?: number; layoutColumns?: number };
+    const wIdx = board.widgets.findIndex((w) => w.id === widgetId);
+    if (wIdx < 0) return null;
+    const widgets = [...board.widgets];
+    widgets[wIdx] = { ...widgets[wIdx], order: toIndex, updatedAt: Date.now() };
+    if (col !== undefined) (widgets[wIdx] as unknown as Record<string, unknown>).col = col;
+    if (layoutColumns !== undefined) (widgets[wIdx] as unknown as Record<string, unknown>).layoutColumns = layoutColumns;
+    const boards = [...data.boards];
+    boards[boardIdx] = { ...board, widgets, updatedAt: Date.now() };
+    return { ...data, boards };
+  }
+  return null;
+}
+
+function applyLinkOp(data: AppData, op: SyncOperation): AppData | null {
+  const parts = op.entityId.split('/');
+  const boardId = parts[0];
+  const widgetId = parts[1];
+  const linkId = parts[2];
+  const boardIdx = data.boards.findIndex((b) => b.id === boardId);
+  if (boardIdx < 0) return null;
+  const board = data.boards[boardIdx];
+  const widgetIdx = board.widgets.findIndex((w) => w.id === widgetId);
+  if (widgetIdx < 0) return null;
+  const widget = board.widgets[widgetIdx];
+  if (widget.type !== 'links') return null;
+
+  if (op.action === 'put') {
+    const link = op.payload as Record<string, unknown>;
+    const existingIdx = widget.items.findIndex((l) => l.id === linkId);
+    const items = [...widget.items];
+    if (existingIdx >= 0) {
+      items[existingIdx] = { ...link, id: linkId, createdAt: (link.createdAt as number) ?? Date.now(), updatedAt: Date.now() } as typeof widget.items[number];
+    } else {
+      items.push({ ...link, id: linkId, createdAt: (link.createdAt as number) ?? Date.now(), updatedAt: Date.now() } as typeof widget.items[number]);
+    }
+    const widgets = [...board.widgets];
+    widgets[widgetIdx] = { ...widget, items };
+    const boards = [...data.boards];
+    boards[boardIdx] = { ...board, widgets, updatedAt: Date.now() };
+    return { ...data, boards };
+  }
+  if (op.action === 'patch') {
+    const lIdx = widget.items.findIndex((l) => l.id === linkId);
+    if (lIdx < 0) return null;
+    const items = [...widget.items];
+    items[lIdx] = { ...items[lIdx], ...(op.payload as object), updatedAt: Date.now() };
+    const widgets = [...board.widgets];
+    widgets[widgetIdx] = { ...widget, items };
+    const boards = [...data.boards];
+    boards[boardIdx] = { ...board, widgets, updatedAt: Date.now() };
+    return { ...data, boards };
+  }
+  if (op.action === 'delete') {
+    const lIdx = widget.items.findIndex((l) => l.id === linkId);
+    if (lIdx < 0) return data;
+    const items = widget.items.filter((l) => l.id !== linkId);
+    const widgets = [...board.widgets];
+    widgets[widgetIdx] = { ...widget, items };
+    const boards = [...data.boards];
+    boards[boardIdx] = { ...board, widgets, updatedAt: Date.now() };
+    return { ...data, boards };
+  }
+  if (op.action === 'move') {
+    const { toWidgetId, toIndex } = op.payload as { toWidgetId: string; toIndex: number };
+    const lIdx = widget.items.findIndex((l) => l.id === linkId);
+    if (lIdx < 0) return null;
+    const link = widget.items[lIdx];
+
+    let boards = [...data.boards];
+    const sourceWidgets = [...board.widgets];
+    const sourceWidget = sourceWidgets[widgetIdx];
+    if (sourceWidget.type !== 'links') return null;
+    sourceWidgets[widgetIdx] = { ...sourceWidget, items: sourceWidget.items.filter((l) => l.id !== linkId) };
+    boards[boardIdx] = { ...board, widgets: sourceWidgets, updatedAt: Date.now() };
+
+    const targetWIdx = boards[boardIdx].widgets.findIndex((w) => w.id === toWidgetId);
+    if (targetWIdx < 0) return null;
+    const targetWidget = boards[boardIdx].widgets[targetWIdx];
+    if (targetWidget.type !== 'links') return null;
+    const targetItems = [...targetWidget.items];
+    targetItems.splice(Math.min(toIndex, targetItems.length), 0, link);
+    const finalWidgets = [...boards[boardIdx].widgets];
+    finalWidgets[targetWIdx] = { ...targetWidget, items: targetItems };
+
+    const finalBoards = [...data.boards];
+    finalBoards[boardIdx] = { ...boards[boardIdx], widgets: finalWidgets, updatedAt: Date.now() };
+    return { ...data, boards: finalBoards };
+  }
+  return null;
+}
+
+function applyTodoOp(data: AppData, op: SyncOperation): AppData | null {
+  const parts = op.entityId.split('/');
+  const boardId = parts[0];
+  const widgetId = parts[1];
+  const todoId = parts[2];
+  const boardIdx = data.boards.findIndex((b) => b.id === boardId);
+  if (boardIdx < 0) return null;
+  const board = data.boards[boardIdx];
+  const widgetIdx = board.widgets.findIndex((w) => w.id === widgetId);
+  if (widgetIdx < 0) return null;
+  const widget = board.widgets[widgetIdx];
+  if (widget.type !== 'todo') return null;
+
+  if (op.action === 'put') {
+    const todo = op.payload as Record<string, unknown>;
+    const existingIdx = widget.items.findIndex((t) => t.id === todoId);
+    const items = [...widget.items];
+    if (existingIdx >= 0) {
+      items[existingIdx] = { ...todo, id: todoId, createdAt: (todo.createdAt as number) ?? Date.now(), updatedAt: Date.now() } as typeof widget.items[number];
+    } else {
+      items.push({ ...todo, id: todoId, createdAt: (todo.createdAt as number) ?? Date.now(), updatedAt: Date.now() } as typeof widget.items[number]);
+    }
+    const widgets = [...board.widgets];
+    widgets[widgetIdx] = { ...widget, items };
+    const boards = [...data.boards];
+    boards[boardIdx] = { ...board, widgets, updatedAt: Date.now() };
+    return { ...data, boards };
+  }
+  if (op.action === 'patch') {
+    const tIdx = widget.items.findIndex((t) => t.id === todoId);
+    if (tIdx < 0) return null;
+    const items = [...widget.items];
+    items[tIdx] = { ...items[tIdx], ...(op.payload as object), updatedAt: Date.now() };
+    const widgets = [...board.widgets];
+    widgets[widgetIdx] = { ...widget, items };
+    const boards = [...data.boards];
+    boards[boardIdx] = { ...board, widgets, updatedAt: Date.now() };
+    return { ...data, boards };
+  }
+  if (op.action === 'delete') {
+    const tIdx = widget.items.findIndex((t) => t.id === todoId);
+    if (tIdx < 0) return data;
+    const items = widget.items.filter((t) => t.id !== todoId);
+    const widgets = [...board.widgets];
+    widgets[widgetIdx] = { ...widget, items };
+    const boards = [...data.boards];
+    boards[boardIdx] = { ...board, widgets, updatedAt: Date.now() };
+    return { ...data, boards };
+  }
+  if (op.action === 'move') {
+    const { toWidgetId, toIndex } = op.payload as { toWidgetId: string; toIndex: number };
+    const tIdx = widget.items.findIndex((t) => t.id === todoId);
+    if (tIdx < 0) return null;
+    const todo = widget.items[tIdx];
+
+    let boards = [...data.boards];
+    const sourceWidgets = [...board.widgets];
+    const sourceWidget = sourceWidgets[widgetIdx];
+    if (sourceWidget.type !== 'todo') return null;
+    sourceWidgets[widgetIdx] = { ...sourceWidget, items: sourceWidget.items.filter((t) => t.id !== todoId) };
+    boards[boardIdx] = { ...board, widgets: sourceWidgets, updatedAt: Date.now() };
+
+    const targetWIdx = boards[boardIdx].widgets.findIndex((w) => w.id === toWidgetId);
+    if (targetWIdx < 0) return null;
+    const targetWidget = boards[boardIdx].widgets[targetWIdx];
+    if (targetWidget.type !== 'todo') return null;
+    const targetItems = [...targetWidget.items];
+    targetItems.splice(Math.min(toIndex, targetItems.length), 0, todo);
+    const finalWidgets = [...boards[boardIdx].widgets];
+    finalWidgets[targetWIdx] = { ...targetWidget, items: targetItems };
+
+    const finalBoards = [...data.boards];
+    finalBoards[boardIdx] = { ...boards[boardIdx], widgets: finalWidgets, updatedAt: Date.now() };
+    return { ...data, boards: finalBoards };
+  }
+  return null;
+}
+
+function applySettingsOp(data: AppData, op: SyncOperation): AppData | null {
+  if (op.action === 'put' || op.action === 'patch') {
+    const payload = op.payload as Partial<AppSettings>;
+    const syncPayload: Partial<AppSettings> = { ...payload };
+    for (const key of LOCAL_ONLY_SETTINGS_KEYS) {
+      delete syncPayload[key];
+    }
+    if (Object.keys(syncPayload).length === 0) return data;
+    return { ...data, settings: { ...data.settings, ...syncPayload }, settingsUpdatedAt: Date.now() };
+  }
+  return null;
+}
+
+function applyThemeConfigOp(data: AppData, op: SyncOperation): AppData | null {
+  if (op.action === 'put' || op.action === 'patch') {
+    return { ...data, settings: { ...data.settings, themeConfig: op.payload as AppSettings['themeConfig'] }, settingsUpdatedAt: Date.now() };
+  }
+  return null;
+}
+
+function applyTopWidgetsOp(data: AppData, op: SyncOperation): AppData | null {
+  if (op.action === 'put' || op.action === 'patch') {
+    return { ...data, settings: { ...data.settings, topWidgets: op.payload as AppSettings['topWidgets'] }, settingsUpdatedAt: Date.now() };
+  }
+  return null;
+}
+
+async function pushAndAck(
+  userId: string,
+  data: AppData,
+  baseRevision: number,
+  appliedOpIds: Set<string>,
+): Promise<{ accepted: boolean; revision: number }> {
+  const pushResult = await pushSnapshotWithRevision(userId, data, baseRevision);
+  if (pushResult.accepted) {
+    if (appliedOpIds.size > 0) {
+      await ackOperations(appliedOpIds, pushResult.revision, userId);
+    }
+    setState({ lastSyncAt: Date.now() });
+  }
+  return { accepted: pushResult.accepted, revision: pushResult.revision };
+}
+
+async function applyNewOperationsAfterPush(
+  userId: string,
+  merged: AppData,
+): Promise<AppData> {
+  const live = await currentLocalData();
+  const freshOps = await getPendingOperations(userId);
+  if (freshOps.length === 0) return preserveLocalOnly(merged, live);
+  const applied = applyOperationsToData(merged, freshOps);
+  return preserveLocalOnly(applied.data, live);
+}
+
+async function revisionSyncCycle(userId: string, incomingLocal?: AppData): Promise<AppData> {
   if (activeFullSync?.userId === userId) {
     return activeFullSync.promise;
   }
@@ -230,47 +595,93 @@ async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<A
     let local = incomingLocal ?? (await currentLocalData());
     local = migrateAppData(local);
 
-    const remote = await doPull(userId);
-    let remoteChanged = false;
+    const knownRevision = await getLastKnownRevision(userId);
+    const pendingOps = await getPendingOperations(userId);
+    const remote = await fetchRemote(userId);
+
     let merged: AppData;
 
-    if (remote) {
-      merged = doMerge(local, remote);
-      remoteChanged = !sameContent(merged, local);
-    } else {
-      merged = local;
-    }
+    if (remote.data) {
+      const remoteRevision = remote.revision;
+      let appliedOpIds = new Set<string>();
 
-    merged = { ...merged, _owner: userId };
-
-    // Re-incorporate edits made while the network round-trip was in flight:
-    // otherwise the cycle applies (and pushes) a stale snapshot and clobbers
-    // concurrent local edits through saveData / remoteAppliedHandler.
-    const live = await currentLocalData();
-    if (live && !sameContent(live, local)) {
-      merged = doMerge(merged, migrateAppData(live));
-      merged = { ...merged, _owner: userId };
-    }
-
-    await saveData(merged);
-    if (remoteChanged) {
-      setState({ lastPullAt: Date.now() });
-    }
-    remoteAppliedHandler?.(merged);
-
-    if (remote) {
-      if (!sameContent(merged, remote)) {
-        await doPush(userId, merged);
+      if (pendingOps.length > 0) {
+        const applied = applyOperationsToData(remote.data, pendingOps);
+        merged = applied.data;
+        appliedOpIds = applied.appliedOpIds;
+      } else {
+        merged = { ...remote.data };
       }
+      merged = { ...merged, _owner: userId };
+      merged = preserveLocalOnly(merged, await currentLocalData() ?? local);
+
+      await updateLastKnownRevision(remoteRevision, userId);
+
+      const shouldPush = appliedOpIds.size > 0 || !sameContent(merged, remote.data);
+
+      if (shouldPush) {
+        try {
+          const result = await pushAndAck(userId, merged, remoteRevision, appliedOpIds);
+          if (!result.accepted) {
+            const freshRemote = await fetchRemote(userId);
+            if (freshRemote.data) {
+              const freshOps = await getPendingOperations(userId);
+              const rebased = applyOperationsToData(freshRemote.data, freshOps);
+              merged = rebased.data;
+              merged = { ...merged, _owner: userId };
+              merged = preserveLocalOnly(merged, await currentLocalData() ?? local);
+              await updateLastKnownRevision(freshRemote.revision, userId);
+              const retryResult = await pushAndAck(userId, merged, freshRemote.revision, rebased.appliedOpIds);
+              if (!retryResult.accepted) {
+                logError('revisionSyncCycle', new Error('Second retry also stale — keeping outbox, will retry later'));
+              }
+            }
+          }
+        } catch {
+          // Push failed, outbox preserved for next sync
+        }
+      }
+
+      merged = await applyNewOperationsAfterPush(userId, merged);
+      await saveData(merged);
+      if (remoteRevision > knownRevision) {
+        setState({ lastPullAt: Date.now() });
+      }
+      remoteAppliedHandler?.(merged);
     } else {
-      await doPush(userId, merged);
+      // No remote data
+      if (pendingOps.length > 0) {
+        const applied = applyOperationsToData(local, pendingOps);
+        merged = applied.data;
+        const appliedOpIds = applied.appliedOpIds;
+        merged = { ...merged, _owner: userId };
+
+        if (appliedOpIds.size > 0) {
+          try {
+            await pushAndAck(userId, merged, 0, appliedOpIds);
+          } catch {
+            // Will retry on next sync
+          }
+        }
+
+        merged = await applyNewOperationsAfterPush(userId, merged);
+        await saveData(merged);
+      } else {
+        // Nothing to sync — push initial snapshot so account has data
+        merged = { ...local, _owner: userId };
+        try {
+          await pushAndAck(userId, merged, 0, new Set());
+        } catch {
+          // Initial push can wait
+        }
+        await saveData(merged);
+      }
     }
 
+    await updatePendingCount();
     return merged;
   };
 
-  // Serialize cycles so concurrent runs for different accounts cannot
-  // overwrite each other's local snapshot (last-writer-wins on shared storage).
   const promise = syncChain.then(run, run);
   syncChain = promise.then(() => undefined, () => undefined);
   activeFullSync = { userId, promise };
@@ -280,6 +691,22 @@ async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<A
     if (activeFullSync?.promise === promise) {
       activeFullSync = null;
     }
+  }
+}
+
+async function updatePendingCount(): Promise<void> {
+  const count = await getPendingCount(currentOwner);
+  setState({ pendingOperations: count });
+}
+
+async function drainOutbox(userId: string): Promise<void> {
+  setState({ status: 'syncing' });
+  try {
+    await updatePendingCount();
+    await revisionSyncCycle(userId);
+    setState({ status: 'idle' });
+  } catch (err) {
+    recordError(err);
   }
 }
 
@@ -299,6 +726,7 @@ export function syncNow(): void {
       const can = await canSync();
       if (!can) {
         setState({ status: 'idle' });
+        await updatePendingCount();
         return;
       }
 
@@ -315,13 +743,8 @@ export function syncNow(): void {
 
       startRealtime(userId);
 
-      const merged = await fullSyncCycle(userId, local);
-
+      await drainOutbox(userId);
       setState({ status: 'idle', lastSyncAt: Date.now() });
-
-      if (!sameContent(merged, local)) {
-        remoteAppliedHandler?.(merged);
-      }
     } catch (err) {
       recordError(err);
     } finally {
@@ -336,6 +759,7 @@ export async function initializeSync(initialData?: AppData): Promise<AppData> {
 
   if (!supabase) {
     setState({ status: 'idle' });
+    await updatePendingCount();
     return local;
   }
 
@@ -344,6 +768,7 @@ export async function initializeSync(initialData?: AppData): Promise<AppData> {
   const can = await canSync();
   if (!can) {
     setState({ status: 'idle' });
+    await updatePendingCount();
     return local;
   }
 
@@ -357,85 +782,56 @@ export async function initializeSync(initialData?: AppData): Promise<AppData> {
     }
 
     const userId = session.user.id;
-
     local = await resolveOwnerForSync(local, userId);
 
     startRealtime(userId);
 
-    local = await fullSyncCycle(userId, local);
+    local = await revisionSyncCycle(userId, local);
 
     setState({ status: 'idle', lastSyncAt: Date.now() });
+    await updatePendingCount();
     return local;
   } catch (err) {
     recordError(err);
+    await updatePendingCount();
     return local;
   }
 }
 
-export function queuePush(data: AppData): void {
-  pushQueue = data;
-
-  if (pushDebounceTimer) {
-    clearTimeout(pushDebounceTimer);
-  }
-
-  pushDebounceTimer = setTimeout(() => {
-    pushDebounceTimer = null;
-    void flushPushQueue();
-  }, 2000);
+export function notifyLocalMutation(): void {
+  updatePendingCount().catch(() => undefined);
 }
 
-async function flushPushQueue(): Promise<void> {
-  const data = pushQueue;
-  pushQueue = null;
-  if (!data) return;
-
-  try {
-    const can = await canSync();
-    if (!can) return;
-
-    const session = await getSession();
-    if (!session?.user) return;
-
-    const fresh = await currentLocalData();
-    // Only push data already claimed by this account. Unclaimed (visitor) or
-    // other-owner data must go through a sync cycle so it is merged first —
-    // a raw upsert here could overwrite the account's remote layout.
-    if (fresh._owner !== session.user.id) {
-      pushRetryCount = 0;
-      return;
-    }
-    await doPush(session.user.id, fresh);
-    pushRetryCount = 0;
-    setState({ status: 'idle', lastSyncAt: Date.now() });
-  } catch (err) {
-    logError('push failed', err);
-    pushRetryCount += 1;
-    if (pushRetryCount <= MAX_PUSH_RETRIES) {
-      queuePush(data);
-    } else {
-      pushRetryCount = 0;
-    }
-  }
-}
-
-async function handleRemoteChange(userId: string, remote: AppData, remoteUpdatedAt?: string): Promise<void> {
+async function handleRemoteChange(userId: string, remote: AppData, remoteRevision: number, _remoteUpdatedAt?: string): Promise<void> {
   try {
     const session = await getSession();
     if (!session?.user || session.user.id !== userId) return;
 
+    const can = await canSync();
+    if (!can) return;
+
     const local = await currentLocalData();
     if (local._owner && local._owner !== userId) return;
 
-    const merged = doMerge(local, remote, remoteUpdatedAt);
+    const pendingOps = await getPendingOperations(userId);
+    let merged: AppData;
+
+    if (pendingOps.length > 0) {
+      const applied = applyOperationsToData(remote, pendingOps);
+      merged = applied.data;
+    } else {
+      merged = { ...remote };
+    }
+
+    merged = { ...merged, _owner: userId };
+    merged = preserveLocalOnly(merged, await currentLocalData() ?? local);
+
     if (sameContent(merged, local)) return;
+
+    await updateLastKnownRevision(remoteRevision, userId);
     await saveData(merged);
     remoteAppliedHandler?.(merged);
-    if (!sameContent(merged, remote)) {
-        if (session?.user && (!merged._owner || merged._owner === session.user.id)) {
-          await doPush(session.user.id, merged);
-      }
-    }
+
     const syncedAt = Date.now();
     setState({ lastPullAt: syncedAt, lastSyncAt: syncedAt });
   } catch (err) {
@@ -445,8 +841,8 @@ async function handleRemoteChange(userId: string, remote: AppData, remoteUpdated
 
 function startRealtime(userId: string): void {
   try {
-    realtimeCleanup = subscribeToRealtime(userId, (remote, remoteUpdatedAt) => {
-      void handleRemoteChange(userId, remote, remoteUpdatedAt);
+    realtimeCleanup = subscribeToRealtime(userId, (remote, revision, updatedAt) => {
+      void handleRemoteChange(userId, remote, revision, updatedAt);
     });
   } catch {
     // Realtime not available, fall back to pull-based sync
@@ -476,13 +872,9 @@ function startAuthListener(): void {
           let local = await currentLocalData();
           local = await resolveOwnerForSync(local, userId);
 
-          const merged = await fullSyncCycle(userId, local);
-
-          if (!sameContent(merged, local)) {
-            remoteAppliedHandler?.(merged);
-          }
-
           startRealtime(userId);
+
+          await drainOutbox(userId);
         } catch (err) {
           logError('auth change failed', err);
         }
@@ -506,11 +898,7 @@ export async function syncOnOnline(): Promise<void> {
     let local = await currentLocalData();
     local = await resolveOwnerForSync(local, userId);
 
-    const merged = await fullSyncCycle(userId, local);
-
-    if (!sameContent(merged, local)) {
-      remoteAppliedHandler?.(merged);
-    }
+    await drainOutbox(userId);
 
     setState({ status: 'idle', lastSyncAt: Date.now() });
   } catch (err) {
@@ -541,10 +929,6 @@ export function setupOnlineListener(): () => void {
 }
 
 export function cleanup(): void {
-  if (pushDebounceTimer) {
-    clearTimeout(pushDebounceTimer);
-    pushDebounceTimer = null;
-  }
   if (realtimeCleanup) {
     realtimeCleanup();
     realtimeCleanup = null;
@@ -557,7 +941,7 @@ export function cleanup(): void {
   localDataProvider = null;
   remoteAppliedHandler = null;
   syncNowInFlight = false;
-  pushQueue = null;
-  pushRetryCount = 0;
+  currentOwner = undefined;
+  setOutboxOwner(undefined);
   setState({ status: 'idle' });
 }

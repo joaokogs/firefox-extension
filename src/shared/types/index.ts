@@ -76,6 +76,7 @@ export interface ThemeConfig {
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system';
   wallpaper: WallpaperSetting;
+  themeConfig?: Omit<ThemeConfig, 'derivedFromWallpaper'>;
   lastBoardId?: string;
   topWidgets?: TopWidgetConfig[];
   editMode?: boolean;

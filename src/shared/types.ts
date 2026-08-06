@@ -27,6 +27,7 @@ export {
   DARK_THEME,
   SEARCH_ENGINES,
   DEFAULT_WALLPAPERS,
+  LOCAL_ONLY_SETTINGS_KEYS,
 } from './types/constants';
 
 export {

@@ -13,6 +13,9 @@ import { useI18n } from '@shared/i18n';
 import { Menu, Settings, Plus, ExternalLink, Pencil, Trash2 } from 'lucide-preact';
 import { LinkDialog } from './components/LinkDialog';
 import { WidgetDialog } from './components/WidgetDialog';
+import { recordOperation, setOutboxOwner } from '@shared/sync/outbox';
+import { notifyLocalMutation } from '@shared/sync';
+import { getSession } from '@shared/auth/auth';
 
 type DialogMode = 'add-link' | { edit: string } | 'widget';
 
@@ -26,9 +29,17 @@ export function Popup() {
   const { t } = useI18n();
 
   useEffect(() => {
-    loadData().then((loaded) => {
+    loadData().then(async (loaded) => {
       setData(loaded);
       setActiveBoardId(getInitialBoardId(loaded));
+      if (loaded._owner) {
+        setOutboxOwner(loaded._owner);
+      } else {
+        try {
+          const session = await getSession();
+          if (session?.user) setOutboxOwner(session.user.id);
+        } catch { /* supabase not configured */ }
+      }
     });
     queryActiveTab().then(setTabInfo);
   }, []);
@@ -62,15 +73,19 @@ export function Popup() {
       const widget = createWidget('links', activeBoard?.title || 'Links');
       next = addWidget(next, activeBoardId, widget);
       widgetId = widget.id;
+      const inserted = next.boards.find((b) => b.id === activeBoardId)?.widgets.find((w) => w.id === widgetId);
+      if (inserted) await recordOperation('widget', `${activeBoardId}/${widgetId}`, 'put', inserted);
     }
 
     const link = createLink(tabInfo.title, tabInfo.url);
     if (tabInfo.favicon) link.favicon = tabInfo.favicon;
     next = addLink(next, activeBoardId, widgetId, link);
+    await recordOperation('link', `${activeBoardId}/${widgetId}/${link.id}`, 'put', link);
 
     await saveData(next);
     setData(next);
     setStatus('saved');
+    notifyLocalMutation();
     setTimeout(() => window.close(), 900);
   };
 
@@ -85,13 +100,17 @@ export function Popup() {
       next = addWidget(next, activeBoardId, widget);
       widgetId = widget.id;
       setSelectedWidgetId(widgetId);
+      const inserted = next.boards.find((b) => b.id === activeBoardId)?.widgets.find((w) => w.id === widgetId);
+      if (inserted) await recordOperation('widget', `${activeBoardId}/${widgetId}`, 'put', inserted);
     }
 
     const link = createLink(title, url);
     next = addLink(next, activeBoardId, widgetId, link);
+    await recordOperation('link', `${activeBoardId}/${widgetId}/${link.id}`, 'put', link);
 
     await saveData(next);
     setData(next);
+    notifyLocalMutation();
     setDialog(null);
   };
 
@@ -99,8 +118,10 @@ export function Popup() {
     if (!data || !activeBoardId || !selectedWidgetId) return;
 
     const next = updateLink(data, activeBoardId, selectedWidgetId, linkId, { title, url });
+    await recordOperation('link', `${activeBoardId}/${selectedWidgetId}/${linkId}`, 'patch', { title, url });
     await saveData(next);
     setData(next);
+    notifyLocalMutation();
     setDialog(null);
   };
 
@@ -108,16 +129,20 @@ export function Popup() {
     if (!data || !activeBoardId || !selectedWidgetId) return;
 
     const next = deleteLink(data, activeBoardId, selectedWidgetId, linkId);
+    await recordOperation('link', `${activeBoardId}/${selectedWidgetId}/${linkId}`, 'delete', null);
     await saveData(next);
     setData(next);
+    notifyLocalMutation();
   };
 
   const handleWidgetSave = async (title: string) => {
     if (!data || !activeBoardId || !selectedWidgetId) return;
 
     const next = updateWidget(data, activeBoardId, selectedWidgetId, { title });
+    await recordOperation('widget', `${activeBoardId}/${selectedWidgetId}`, 'patch', { title });
     await saveData(next);
     setData(next);
+    notifyLocalMutation();
     setDialog(null);
   };
 
@@ -125,10 +150,12 @@ export function Popup() {
     if (!data || !activeBoardId || !selectedWidgetId) return;
 
     let next = deleteWidget(data, activeBoardId, selectedWidgetId);
+    await recordOperation('widget', `${activeBoardId}/${selectedWidgetId}`, 'delete', null);
     const remaining = getWidgetsForBoard(next, activeBoardId).filter((w): w is LinksWidget => w.type === 'links');
     setSelectedWidgetId(remaining[0]?.id);
     await saveData(next);
     setData(next);
+    notifyLocalMutation();
     setDialog(null);
   };
 

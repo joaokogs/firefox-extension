@@ -1,19 +1,20 @@
 import { getSupabaseClient } from '@shared/supabase/client';
 import type { AppData } from '@shared/types';
+import { LOCAL_ONLY_SETTINGS_KEYS } from '@shared/types/constants';
 import type { RemoteTemplate } from './types';
 
 const TABLE = 'user_templates';
 
-export async function fetchRemote(userId: string): Promise<{ data: AppData | null; updatedAt: string | null }> {
+export async function fetchRemote(userId: string): Promise<{ data: AppData | null; revision: number; updatedAt: string | null }> {
   const { data, error } = await getSupabaseClient()
     .from(TABLE)
-    .select('data, updated_at')
+    .select('data, revision, updated_at')
     .eq('user_id', userId)
     .maybeSingle();
 
   if (error) throw error;
 
-  if (!data) return { data: null, updatedAt: null };
+  if (!data) return { data: null, revision: 0, updatedAt: null };
 
   const remoteData = (data as RemoteTemplate).data;
   if (!isAppData(remoteData)) {
@@ -22,6 +23,7 @@ export async function fetchRemote(userId: string): Promise<{ data: AppData | nul
 
   return {
     data: remoteData,
+    revision: (data as RemoteTemplate).revision ?? 0,
     updatedAt: (data as RemoteTemplate).updated_at,
   };
 }
@@ -45,36 +47,51 @@ export function isAppData(value: unknown): value is AppData {
   });
 }
 
-export async function upsertRemote(userId: string, appData: AppData): Promise<string> {
+export interface SyncPushResult {
+  accepted: boolean;
+  revision: number;
+  snapshot?: AppData;
+}
+
+export async function pushSnapshotWithRevision(
+  userId: string,
+  appData: AppData,
+  baseRevision: number,
+): Promise<SyncPushResult> {
   const clean = cleanForRemote(appData);
 
   const { data, error } = await getSupabaseClient()
-    .from(TABLE)
-    .upsert(
-      {
-        user_id: userId,
-        data: clean,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'user_id' },
-    )
-    .select('updated_at')
-    .single();
+    .rpc('sync_data', {
+      user_id_param: userId,
+      new_data: clean,
+      base_revision: baseRevision,
+    });
 
   if (error) throw error;
-  return (data as RemoteTemplate).updated_at;
+
+  const result = data as { accepted: boolean; revision: number; snapshot?: AppData };
+
+  if (!result.accepted && result.snapshot && !isAppData(result.snapshot)) {
+    throw new Error('SYNC_INVALID_REMOTE_DATA');
+  }
+
+  return result;
 }
 
-function cleanForRemote(data: AppData): Omit<AppData, 'lastSyncedAt' | '_owner'> {
-  const { lastSyncedAt, _owner, ...rest } = data;
-  return rest;
+function cleanForRemote(data: AppData): Omit<AppData, 'lastSyncedAt' | '_owner' | '_tombstones'> {
+  const { lastSyncedAt, _owner, _tombstones, settings, ...rest } = data;
+  const cleanSettings = { ...settings };
+  for (const key of LOCAL_ONLY_SETTINGS_KEYS) {
+    delete cleanSettings[key];
+  }
+  return { ...rest, settings: cleanSettings } as Omit<AppData, 'lastSyncedAt' | '_owner' | '_tombstones'>;
 }
 
 let channelCleanup: (() => void) | null = null;
 
 export function subscribeToRealtime(
   userId: string,
-  onRemoteChange: (data: AppData, updatedAt: string) => void,
+  onRemoteChange: (data: AppData, revision: number, updatedAt: string) => void,
 ): () => void {
   unsubscribeRealtime();
 
@@ -94,7 +111,7 @@ export function subscribeToRealtime(
         const newRecord = payload.new as RemoteTemplate | undefined;
         if (!newRecord?.data) return;
         if (!isAppData(newRecord.data)) return;
-        onRemoteChange(newRecord.data, newRecord.updated_at);
+        onRemoteChange(newRecord.data, newRecord.revision ?? 0, newRecord.updated_at);
       },
     )
     .subscribe((status) => {

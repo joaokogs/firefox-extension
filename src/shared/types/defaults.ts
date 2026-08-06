@@ -1,5 +1,5 @@
 import type { Board, AppData } from './index';
-import { DEFAULT_WALLPAPERS } from './constants';
+import { DEFAULT_WALLPAPERS, DEFAULT_THEME } from './constants';
 
 export function generateId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
@@ -80,6 +80,12 @@ export function getDefaultData(): AppData {
         { type: 'clock' },
         { type: 'search' }
       ],
+      themeConfig: {
+        primaryColor: DEFAULT_THEME.primaryColor,
+        boardColor: DEFAULT_THEME.boardColor,
+        boardOpacity: DEFAULT_THEME.boardOpacity,
+        boardBlur: DEFAULT_THEME.boardBlur,
+      },
       editMode: true,
       openInNewTab: true,
       lastBoardId: 'board-home',

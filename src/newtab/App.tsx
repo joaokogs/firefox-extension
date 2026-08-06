@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Settings, Menu, Plus, Palette, User } from 'lucide-preact';
-import type { AppData, UploadedBackground, Widget, WidgetType, TopWidgetConfig, SearchEngine } from '@shared/types';
-import { DEFAULT_WALLPAPERS, SEARCH_ENGINES } from '@shared/types/constants';
+import type { AppData, ThemeConfig, UploadedBackground, Widget, WidgetType, TopWidgetConfig, SearchEngine } from '@shared/types';
+import { DEFAULT_WALLPAPERS, SEARCH_ENGINES, LOCAL_ONLY_SETTINGS_KEYS } from '@shared/types/constants';
 import { useI18n, setLocale as setI18nLocale } from '@shared/i18n';
 import {
   loadData,
@@ -35,7 +35,7 @@ import { browser, openUrl } from '@shared/browser';
 import type { Bookmarks, Storage } from 'webextension-polyfill';
 import {
   initializeSync,
-  queuePush,
+  notifyLocalMutation,
   setupOnlineListener,
   cleanup as cleanupSync,
   setLocalDataProvider,
@@ -45,6 +45,7 @@ import {
 } from '@shared/sync';
 import type { SyncState } from '@shared/sync/types';
 import { migrateAppData } from '@shared/sync/migrate';
+import { recordOperation, setOutboxOwner } from '@shared/sync/outbox';
 import { showSyncToast } from './solidToast';
 import './styles/index.css';
 
@@ -95,6 +96,11 @@ async function removeVideoBackgrounds(data: AppData): Promise<AppData> {
   };
 }
 
+function getThemeConfigForPersist(): Omit<ThemeConfig, 'derivedFromWallpaper'> {
+  const { derivedFromWallpaper: _, ...config } = useThemeStore.getState().themeConfig;
+  return config;
+}
+
 export function App() {
   const { t } = useI18n();
   const [data, setData] = useState<AppData | null>(null);
@@ -130,6 +136,7 @@ export function App() {
     });
     loadData().then(async (loaded) => {
       if (!mounted) return;
+      setOutboxOwner(loaded._owner);
       const cleaned = await removeVideoBackgrounds(loaded);
       if (!mounted) return;
 
@@ -140,9 +147,21 @@ export function App() {
       }
 
       initSyncPendingRef.current = true;
-      initializeSync(cleaned).finally(() => {
-        initSyncPendingRef.current = false;
-      });
+      initializeSync(cleaned)
+        .then((merged) => {
+          if (!merged.settings.themeConfig) {
+            const themeConfig = getThemeConfigForPersist();
+            recordOperation('themeConfig', 'themeConfig', 'put', themeConfig);
+            const backfilled: AppData = {
+              ...merged,
+              settings: { ...merged.settings, themeConfig },
+            };
+            setData(backfilled);
+          }
+        })
+        .finally(() => {
+          initSyncPendingRef.current = false;
+        });
     });
     return () => {
       mounted = false;
@@ -153,6 +172,7 @@ export function App() {
   const latestDataRef = useRef<AppData | null>(null);
   const lastRemoteAppliedRef = useRef<AppData | null>(null);
   const initSyncPendingRef = useRef(false);
+  const themeHydratingRef = useRef(true);
 
   useEffect(() => {
     latestDataRef.current = data;
@@ -165,7 +185,7 @@ export function App() {
           const wasRemote = lastRemoteAppliedRef.current === latestDataRef.current;
           if (wasRemote) lastRemoteAppliedRef.current = null;
           if (!wasRemote && !initSyncPendingRef.current) {
-            queuePush(latestDataRef.current);
+            notifyLocalMutation();
           }
         }
       }, 500);
@@ -278,6 +298,39 @@ export function App() {
     }
   }, [data?.settings.topWidgets]);
 
+  useEffect(() => {
+    const unsub = useThemeStore.subscribe((state, prev) => {
+      if (state.themeConfig === prev.themeConfig) return;
+      if (initSyncPendingRef.current) return;
+      if (themeHydratingRef.current) return;
+      setData((prevData) => {
+        if (!prevData) return prevData;
+        const themeConfig = getThemeConfigForPersist();
+        if (JSON.stringify(prevData.settings.themeConfig) === JSON.stringify(themeConfig)) return prevData;
+        recordOperation('themeConfig', 'themeConfig', 'patch', themeConfig);
+        return updateSettings(prevData, { themeConfig });
+      });
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    const config = data?.settings.themeConfig;
+    if (!config) {
+      themeHydratingRef.current = false;
+      return;
+    }
+    if (JSON.stringify(config) === JSON.stringify(getThemeConfigForPersist())) {
+      themeHydratingRef.current = false;
+      return;
+    }
+    themeHydratingRef.current = true;
+    useThemeStore.getState().updateThemeConfig(config);
+    Promise.resolve().then(() => {
+      themeHydratingRef.current = false;
+    });
+  }, [data?.settings.themeConfig]);
+
   const wallpaperType = data?.settings.wallpaper.type;
   const wallpaperValue = data?.settings.wallpaper.value;
   const animatedWallpaper = useMemo(() => {
@@ -325,6 +378,7 @@ export function App() {
     if (!next.some((w) => w.type === 'search')) {
       next.push({ type: 'search', searchEngine: engine });
     }
+    recordOperation('topWidgets', 'topWidgets', 'patch', next);
     handleSettingsChange({ topWidgets: next });
   };
 
@@ -350,17 +404,32 @@ export function App() {
 
   const handleCreateBoard = (title: string) => {
     const board = createBoard(title);
-    setData((prev) => (prev ? addBoard(prev, board) : prev));
+    setData((prev) => {
+      if (!prev) return prev;
+      const next = addBoard(prev, board);
+      recordOperation('board', board.id, 'put', board);
+      return next;
+    });
     setActiveBoardId(board.id);
     setShowNewTabDialog(false);
   };
 
   const handleRenameBoard = (id: string, title: string) => {
-    setData((prev) => (prev ? renameBoard(prev, id, title) : prev));
+    setData((prev) => {
+      if (!prev) return prev;
+      const next = renameBoard(prev, id, title);
+      recordOperation('board', id, 'patch', { title: title.trim() });
+      return next;
+    });
   };
 
   const handleReorderBoard = (id: string, toIndex: number) => {
-    setData((prev) => (prev ? reorderBoard(prev, id, toIndex) : prev));
+    setData((prev) => {
+      if (!prev) return prev;
+      const next = reorderBoard(prev, id, toIndex);
+      recordOperation('board', id, 'move', { toIndex });
+      return next;
+    });
   };
 
   const handleDeleteBoard = (id: string, boardTitle: string) => {
@@ -373,6 +442,7 @@ export function App() {
         setData((prev) => {
           if (!prev) return prev;
           const next = deleteBoard(prev, id);
+          recordOperation('board', id, 'delete', null);
           setActiveBoardId(getInitialBoardId(next));
           return next;
         });
@@ -383,7 +453,13 @@ export function App() {
 
   const handleAddWidget = (widget: Widget) => {
     if (!activeBoardId) return;
-    setData((prev) => (prev && activeBoardId ? addWidget(prev, activeBoardId, widget) : prev));
+    setData((prev) => {
+      if (!prev || !activeBoardId) return prev;
+      const next = addWidget(prev, activeBoardId, widget);
+      const inserted = next.boards.find((b) => b.id === activeBoardId)?.widgets.find((w) => w.id === widget.id);
+      if (inserted) recordOperation('widget', `${activeBoardId}/${widget.id}`, 'put', inserted);
+      return next;
+    });
     setIsAddingWidget(false);
   };
 
@@ -393,11 +469,18 @@ export function App() {
 
   const handleUpdateWidget = (widget: Widget) => {
     if (!activeBoardId) return;
-    setData((prev) =>
-      prev && activeBoardId
-        ? updateWidget(prev, activeBoardId, widget.id, widget as Partial<Widget>)
-        : prev
-    );
+    setData((prev) => {
+      if (!prev || !activeBoardId) return prev;
+      const next = updateWidget(prev, activeBoardId, widget.id, widget as Partial<Widget>);
+      const payload: Record<string, unknown> = {};
+      if (widget.title !== undefined) payload.title = widget.title;
+      if (widget.colSpan !== undefined) payload.colSpan = widget.colSpan;
+      if (widget.height !== undefined) payload.height = widget.height;
+      if (Object.keys(payload).length > 0) {
+        recordOperation('widget', `${activeBoardId}/${widget.id}`, 'patch', payload);
+      }
+      return next;
+    });
     setEditingWidget(null);
   };
 
@@ -409,7 +492,12 @@ export function App() {
       confirmLabel: t('app.delete'),
       onConfirm: () => {
         if (activeBoardId) {
-          setData((prev) => (prev && activeBoardId ? deleteWidget(prev, activeBoardId, widgetId) : prev));
+          setData((prev) => {
+            if (!prev || !activeBoardId) return prev;
+            const next = deleteWidget(prev, activeBoardId, widgetId);
+            recordOperation('widget', `${activeBoardId}/${widgetId}`, 'delete', null);
+            return next;
+          });
         }
         setConfirmState(null);
       }
@@ -422,6 +510,14 @@ export function App() {
       if (!prev || !activeBoardId) return prev;
       const board = prev.boards.find((b) => b.id === activeBoardId);
       if (!board) return prev;
+      for (let i = 0; i < nextWidgets.length; i++) {
+        const w = nextWidgets[i];
+        recordOperation('widget', `${activeBoardId}/${w.id}`, 'move', {
+          toIndex: i,
+          col: w.col,
+          layoutColumns: w.layoutColumns,
+        });
+      }
       return {
         ...prev,
         boards: prev.boards.map((b) =>
@@ -435,27 +531,43 @@ export function App() {
 
   const handleResizeWidget = (widgetId: string, height: number) => {
     if (!activeBoardId) return;
-    setData((prev) =>
-      prev && activeBoardId
-        ? updateWidget(prev, activeBoardId, widgetId, { height })
-        : prev
-    );
+    setData((prev) => {
+      if (!prev || !activeBoardId) return prev;
+      const next = updateWidget(prev, activeBoardId, widgetId, { height });
+      recordOperation('widget', `${activeBoardId}/${widgetId}`, 'patch', { height });
+      return next;
+    });
   };
 
   const handleMoveLink = (fromWidgetId: string, toWidgetId: string, linkId: string, toIndex: number) => {
     if (!activeBoardId) return;
-    setData((prev) => (prev && activeBoardId ? moveLink(prev, activeBoardId, fromWidgetId, toWidgetId, linkId, toIndex) : prev));
+    setData((prev) => {
+      if (!prev || !activeBoardId) return prev;
+      const next = moveLink(prev, activeBoardId, fromWidgetId, toWidgetId, linkId, toIndex);
+      recordOperation('link', `${activeBoardId}/${fromWidgetId}/${linkId}`, 'move', { toWidgetId, toIndex });
+      return next;
+    });
   };
 
   const handleDeleteLink = (widgetId: string, linkId: string) => {
     if (!activeBoardId) return;
-    setData((prev) => (prev && activeBoardId ? deleteLink(prev, activeBoardId, widgetId, linkId) : prev));
+    setData((prev) => {
+      if (!prev || !activeBoardId) return prev;
+      const next = deleteLink(prev, activeBoardId, widgetId, linkId);
+      recordOperation('link', `${activeBoardId}/${widgetId}/${linkId}`, 'delete', null);
+      return next;
+    });
   };
 
   const handleAddLink = (widgetId: string, title: string, url: string, icon?: string) => {
     if (!activeBoardId) return;
     const link = createLink(title, url, icon);
-    setData((prev) => (prev && activeBoardId ? addLink(prev, activeBoardId, widgetId, link) : prev));
+    setData((prev) => {
+      if (!prev || !activeBoardId) return prev;
+      const next = addLink(prev, activeBoardId, widgetId, link);
+      recordOperation('link', `${activeBoardId}/${widgetId}/${link.id}`, 'put', link);
+      return next;
+    });
     setAddingLinkWidget(null);
   };
 
@@ -465,46 +577,75 @@ export function App() {
 
   const handleUpdateLink = (widgetId: string, linkId: string, title: string, url: string, icon?: string) => {
     if (!activeBoardId) return;
-    setData((prev) =>
-      prev && activeBoardId
-        ? updateLink(prev, activeBoardId, widgetId, linkId, {
-            title: title.trim() || t('defaults.newLink'),
-            url,
-            icon: icon || undefined
-          })
-        : prev
-    );
+    setData((prev) => {
+      if (!prev || !activeBoardId) return prev;
+      const payload: Record<string, unknown> = {};
+      if (title !== undefined) payload.title = title.trim() || t('defaults.newLink');
+      if (url !== undefined) payload.url = url;
+      if (icon !== undefined) payload.icon = icon || undefined;
+      const next = updateLink(prev, activeBoardId, widgetId, linkId, {
+        title: title.trim() || t('defaults.newLink'),
+        url,
+        icon: icon || undefined
+      });
+      recordOperation('link', `${activeBoardId}/${widgetId}/${linkId}`, 'patch', payload);
+      return next;
+    });
     setEditingLink(null);
   };
 
   const handleAddTodo = (widgetId: string, text: string) => {
     if (!activeBoardId) return;
     const todo = createTodoItem(text);
-    setData((prev) => (prev && activeBoardId ? addTodoItem(prev, activeBoardId, widgetId, todo) : prev));
+    setData((prev) => {
+      if (!prev || !activeBoardId) return prev;
+      const next = addTodoItem(prev, activeBoardId, widgetId, todo);
+      recordOperation('todo', `${activeBoardId}/${widgetId}/${todo.id}`, 'put', todo);
+      return next;
+    });
   };
 
   const handleToggleTodo = (widgetId: string, todoId: string) => {
     if (!activeBoardId) return;
-    setData((prev) => (prev && activeBoardId ? toggleTodoItem(prev, activeBoardId, widgetId, todoId) : prev));
+    setData((prev) => {
+      if (!prev || !activeBoardId) return prev;
+      const next = toggleTodoItem(prev, activeBoardId, widgetId, todoId);
+      const board = next.boards.find(b => b.id === activeBoardId);
+      const widget = board?.widgets.find(w => w.id === widgetId);
+      const todoItem = widget && widget.type === 'todo' ? widget.items.find(t => t.id === todoId) : undefined;
+      recordOperation('todo', `${activeBoardId}/${widgetId}/${todoId}`, 'patch', { done: todoItem?.done });
+      return next;
+    });
   };
 
   const handleUpdateTodo = (widgetId: string, todoId: string, text: string) => {
     if (!activeBoardId) return;
-    setData((prev) =>
-      prev && activeBoardId
-        ? updateTodoItem(prev, activeBoardId, widgetId, todoId, { text: text.trim() })
-        : prev
-    );
+    setData((prev) => {
+      if (!prev || !activeBoardId) return prev;
+      const next = updateTodoItem(prev, activeBoardId, widgetId, todoId, { text: text.trim() });
+      recordOperation('todo', `${activeBoardId}/${widgetId}/${todoId}`, 'patch', { text: text.trim() });
+      return next;
+    });
   };
 
   const handleDeleteTodo = (widgetId: string, todoId: string) => {
     if (!activeBoardId) return;
-    setData((prev) => (prev && activeBoardId ? deleteTodoItem(prev, activeBoardId, widgetId, todoId) : prev));
+    setData((prev) => {
+      if (!prev || !activeBoardId) return prev;
+      const next = deleteTodoItem(prev, activeBoardId, widgetId, todoId);
+      recordOperation('todo', `${activeBoardId}/${widgetId}/${todoId}`, 'delete', null);
+      return next;
+    });
   };
 
   const handleMoveTodo = (fromWidgetId: string, toWidgetId: string, todoId: string, toIndex: number) => {
     if (!activeBoardId) return;
-    setData((prev) => (prev && activeBoardId ? moveTodoItem(prev, activeBoardId, fromWidgetId, toWidgetId, todoId, toIndex) : prev));
+    setData((prev) => {
+      if (!prev || !activeBoardId) return prev;
+      const next = moveTodoItem(prev, activeBoardId, fromWidgetId, toWidgetId, todoId, toIndex);
+      recordOperation('todo', `${activeBoardId}/${fromWidgetId}/${todoId}`, 'move', { toWidgetId, toIndex });
+      return next;
+    });
   };
 
   const editingLinkData = useMemo(() => {
@@ -519,7 +660,25 @@ export function App() {
   }, [editingLink, data, activeBoardId]);
 
   const handleSettingsChange = (settings: Partial<AppData['settings']>) => {
-    setData((prev) => (prev ? updateSettings(prev, settings) : prev));
+    setData((prev) => {
+      if (!prev) return prev;
+      const next = updateSettings(prev, settings);
+      const { topWidgets, themeConfig, ...other } = settings;
+      if (topWidgets !== undefined) {
+        recordOperation('topWidgets', 'topWidgets', 'patch', topWidgets);
+      }
+      if (themeConfig !== undefined) {
+        recordOperation('themeConfig', 'themeConfig', 'patch', themeConfig);
+      }
+      const restSettings: Record<string, unknown> = { ...other as Record<string, unknown> };
+      for (const key of LOCAL_ONLY_SETTINGS_KEYS) {
+        delete restSettings[key];
+      }
+      if (Object.keys(restSettings).length > 0) {
+        recordOperation('settings', 'settings', 'patch', restSettings);
+      }
+      return next;
+    });
   };
 
   const handleToggleWidget = (type: WidgetType) => {
@@ -527,21 +686,28 @@ export function App() {
     const exists = currentTopWidgets.find((w) => w.type === type);
     
     if (exists) {
-      // Remove widget
       const next = currentTopWidgets.filter((w) => w.type !== type);
+      recordOperation('topWidgets', 'topWidgets', 'patch', next);
       handleSettingsChange({ topWidgets: next });
     } else {
-      // Add widget with defaults
       const newWidget: TopWidgetConfig = { type: type as any };
       if (type === 'weather') newWidget.city = 'New York';
-      handleSettingsChange({ topWidgets: [...currentTopWidgets, newWidget] });
+      const next = [...currentTopWidgets, newWidget];
+      recordOperation('topWidgets', 'topWidgets', 'patch', next);
+      handleSettingsChange({ topWidgets: next });
     }
   };
 
   const handleAddWidgetFromToolbar = (type: WidgetType) => {
     if (!activeBoardId) return;
     const widget = createWidget(type, '');
-    setData((prev) => (prev && activeBoardId ? addWidget(prev, activeBoardId, widget) : prev));
+    setData((prev) => {
+      if (!prev || !activeBoardId) return prev;
+      const next = addWidget(prev, activeBoardId, widget);
+      const inserted = next.boards.find((b) => b.id === activeBoardId)?.widgets.find((w) => w.id === widget.id);
+      if (inserted) recordOperation('widget', `${activeBoardId}/${widget.id}`, 'put', inserted);
+      return next;
+    });
   };
 
   const handleToolbarCityChange = (city: string) => {
@@ -549,6 +715,7 @@ export function App() {
     const next = currentTopWidgets.map((w) => 
       w.type === 'weather' ? { ...w, city } : w
     );
+    recordOperation('topWidgets', 'topWidgets', 'patch', next);
     handleSettingsChange({ topWidgets: next });
   };
 
@@ -559,20 +726,43 @@ export function App() {
   const handleImport = async (file: File) => {
     try {
       const imported = await importData(file);
-      if (imported.theme) {
-        useThemeStore.getState().updateThemeConfig(imported.theme);
-      }
       const nextData = imported.theme && data
         ? {
             ...imported.data,
             settings: {
               ...data.settings,
+              themeConfig: imported.theme,
               topWidgets: imported.data.settings.topWidgets,
               lastBoardId: imported.data.settings.lastBoardId
             }
           }
         : imported.data;
       const migrated = migrateAppData(nextData);
+      if (data) {
+        const importedIds = new Set(migrated.boards.map((b) => b.id));
+        for (const board of data.boards) {
+          if (!importedIds.has(board.id)) {
+            recordOperation('board', board.id, 'delete', null);
+          }
+        }
+      }
+      for (const board of migrated.boards) {
+        recordOperation('board', board.id, 'put', board);
+      }
+      if (migrated.settings.themeConfig) {
+        recordOperation('themeConfig', 'themeConfig', 'patch', migrated.settings.themeConfig);
+      }
+      if (migrated.settings.topWidgets) {
+        recordOperation('topWidgets', 'topWidgets', 'patch', migrated.settings.topWidgets);
+      }
+      const restSettings: Record<string, unknown> = {};
+      for (const key of Object.keys(migrated.settings)) {
+        if (key === 'themeConfig' || key === 'topWidgets' || (LOCAL_ONLY_SETTINGS_KEYS as string[]).includes(key)) continue;
+        restSettings[key] = (migrated.settings as unknown as Record<string, unknown>)[key];
+      }
+      if (Object.keys(restSettings).length > 0) {
+        recordOperation('settings', 'settings', 'patch', restSettings);
+      }
       setData(migrated);
       saveData(migrated);
       setActiveBoardId(getInitialBoardId(migrated));
@@ -610,7 +800,13 @@ export function App() {
       }
 
       const widget = { ...createWidget('links', folder.title), items };
-      setData((prev) => (prev && activeBoardId ? addWidget(prev, activeBoardId, widget) : prev));
+      setData((prev) => {
+        if (!prev || !activeBoardId) return prev;
+        const next = addWidget(prev, activeBoardId, widget);
+        const inserted = next.boards.find((b) => b.id === activeBoardId)?.widgets.find((w) => w.id === widget.id);
+        if (inserted) recordOperation('widget', `${activeBoardId}/${widget.id}`, 'put', inserted);
+        return next;
+      });
       setShowBookmarkFolders(false);
     } catch {
       alert(t('bookmarks.importError'));

@@ -235,6 +235,7 @@ function importTemplate(template: TemplateData): ImportResult {
       boards: importedBoards,
       settings: {
         ...defaults.settings,
+        themeConfig: template.theme,
         topWidgets: template.headerWidgets ?? defaults.settings.topWidgets,
         lastBoardId: importedBoards[0].id
       },

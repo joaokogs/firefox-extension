@@ -1,4 +1,5 @@
 import type { AppData, Board, Widget, SyncTombstones, LinkItem, TodoItem, LinksWidget, TodoWidget } from '@shared/types';
+import { DEFAULT_WALLPAPERS } from '@shared/types/constants';
 
 function emptyTombstones(): SyncTombstones {
   return {
@@ -204,10 +205,13 @@ export function mergeAppData(local: AppData, remote: AppData): AppData {
 
   const localSettingsTime = local.settingsUpdatedAt ?? 0;
   const remoteSettingsTime = remote.settingsUpdatedAt ?? 0;
-  const settings =
-    localSettingsTime >= remoteSettingsTime
+  const settings = {
+    ...(localSettingsTime >= remoteSettingsTime
       ? { ...remote.settings, ...local.settings }
-      : { ...local.settings, ...remote.settings };
+      : { ...local.settings, ...remote.settings }),
+    wallpaper: local.settings.wallpaper ?? DEFAULT_WALLPAPERS[0],
+    uploadedBackgrounds: local.settings.uploadedBackgrounds,
+  };
 
   // Guard against legacy data without installedAt producing NaN.
   const localInstalledAt = local.installedAt ?? Number.MAX_SAFE_INTEGER;
