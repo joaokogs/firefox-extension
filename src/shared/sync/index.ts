@@ -120,11 +120,16 @@ function categorizeError(err: unknown): { message: string; category: SyncErrorCa
 }
 
 function sameContent(a: AppData, b: AppData): boolean {
+  const aTombstones = a._tombstones;
+  const bTombstones = b._tombstones;
+
   return (
-    a.settingsUpdatedAt === b.settingsUpdatedAt &&
     JSON.stringify(a.boards) === JSON.stringify(b.boards) &&
     JSON.stringify(a.settings) === JSON.stringify(b.settings) &&
-    JSON.stringify(a._tombstones ?? null) === JSON.stringify(b._tombstones ?? null)
+    JSON.stringify(aTombstones?.deletedBoards ?? {}) === JSON.stringify(bTombstones?.deletedBoards ?? {}) &&
+    JSON.stringify(aTombstones?.deletedWidgets ?? {}) === JSON.stringify(bTombstones?.deletedWidgets ?? {}) &&
+    JSON.stringify(aTombstones?.deletedLinks ?? {}) === JSON.stringify(bTombstones?.deletedLinks ?? {}) &&
+    JSON.stringify(aTombstones?.deletedTodos ?? {}) === JSON.stringify(bTombstones?.deletedTodos ?? {})
   );
 }
 
@@ -226,13 +231,12 @@ async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<A
     local = migrateAppData(local);
 
     const remote = await doPull(userId);
-    if (remote) {
-      setState({ lastPullAt: Date.now() });
-    }
+    let remoteChanged = false;
     let merged: AppData;
 
     if (remote) {
       merged = doMerge(local, remote);
+      remoteChanged = !sameContent(merged, local);
     } else {
       merged = local;
     }
@@ -249,6 +253,9 @@ async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<A
     }
 
     await saveData(merged);
+    if (remoteChanged) {
+      setState({ lastPullAt: Date.now() });
+    }
     remoteAppliedHandler?.(merged);
 
     if (remote) {
