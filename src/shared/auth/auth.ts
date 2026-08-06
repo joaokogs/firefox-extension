@@ -97,6 +97,7 @@ export async function signInWithGoogle(): Promise<void> {
     `&client_id=${encodeURIComponent(clientId)}` +
     `&redirect_uri=${encodeURIComponent(redirectUrl)}` +
     `&scope=${encodeURIComponent('openid email profile')}` +
+    `&prompt=${encodeURIComponent('select_account')}` +
     `&nonce=${encodeURIComponent(hashedNonce)}`;
 
   const responseUrl = await identity.launchWebAuthFlow({

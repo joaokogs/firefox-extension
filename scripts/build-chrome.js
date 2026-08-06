@@ -2,12 +2,17 @@ import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { loadEnv } from 'vite';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
 const dist = resolve(root, 'dist');
 const distChrome = resolve(root, 'dist-chrome');
 const release = resolve(root, 'release');
+
+function normalizeEnvValue(value) {
+  return value?.trim().replace(/^['"]|['"]$/g, '');
+}
 
 await rm(distChrome, { recursive: true, force: true });
 await cp(dist, distChrome, { recursive: true });
@@ -21,6 +26,20 @@ delete manifest.browser_specific_settings;
 if (!manifest.permissions.includes('tabs')) {
   manifest.permissions.unshift('tabs');
 }
+
+const env = loadEnv('production', root, 'VITE_');
+const googleClientId = normalizeEnvValue(
+  process.env.VITE_GOOGLE_CLIENT_ID ?? env.VITE_GOOGLE_CLIENT_ID,
+);
+
+if (!googleClientId || googleClientId.startsWith('YOUR_')) {
+  throw new Error('VITE_GOOGLE_CLIENT_ID is required to build the Chrome extension');
+}
+
+manifest.oauth2 = {
+  client_id: googleClientId,
+  scopes: ['openid', 'email', 'profile'],
+};
 
 await writeFile(manifestPath, JSON.stringify(manifest, null, 2) + '\n');
 
