@@ -22,6 +22,17 @@ export interface Subscription {
   cancel_at_period_end: boolean;
 }
 
+export interface ProPlanPrice {
+  id: string;
+  currency: string;
+  unit_amount: number | null;
+  recurring: {
+    interval: string;
+    interval_count: number;
+  } | null;
+  product_name: string | null;
+}
+
 interface CheckoutResponse {
   url?: string;
 }
@@ -45,6 +56,31 @@ export async function getSubscription(): Promise<Subscription | null> {
 
   if (error) throw error;
   return data as Subscription | null;
+}
+
+export function getProPlanPrice(): ProPlanPrice | null {
+  const amount = Number(import.meta.env.VITE_PRO_PRICE_AMOUNT);
+  const currency = String(import.meta.env.VITE_PRO_PRICE_CURRENCY || '').trim().toUpperCase();
+  const interval = String(import.meta.env.VITE_PRO_PRICE_INTERVAL || '').trim().toLowerCase();
+
+  if (!Number.isFinite(amount) || amount < 0 || currency.length !== 3) {
+    return null;
+  }
+
+  if (!['day', 'week', 'month', 'year'].includes(interval)) {
+    return null;
+  }
+
+  return {
+    id: 'static-pro-price',
+    currency,
+    unit_amount: Math.round(amount * 100),
+    recurring: {
+      interval,
+      interval_count: 1,
+    },
+    product_name: 'Prismi Pro',
+  };
 }
 
 export async function hasSyncAccess(): Promise<boolean> {

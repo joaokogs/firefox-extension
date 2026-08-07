@@ -1184,6 +1184,7 @@ export function App() {
         open={showAccount}
         onClose={() => setShowAccount(false)}
         title={t('auth.title')}
+        wide
       >
         <AuthPanel onAuthenticated={() => setShowAccount(false)} />
       </ModalDialog>

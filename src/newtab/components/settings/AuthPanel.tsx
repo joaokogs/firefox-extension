@@ -167,8 +167,9 @@ export function AuthPanel({ onAuthenticated }: AuthPanelProps) {
     }
   };
 
-  const toggleMode = () => {
-    setMode((m) => (m === 'signin' ? 'signup' : 'signin'));
+  const selectMode = (nextMode: 'signin' | 'signup') => {
+    if (nextMode === mode) return;
+    setMode(nextMode);
     setError('');
     setEmailSent(false);
   };
@@ -176,28 +177,33 @@ export function AuthPanel({ onAuthenticated }: AuthPanelProps) {
   if (session?.user) {
     return (
       <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
-        <div className="mx-auto w-full max-w-md rounded-lg border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
-          <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-panel-accent/12 text-panel-accent-text">
-              <UserRound size={20} aria-hidden="true" />
-            </span>
-            <div className="min-w-0">
-              <div className="text-xs font-semibold uppercase tracking-[0.14em] text-panel-text-muted">{t('auth.title')}</div>
-              <span className="mt-1 block truncate text-sm font-medium text-panel-text">{session.user.email}</span>
+        <div className="mx-auto w-full max-w-2xl">
+          <div className="rounded-xl border border-panel-border bg-panel-surface-muted p-4 shadow-[0_8px_24px_rgba(15,23,42,0.08)] sm:p-5">
+            <div className="flex items-center gap-3">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-panel-accent/12 text-panel-accent-text">
+                <UserRound size={21} aria-hidden="true" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <span className="text-xs font-semibold uppercase tracking-[0.14em] text-panel-text-muted">{t('auth.connected')}</span>
+                  <span className="rounded-full border border-panel-accent-text/20 bg-panel-accent-text/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.08em] text-panel-accent-text">{t('auth.signedIn')}</span>
+                </div>
+                <span className="mt-1 block truncate text-sm font-medium text-panel-text">{session.user.email}</span>
+              </div>
             </div>
+            <button
+              className={`${uiButtonClass} mt-5 min-h-10 w-full border-ui-danger/25 bg-ui-danger/10 px-4 text-ui-danger hover:border-ui-danger/40 hover:bg-ui-danger/15 hover:text-ui-danger-hover`}
+              onClick={handleSignOut}
+              disabled={loading}
+              aria-label={t('auth.signOut')}
+            >
+              <LogOut size={15} aria-hidden="true" />
+              {t('auth.signOut')}
+            </button>
           </div>
-          <button
-             className={`${uiButtonClass} mt-5 min-h-11 w-full border-ui-danger/25 bg-ui-danger/10 px-4 text-ui-danger hover:border-ui-danger/40 hover:bg-ui-danger/15 hover:text-ui-danger-hover`}
-            onClick={handleSignOut}
-            disabled={loading}
-            aria-label={t('auth.signOut')}
-          >
-            <LogOut size={15} aria-hidden="true" />
-            {t('auth.signOut')}
-          </button>
-        </div>
-        <div className="mx-auto w-full max-w-md">
-          <PaymentPanel session={session} />
+          <div>
+            <PaymentPanel session={session} />
+          </div>
         </div>
       </div>
     );
@@ -205,15 +211,28 @@ export function AuthPanel({ onAuthenticated }: AuthPanelProps) {
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
-      <div className="mx-auto w-full max-w-md">
-        <div className="mb-5 flex items-start gap-3 rounded-lg border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-panel-accent/12 text-panel-accent-text">
-            <LockKeyhole size={18} aria-hidden="true" />
-          </span>
-          <div>
-            <p className="text-base font-semibold tracking-[-0.01em] text-panel-text">{mode === 'signin' ? t('auth.signIn') : t('auth.signUp')}</p>
-            <p className="mt-1 text-sm leading-5 text-panel-text-secondary">{mode === 'signin' ? t('auth.hasAccount') : t('auth.noAccount')}</p>
-          </div>
+      <div className="mx-auto w-full max-w-2xl">
+        <div className="mb-5 grid grid-cols-2 rounded-lg border border-panel-border-subtle bg-panel-surface-muted p-1" role="tablist" aria-label={t('auth.title')}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'signin'}
+            className={`min-h-10 rounded-md px-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-panel-accent-text ${mode === 'signin' ? 'bg-panel-surface-raised text-panel-text shadow-sm' : 'text-panel-text-muted hover:text-panel-text'}`}
+            onClick={() => selectMode('signin')}
+            disabled={loading}
+          >
+            {t('auth.signIn')}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={mode === 'signup'}
+            className={`min-h-10 rounded-md px-3 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-panel-accent-text ${mode === 'signup' ? 'bg-panel-surface-raised text-panel-text shadow-sm' : 'text-panel-text-muted hover:text-panel-text'}`}
+            onClick={() => selectMode('signup')}
+            disabled={loading}
+          >
+            {t('auth.signUp')}
+          </button>
         </div>
 
         {emailSent && (
@@ -224,7 +243,7 @@ export function AuthPanel({ onAuthenticated }: AuthPanelProps) {
 
         <form
           onSubmit={mode === 'signin' ? handleSignIn : handleSignUp}
-          className="rounded-lg border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5"
+          className="rounded-xl border border-panel-border bg-panel-surface-muted p-4 shadow-[0_8px_24px_rgba(15,23,42,0.08)] sm:p-5"
           aria-busy={loading}
         >
           <div className="flex flex-col gap-4">
@@ -312,14 +331,6 @@ export function AuthPanel({ onAuthenticated }: AuthPanelProps) {
           {t('auth.signInWithGoogle')}
         </button>
 
-        <button
-          className="mt-4 w-full rounded-md px-3 py-2.5 text-sm font-semibold text-panel-accent-text transition-colors hover:bg-panel-accent-text/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-accent-text disabled:cursor-not-allowed disabled:opacity-50"
-          onClick={toggleMode}
-          disabled={loading}
-          type="button"
-        >
-          {mode === 'signin' ? t('auth.noAccount') : t('auth.hasAccount')}
-        </button>
       </div>
     </div>
   );

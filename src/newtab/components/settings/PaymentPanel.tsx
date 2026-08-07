@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Session } from '@supabase/supabase-js';
-import { CreditCard, ExternalLink } from 'lucide-preact';
+import { Check, CreditCard, ExternalLink, Sparkles } from 'lucide-preact';
 import { openUrl } from '@shared/browser';
 import { useI18n } from '@shared/i18n';
 import { uiButtonPrimaryClass, uiButtonSecondaryClass, uiInputClass } from '@shared/ui/classes';
@@ -8,9 +8,11 @@ import { syncNow } from '@shared/sync';
 import {
   createCheckoutSession,
   createPortalSession,
+  getProPlanPrice,
   getSubscription,
   hasSyncAccess,
   redeemPromotionalCoupon,
+  type ProPlanPrice,
   type Subscription,
 } from '@shared/payments/payments';
 
@@ -19,6 +21,24 @@ interface PaymentPanelProps {
 }
 
 const paidStatuses = new Set(['active', 'trialing']);
+
+function formatPlanPrice(
+  price: ProPlanPrice | null,
+  locale: string,
+  getText: (key: string) => string,
+): string | null {
+  if (!price || price.unit_amount === null) return null;
+
+  const amount = new Intl.NumberFormat(locale === 'pt-BR' ? 'pt-BR' : 'en-US', {
+    style: 'currency',
+    currency: price.currency.toUpperCase(),
+  }).format(price.unit_amount / 100);
+  const interval = price.recurring?.interval === 'year'
+    ? getText('payment.perYear')
+    : getText('payment.perMonth');
+
+  return `${amount} ${interval}`;
+}
 
 function getPaymentErrorKey(error: unknown): string {
   const message = error instanceof Error ? error.message : '';
@@ -31,8 +51,9 @@ function getPaymentErrorKey(error: unknown): string {
 }
 
 export function PaymentPanel({ session }: PaymentPanelProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [proPrice, setProPrice] = useState<ProPlanPrice | null>(null);
   const [syncAccess, setSyncAccess] = useState(false);
   const [loadingSubscription, setLoadingSubscription] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -49,6 +70,12 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
       const [nextSubscription, nextSyncAccess] = await Promise.all([getSubscription(), hasSyncAccess()]);
       setSubscription(nextSubscription);
       setSyncAccess(nextSyncAccess);
+      const nextHasPaidAccess = nextSyncAccess || Boolean(nextSubscription && paidStatuses.has(nextSubscription.status));
+      if (nextHasPaidAccess) {
+        setProPrice(null);
+      } else {
+        setProPrice(getProPlanPrice());
+      }
       if (syncOnAccessChange && nextSyncAccess && !prevSyncAccessRef.current) {
         syncNow();
       }
@@ -110,51 +137,87 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
   };
 
   const hasPaidAccess = syncAccess || Boolean(subscription && paidStatuses.has(subscription.status));
-  const statusKey = syncAccess && (!subscription || !paidStatuses.has(subscription.status))
-    ? 'coupon'
-    : subscription?.status || 'none';
+  const formattedProPrice = formatPlanPrice(proPrice, locale, t);
+  const isFreeSelected = !loadingSubscription && !hasPaidAccess;
+  const isProSelected = !loadingSubscription && hasPaidAccess;
+
   return (
-    <div className="mt-5 border-t border-panel-border-subtle pt-5">
-      <div className="flex items-start justify-between gap-4">
+    <div className="mt-6 border-t border-panel-border-subtle pt-6">
+      <div className="flex items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-panel-accent/12 text-panel-accent-text">
+          <CreditCard size={18} aria-hidden="true" />
+        </span>
         <div>
-          <strong className="block text-sm font-semibold text-panel-text">{t('payment.title')}</strong>
-          <span className="mt-1 block text-xs text-panel-text-muted">
-            {loadingSubscription ? t('payment.loading') : t(`payment.status.${statusKey}`)}
-          </span>
+          <strong className="block text-base font-semibold tracking-[-0.01em] text-panel-text">{t('payment.title')}</strong>
+          <p className="mt-1 text-sm leading-5 text-panel-text-secondary">{t('payment.plansDescription')}</p>
         </div>
-        <CreditCard size={18} aria-hidden="true" />
       </div>
 
-      {hasPaidAccess ? (
-        <>
-          <p className="my-3 text-sm leading-5 text-panel-text-secondary">{t('payment.activeDescription')}</p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className={`rounded-xl border p-4 sm:p-5 ${isFreeSelected ? 'border-panel-success/70 bg-panel-success/[0.06] shadow-[0_0_0_1px_rgba(110,231,183,0.16)]' : 'border-panel-border-subtle bg-panel-surface-muted'}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <span className="text-xs font-semibold uppercase tracking-[0.14em] text-panel-text-muted">{t('payment.freePlan')}</span>
+              <h3 className="mt-1 text-lg font-semibold tracking-[-0.02em] text-panel-text">{t('payment.freePlanTitle')}</h3>
+            </div>
+            <span className={`rounded-full border px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.08em] ${isFreeSelected ? 'border-panel-success/35 bg-panel-success/10 text-panel-success' : 'border-panel-border bg-panel-surface-raised text-panel-text-muted'}`}>
+              {isFreeSelected ? t('payment.currentPlan') : t('payment.availableBadge')}
+            </span>
+          </div>
+          <p className="mt-3 min-h-10 text-sm leading-5 text-panel-text-secondary">{t('payment.freePlanDescription')}</p>
+          <ul className="mt-4 space-y-2 text-sm text-panel-text-secondary">
+            {[t('payment.freeFeatureLocal'), t('payment.freeFeatureWidgets')].map((feature) => (
+              <li className="flex items-start gap-2" key={feature}>
+                <Check className="mt-0.5 shrink-0 text-panel-text-muted" size={15} aria-hidden="true" />
+                <span>{feature}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className={`rounded-xl border p-4 shadow-[0_8px_24px_rgba(15,23,42,0.08)] sm:p-5 ${isProSelected ? 'border-panel-success/70 bg-panel-success/[0.06] shadow-[0_0_0_1px_rgba(110,231,183,0.16)]' : 'border-panel-accent/50 bg-panel-surface-muted'}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-panel-accent-text"><Sparkles size={13} aria-hidden="true" />{t('payment.proPlan')}</span>
+              <h3 className="mt-1 text-lg font-semibold tracking-[-0.02em] text-panel-text">{t('payment.proPlanTitle')}</h3>
+              {!hasPaidAccess && (
+                <span className="mt-1 block text-sm font-semibold text-panel-text">
+                  {loadingSubscription ? t('payment.loading') : formattedProPrice || t('payment.priceUnavailable')}
+                </span>
+              )}
+            </div>
+            <span className={`rounded-full border px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.08em] ${isProSelected ? 'border-panel-success/35 bg-panel-success/10 text-panel-success' : 'border-panel-accent-text/20 bg-panel-accent-text/10 text-panel-accent-text'}`}>
+              {isProSelected ? t('payment.currentPlan') : t('payment.upgradeBadge')}
+            </span>
+          </div>
+          <p className="mt-3 min-h-10 text-sm leading-5 text-panel-text-secondary">{t('payment.proPlanDescription')}</p>
+          <ul className="mt-4 space-y-2 text-sm text-panel-text-secondary">
+            {[t('payment.proFeatureSync'), t('payment.proFeatureAccess')].map((feature) => (
+              <li className="flex items-start gap-2" key={feature}>
+                <Check className="mt-0.5 shrink-0 text-panel-accent-text" size={15} aria-hidden="true" />
+                <span>{feature}</span>
+              </li>
+            ))}
+          </ul>
           <button
             type="button"
-             className={`${uiButtonSecondaryClass} w-full`}
-            onClick={handlePortal}
-            disabled={portalLoading || loadingSubscription}
+            className={`${hasPaidAccess ? uiButtonSecondaryClass : uiButtonPrimaryClass} mt-5 w-full`}
+            onClick={hasPaidAccess ? handlePortal : handleCheckout}
+            disabled={(hasPaidAccess ? portalLoading : checkoutLoading) || loadingSubscription}
           >
             <ExternalLink size={15} aria-hidden="true" />
-            {portalLoading ? t('payment.loading') : t('payment.manage')}
+            {hasPaidAccess
+              ? portalLoading ? t('payment.loading') : t('payment.manage')
+              : checkoutLoading ? t('payment.loading') : t('payment.subscribe')}
           </button>
-        </>
-      ) : (
-        <>
-          <p className="my-3 text-sm leading-5 text-panel-text-secondary">{t('payment.description')}</p>
-          <button
-            type="button"
-             className={`${uiButtonPrimaryClass} w-full`}
-            onClick={handleCheckout}
-            disabled={checkoutLoading || loadingSubscription}
-          >
-            <ExternalLink size={15} aria-hidden="true" />
-            {checkoutLoading ? t('payment.loading') : t('payment.subscribe')}
-          </button>
-        </>
-      )}
+        </div>
+      </div>
 
       <form className="mt-5" onSubmit={handleCoupon}>
-        <label className="text-xs font-semibold uppercase tracking-[0.1em] text-panel-text-muted" htmlFor="promotional-coupon">{t('payment.couponLabel')}</label>
+        <div className="mb-2">
+          <label className="text-xs font-semibold uppercase tracking-[0.1em] text-panel-text-muted" htmlFor="promotional-coupon">{t('payment.couponLabel')}</label>
+          <p className="mt-1 text-xs text-panel-text-muted">{t('payment.couponDescription')}</p>
+        </div>
         <div className="mt-2 flex gap-2">
           <input
             id="promotional-coupon"
