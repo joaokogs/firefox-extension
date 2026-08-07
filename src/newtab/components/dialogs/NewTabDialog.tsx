@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { useI18n } from '@shared/i18n';
 import { X } from 'lucide-preact';
-import { uiButtonPrimaryClass, uiButtonSecondaryClass, uiFieldClass, uiIconButtonClass, uiInputClass, uiLabelClass } from '@shared/ui/classes';
+import { uiFieldClass } from '@shared/ui/classes';
 
 interface NewTabDialogProps {
   open: boolean;
@@ -42,20 +42,20 @@ export function NewTabDialog({ open, onSave, onClose }: NewTabDialogProps) {
       <div className="modal">
         <div className="modal__header">
           <h2>{t('newTab.title')}</h2>
-          <button className={uiIconButtonClass} onClick={onClose} aria-label={t('newTab.close')}>
+          <button className="dialog__close" onClick={onClose} aria-label={t('newTab.close')}>
             <X size={18} />
           </button>
         </div>
 
         <div className="dialog__body">
           <label className={uiFieldClass}>
-            <span className={uiLabelClass}>{t('newTab.name')}</span>
+            <span className="dialog__label">{t('newTab.name')}</span>
             <input
               ref={inputRef}
               type="text"
               value={title}
               onChange={(e) => setTitle((e.target as HTMLInputElement).value)}
-              className={uiInputClass}
+              className="dialog__input"
               placeholder={t('newTab.namePlaceholder')}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSave();
@@ -67,12 +67,12 @@ export function NewTabDialog({ open, onSave, onClose }: NewTabDialogProps) {
         </div>
 
         <div className="modal__actions">
-          <button type="button" className={uiButtonSecondaryClass} onClick={onClose}>
+          <button type="button" className="dialog__button dialog__button--secondary" onClick={onClose}>
             {t('newTab.cancel')}
           </button>
           <button
             type="button"
-            className={uiButtonPrimaryClass}
+            className="dialog__button dialog__button--primary"
             onClick={handleSave}
             disabled={!title.trim()}
           >
