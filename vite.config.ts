@@ -1,5 +1,6 @@
 import { defineConfig, type Plugin } from 'vite';
 import preact from '@preact/preset-vite';
+import tailwindcss from '@tailwindcss/vite';
 import { resolve } from 'path';
 
 const preactRuntimePattern = /[\\/]node_modules[\\/]preact[\\/]dist[\\/]preact\.(?:module\.js|mjs)$/;
@@ -34,7 +35,7 @@ const stripPreactUnsafeHtml: Plugin = {
 };
 
 export default defineConfig({
-  plugins: [stripPreactUnsafeHtml, preact()],
+  plugins: [stripPreactUnsafeHtml, tailwindcss(), preact()],
   resolve: {
     alias: {
       '@shared': resolve(__dirname, 'src/shared'),

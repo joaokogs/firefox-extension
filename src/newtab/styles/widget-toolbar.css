@@ -85,7 +85,7 @@
   width: 18px;
   left: 2px;
   bottom: 2px;
-  background: var(--text-muted);
+  background: #fff;
   border-radius: 50%;
   transition: transform var(--transition-fast), background var(--transition-fast);
 }

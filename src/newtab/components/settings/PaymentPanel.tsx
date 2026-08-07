@@ -112,13 +112,14 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
   const statusKey = syncAccess && (!subscription || !paidStatuses.has(subscription.status))
     ? 'coupon'
     : subscription?.status || 'none';
+  const buttonClass = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-accent-text disabled:cursor-not-allowed disabled:opacity-50';
 
   return (
-    <div className="auth-panel__payment">
-      <div className="auth-panel__payment-header">
+    <div className="mt-5 border-t border-panel-border-subtle pt-5">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <strong>{t('payment.title')}</strong>
-          <span className="auth-panel__payment-status">
+          <strong className="block text-sm font-semibold text-panel-text">{t('payment.title')}</strong>
+          <span className="mt-1 block text-xs text-panel-text-muted">
             {loadingSubscription ? t('payment.loading') : t(`payment.status.${statusKey}`)}
           </span>
         </div>
@@ -127,10 +128,10 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
 
       {hasPaidAccess ? (
         <>
-          <p className="auth-panel__payment-description">{t('payment.activeDescription')}</p>
+          <p className="my-3 text-sm leading-5 text-panel-text-secondary">{t('payment.activeDescription')}</p>
           <button
             type="button"
-            className="btn btn--secondary auth-panel__payment-button"
+            className={`${buttonClass} w-full border-panel-border bg-panel-surface-muted text-panel-text-secondary hover:border-panel-border hover:bg-panel-surface-raised hover:text-panel-text`}
             onClick={handlePortal}
             disabled={portalLoading || loadingSubscription}
           >
@@ -140,10 +141,10 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
         </>
       ) : (
         <>
-          <p className="auth-panel__payment-description">{t('payment.description')}</p>
+          <p className="my-3 text-sm leading-5 text-panel-text-secondary">{t('payment.description')}</p>
           <button
             type="button"
-            className="btn btn--primary auth-panel__payment-button"
+            className={`${buttonClass} w-full border-transparent bg-panel-accent text-white shadow-[0_10px_24px_rgba(15,23,42,0.2)] hover:bg-panel-accent-hover`}
             onClick={handleCheckout}
             disabled={checkoutLoading || loadingSubscription}
           >
@@ -153,31 +154,32 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
         </>
       )}
 
-      <form className="auth-panel__coupon" onSubmit={handleCoupon}>
-        <label htmlFor="promotional-coupon">{t('payment.couponLabel')}</label>
-        <div className="auth-panel__coupon-row">
+      <form className="mt-5" onSubmit={handleCoupon}>
+        <label className="text-xs font-semibold uppercase tracking-[0.1em] text-panel-text-muted" htmlFor="promotional-coupon">{t('payment.couponLabel')}</label>
+        <div className="mt-2 flex gap-2">
           <input
             id="promotional-coupon"
             type="text"
+            className="min-h-10 min-w-0 flex-1 rounded-xl border border-panel-border bg-panel-background px-3 text-sm text-panel-text outline-none transition-colors placeholder:text-panel-text-muted/80 hover:border-panel-border focus:border-panel-accent-text focus:ring-2 focus:ring-panel-accent-text/20 disabled:cursor-not-allowed disabled:opacity-50"
             value={couponCode}
             onInput={(event) => setCouponCode((event.target as HTMLInputElement).value)}
             placeholder={t('payment.couponPlaceholder')}
             disabled={couponLoading}
             autoComplete="off"
           />
-          <button type="submit" className="btn btn--secondary" disabled={couponLoading || !couponCode.trim()}>
+          <button type="submit" className={`${buttonClass} shrink-0 border-panel-border bg-panel-surface-muted text-panel-text-secondary hover:border-panel-border hover:bg-panel-surface-raised hover:text-panel-text`} disabled={couponLoading || !couponCode.trim()}>
             {couponLoading ? t('payment.loading') : t('payment.redeem')}
           </button>
         </div>
       </form>
 
       {couponSuccess && (
-        <div className="auth-panel__message auth-panel__message--success" role="status">
+        <div className="mt-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-3 text-sm leading-5 text-panel-success" role="status">
           {t('payment.couponSuccess')}
         </div>
       )}
       {error && (
-        <div className="auth-panel__message auth-panel__message--error" role="alert">
+        <div className="mt-3 rounded-xl border border-red-500/25 bg-red-500/10 px-3.5 py-3 text-sm leading-5 text-panel-danger" role="alert">
           {error}
         </div>
       )}

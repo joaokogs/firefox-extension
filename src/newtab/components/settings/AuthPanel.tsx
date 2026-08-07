@@ -164,13 +164,17 @@ export function AuthPanel() {
     setEmailSent(false);
   };
 
+  const inputClass = 'mt-1.5 min-h-11 w-full rounded-xl border border-panel-border bg-panel-background px-3.5 text-sm text-panel-text outline-none transition-colors placeholder:text-panel-text-muted/80 hover:border-panel-border focus:border-panel-accent-text focus:ring-2 focus:ring-panel-accent-text/20 disabled:cursor-not-allowed disabled:opacity-50';
+  const buttonClass = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-accent-text disabled:cursor-not-allowed disabled:opacity-50';
+
   if (session?.user) {
     return (
-      <div className="dialog__section auth-panel__section">
-        <div className="auth-panel__user">
-          <span className="auth-panel__email">{session.user.email}</span>
+      <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+        <div className="rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
+          <div className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-panel-text-muted">{t('auth.title')}</div>
+          <span className="block truncate text-sm font-medium text-panel-text">{session.user.email}</span>
           <button
-            className="btn btn--danger auth-panel__logout"
+            className={`${buttonClass} mt-4 border-red-500/25 bg-red-500/10 text-panel-danger hover:border-red-500/40 hover:bg-red-500/15`}
             onClick={handleSignOut}
             disabled={loading}
             aria-label={t('auth.signOut')}
@@ -184,21 +188,26 @@ export function AuthPanel() {
   }
 
   return (
-    <div className="dialog__section auth-panel__section">
+    <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+      <div className="mb-5">
+        <p className="mb-1 text-base font-semibold tracking-[-0.01em] text-panel-text">{mode === 'signin' ? t('auth.signIn') : t('auth.signUp')}</p>
+        <p className="text-sm leading-5 text-panel-text-secondary">{mode === 'signin' ? t('auth.hasAccount') : t('auth.noAccount')}</p>
+      </div>
       {emailSent && (
-        <div className="auth-panel__message auth-panel__message--success" role="status">
+        <div className="mb-4 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-3 text-sm leading-5 text-panel-success" role="status">
           {t('auth.emailConfirmation')}
         </div>
       )}
 
       <form
         onSubmit={mode === 'signin' ? handleSignIn : handleSignUp}
-        className="auth-panel__form"
+        className="flex flex-col gap-4"
         aria-busy={loading}
       >
-        <div className="field">
-          <label htmlFor="auth-email">{t('auth.email')}</label>
+        <div>
+          <label className="text-sm font-semibold text-panel-text" htmlFor="auth-email">{t('auth.email')}</label>
           <input
+            className={inputClass}
             id="auth-email"
             name="email"
             type="email"
@@ -210,9 +219,10 @@ export function AuthPanel() {
             disabled={loading}
           />
         </div>
-        <div className="field">
-          <label htmlFor="auth-password">{t('auth.password')}</label>
+        <div>
+          <label className="text-sm font-semibold text-panel-text" htmlFor="auth-password">{t('auth.password')}</label>
           <input
+            className={inputClass}
             id="auth-password"
             name="password"
             type="password"
@@ -226,9 +236,10 @@ export function AuthPanel() {
           />
         </div>
         {mode === 'signup' && (
-          <div className="field">
-            <label htmlFor="auth-confirm-password">{t('auth.confirmPassword')}</label>
+          <div>
+            <label className="text-sm font-semibold text-panel-text" htmlFor="auth-confirm-password">{t('auth.confirmPassword')}</label>
             <input
+              className={inputClass}
               id="auth-confirm-password"
               name="confirm-password"
               type="password"
@@ -244,23 +255,23 @@ export function AuthPanel() {
         )}
 
         {error && (
-          <div className="auth-panel__message auth-panel__message--error" role="alert">
+          <div className="rounded-xl border border-red-500/25 bg-red-500/10 px-3.5 py-3 text-sm leading-5 text-panel-danger" role="alert">
             {error}
           </div>
         )}
 
         <button
           type="submit"
-          className="btn btn--primary auth-panel__submit"
+          className={`${buttonClass} border-transparent bg-panel-accent text-white shadow-[0_10px_24px_rgba(15,23,42,0.2)] hover:bg-panel-accent-hover`}
           disabled={loading}
         >
           {loading ? t('auth.loading') : mode === 'signin' ? t('auth.signIn') : t('auth.signUp')}
         </button>
       </form>
 
-       <button
+      <button
          type="button"
-         className="btn btn--secondary auth-panel__google"
+         className={`${buttonClass} mt-3 w-full border-panel-border bg-panel-surface-muted text-panel-text-secondary hover:border-panel-border hover:bg-panel-surface-raised hover:text-panel-text`}
         onClick={handleGoogleSignIn}
         disabled={loading}
         aria-label={t('auth.signInWithGoogle')}
@@ -275,7 +286,7 @@ export function AuthPanel() {
       </button>
 
       <button
-        className="auth-panel__toggle"
+         className="mt-4 w-full rounded-xl px-3 py-2.5 text-sm font-semibold text-panel-accent-text transition-colors hover:bg-panel-accent-text/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-accent-text disabled:cursor-not-allowed disabled:opacity-50"
         onClick={toggleMode}
         disabled={loading}
         type="button"

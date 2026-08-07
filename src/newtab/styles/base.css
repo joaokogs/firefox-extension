@@ -110,10 +110,12 @@ select {
   background: color-mix(in srgb, var(--text-muted) 55%, transparent);
 }
 
-button {
-  cursor: pointer;
-  border: none;
-  background: none;
+@layer base {
+  button {
+    cursor: pointer;
+    border: none;
+    background: none;
+  }
 }
 
 a {
