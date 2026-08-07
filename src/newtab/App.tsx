@@ -50,6 +50,7 @@ import {
 import type { SyncState } from '@shared/sync/types';
 import { migrateAppData } from '@shared/sync/migrate';
 import { recordOperation } from '@shared/sync/outbox';
+import { mergeWorkspaces } from '@shared/sync/merge';
 import { showSyncToast } from './solidToast';
 import './styles/index.css';
 
@@ -821,15 +822,11 @@ export function App() {
           }
         : imported.data;
       const migrated = migrateAppData(nextData);
-      if (data) {
-        const importedIds = new Set(migrated.workspaces.map((w) => w.id));
-        for (const workspace of data.workspaces) {
-          if (!importedIds.has(workspace.id)) {
-            safeRecordOperation('board', workspace.id, 'delete', null);
-          }
-        }
-      }
-      for (const workspace of migrated.workspaces) {
+      const importedWorkspaces = migrated.workspaces.map(({ deletedAt: _, ...workspace }) => workspace);
+      const importedData = data
+        ? { ...migrated, workspaces: mergeWorkspaces(data.workspaces, importedWorkspaces) }
+        : { ...migrated, workspaces: importedWorkspaces };
+      for (const workspace of importedWorkspaces) {
         safeRecordOperation('board', workspace.id, 'put', workspace);
       }
       if (migrated.settings.themeConfig) {
@@ -846,9 +843,9 @@ export function App() {
       if (Object.keys(restSettings).length > 0) {
         safeRecordOperation('settings', 'settings', 'patch', restSettings);
       }
-      setData(migrated);
-      saveData(migrated);
-      setActiveBoardId(getInitialBoardId(migrated));
+      setData(importedData);
+      saveData(importedData);
+      setActiveBoardId(getInitialBoardId(importedData));
     } catch (err) {
       alert(err instanceof Error ? err.message : t('app.importError'));
     }

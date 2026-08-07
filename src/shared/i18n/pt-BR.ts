@@ -305,6 +305,7 @@ export const ptBR: Record<string, string> = {
   'storage.errorReadingFile': 'Erro ao ler o arquivo.',
   'storage.invalidFileFormat': 'Arquivo inválido: formato de dados incorreto.',
   'storage.invalidFileParse': 'Arquivo inválido: não foi possível fazer o parse do JSON.',
+  'storage.unsupportedVersion': 'Arquivo inválido: versão do template não suportada ({version}).',
   'storage.backupFilename': 'prismi-dashboard-backup-{date}.json',
 
   // Auth
