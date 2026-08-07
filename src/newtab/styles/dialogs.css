@@ -181,83 +181,6 @@
   border-top: 1px solid color-mix(in srgb, var(--text-muted) 14%, transparent);
 }
 
-/* ── Buttons ── */
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 20px;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 0.875rem;
-  transition:
-    background var(--transition-fast),
-    color var(--transition-fast),
-    transform var(--transition-fast),
-    box-shadow var(--transition-fast);
-}
-
-.btn:active {
-  transform: scale(0.97);
-}
-
-.btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
-}
-
-/* Primary — accent reserved for primary actions */
-.btn--primary {
-  background: var(--accent);
-  color: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-}
-
-.btn--primary:hover {
-  background: var(--accent-hover);
-  box-shadow: 0 2px 8px var(--shadow-accent);
-}
-
-.btn--primary:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-/* Secondary — fully neutral */
-.btn--secondary {
-  background: color-mix(in srgb, var(--text-muted) 10%, transparent);
-  color: var(--text-primary);
-}
-
-.btn--secondary:hover {
-  background: color-mix(in srgb, var(--text-muted) 20%, transparent);
-}
-
-.btn--secondary:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* Danger — subtle red tint, red text */
-.btn--danger {
-  background: color-mix(in srgb, var(--danger) 10%, transparent);
-  color: var(--danger);
-}
-
-.btn--danger:hover {
-  background: color-mix(in srgb, var(--danger) 18%, transparent);
-  color: var(--danger-hover);
-}
-
-.btn--danger:disabled {
-  background: color-mix(in srgb, var(--text-muted) 10%, transparent);
-  color: var(--text-muted);
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 /* ── Confirm dialog ── */
 
 .confirm-dialog {
@@ -302,47 +225,12 @@
 
 /* ── Form fields ── */
 
-.field,
-.widget-editor__field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 16px;
-}
-
-.field span,
-.field label,
-.widget-editor__label,
-.widget-editor__field span {
+.widget-editor__label {
+  display: block;
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text-secondary);
-}
-
-.field input,
-.widget-editor__field input,
-.widget-editor__field select,
-.widget-editor__types select {
-  padding: 10px 14px;
-  border: 1px solid color-mix(in srgb, var(--text-muted) 22%, transparent);
-  border-radius: 10px;
-  background: var(--bg-body);
-  color: var(--text-primary);
-  outline: none;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.field input:focus,
-.widget-editor__field input:focus,
-.widget-editor__field select:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
-}
-
-.field input::placeholder,
-.widget-editor__field input::placeholder {
-  color: var(--text-muted);
-  opacity: 0.6;
+  margin-bottom: 10px;
 }
 
 /* ── Widget editor ── */
@@ -519,23 +407,6 @@
     0 16px 32px -8px rgba(0, 0, 0, 0.12),
     0 4px 12px -4px rgba(0, 0, 0, 0.06);
   padding: 8px;
-}
-
-.icon-picker__search {
-  width: 100%;
-  padding: 8px 10px;
-  margin-bottom: 8px;
-  border: 1px solid color-mix(in srgb, var(--text-muted) 22%, transparent);
-  border-radius: 8px;
-  background: var(--bg-body);
-  color: var(--text-primary);
-  outline: none;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.icon-picker__search:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
 }
 
 .icon-picker__grid {

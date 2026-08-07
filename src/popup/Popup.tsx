@@ -18,6 +18,7 @@ import { WidgetDialog } from './components/WidgetDialog';
 import { recordOperation, setOutboxOwner } from '@shared/sync/outbox';
 import { notifyLocalMutation } from '@shared/sync';
 import { getSession } from '@shared/auth/auth';
+import { uiButtonPrimaryClass, uiButtonSecondaryClass, uiIconButtonClass, uiSelectClass } from '@shared/ui/classes';
 
 type DialogMode = 'add-link' | { edit: string } | 'widget';
 
@@ -248,7 +249,7 @@ export function Popup() {
         <div className="popup__storage-warning" role="alert">
           <span>{t('popup.storageFailure')}</span>
           <button
-            className="popup__storage-warning__dismiss"
+            className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-inherit opacity-70 transition-opacity hover:bg-black/10 hover:opacity-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
             onClick={() => setStorageFailure(false)}
             aria-label={t('popup.dismiss')}
           >
@@ -259,7 +260,7 @@ export function Popup() {
 
       <div className="popup__header">
         <button
-          className={`popup__menu-btn ${menuOpen ? 'popup__menu-btn--open' : ''}`}
+          className={`${uiIconButtonClass} ${menuOpen ? 'border-ui-accent/40 text-ui-accent' : ''}`}
           onClick={() => setMenuOpen((v) => !v)}
           aria-label={menuOpen ? t('popup.closeMenu') : t('popup.openMenu')}
           title={menuOpen ? t('popup.closeMenu') : t('popup.openMenu')}
@@ -277,6 +278,7 @@ export function Popup() {
         <label className="popup__field">
           <span>{t('popup.board')}</span>
           <select
+            className={uiSelectClass}
             value={activeBoardId}
             onChange={(e) => setActiveBoardId((e.target as HTMLSelectElement).value)}
             aria-label={t('popup.selectBoard')}
@@ -292,6 +294,7 @@ export function Popup() {
         <label className="popup__field">
           <span>{t('popup.linkWidget')}</span>
           <select
+            className={uiSelectClass}
             value={selectedWidgetId}
             onChange={(e) => setSelectedWidgetId((e.target as HTMLSelectElement).value)}
             aria-label={t('popup.selectWidget')}
@@ -311,7 +314,7 @@ export function Popup() {
               <span className="popup__links-title">{selectedWidget.title}</span>
               {editModeEnabled && (
                 <button
-                  className="popup__icon-btn popup__icon-btn--small"
+                  className={`${uiIconButtonClass} h-7 w-7`}
                   onClick={() => setDialog('widget')}
                   aria-label={t('popup.editBlock')}
                   title={t('popup.editBlock')}
@@ -326,7 +329,7 @@ export function Popup() {
         {editModeEnabled && (
           <div className="popup__links-plus">
             <button
-              className="popup__add-link-btn"
+              className={`${uiButtonSecondaryClass} w-full justify-start border-dashed text-ui-accent hover:text-ui-accent`}
               onClick={() => setDialog('add-link')}
               aria-label={t('popup.addLink')}
               title={t('popup.addLink')}
@@ -363,7 +366,7 @@ export function Popup() {
 
         {editModeEnabled && (
           <button
-            className={`popup__save ${status === 'saved' ? 'popup__save--success' : ''}`}
+            className={`${uiButtonPrimaryClass} w-full ${status === 'saved' ? 'border-emerald-600 bg-emerald-600 hover:bg-emerald-600' : ''}`}
             onClick={handleSave}
             disabled={status === 'saving' || status === 'saved'}
             aria-live="polite"
@@ -454,7 +457,7 @@ function LinkRow({
         <div className="popup__link-actions">
           {onEdit && (
             <button
-              className="popup__icon-btn popup__icon-btn--action"
+              className={`${uiIconButtonClass} h-7 w-7 text-ui-accent hover:text-ui-accent`}
               onClick={(e) => { e.stopPropagation(); onEdit(); }}
               aria-label={t('popup.editItem', { title: link.title })}
               title={t('popup.edit')}
@@ -464,7 +467,7 @@ function LinkRow({
           )}
           {onDelete && (
             <button
-              className="popup__icon-btn popup__icon-btn--action popup__icon-btn--danger"
+              className={`${uiIconButtonClass} h-7 w-7 border-ui-danger/20 text-ui-danger hover:border-ui-danger/30 hover:bg-ui-danger/10 hover:text-ui-danger-hover`}
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
               aria-label={t('popup.deleteItem', { title: link.title })}
               title={t('popup.delete')}

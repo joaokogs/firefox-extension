@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { useI18n } from '@shared/i18n';
+import { uiInputClass } from '@shared/ui/classes';
 
 interface CityResult {
   id: number;
@@ -116,6 +117,7 @@ export function CityAutocomplete({
     <div ref={containerRef} className={`city-autocomplete ${className}`}>
       <input
         id={id}
+        className={`${uiInputClass} pr-8`}
         type="text"
         value={query}
         onInput={(e) => handleInput((e.target as HTMLInputElement).value)}

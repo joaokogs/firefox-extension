@@ -1078,19 +1078,19 @@ export function App() {
           </button>
           <button
             className="app-fab-menu__item"
-            onClick={() => { setShowSettings(true); setMenuOpen(false); }}
-            aria-label={t('app.settings')}
-            title={t('app.settings')}
-          >
-            <Settings size={20} strokeWidth={2} aria-hidden="true" />
-          </button>
-          <button
-            className="app-fab-menu__item"
             onClick={() => { setShowAccount(true); setMenuOpen(false); }}
             aria-label={t('app.openAccount')}
             title={t('app.account')}
           >
             <User size={20} strokeWidth={2} aria-hidden="true" />
+          </button>
+          <button
+            className="app-fab-menu__item"
+            onClick={() => { setShowSettings(true); setMenuOpen(false); }}
+            aria-label={t('app.settings')}
+            title={t('app.settings')}
+          >
+            <Settings size={20} strokeWidth={2} aria-hidden="true" />
           </button>
         </div>
       </div>

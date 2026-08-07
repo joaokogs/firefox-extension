@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks';
 import { useI18n } from '@shared/i18n';
 import { ICON_PICKER_LIST, getLucideIcon, getFaIconDef } from '@shared/icons';
+import { uiInputClass } from '@shared/ui/classes';
 
 interface IconPickerProps {
   selected?: string | null;
@@ -31,7 +32,7 @@ export function IconPicker({ selected, onSelect }: IconPickerProps) {
         <div className="icon-picker__dropdown">
           <input
             type="text"
-            className="icon-picker__search"
+            className={`${uiInputClass} mb-2`}
             placeholder={t('iconPicker.searchIcon')}
             value={query}
             onInput={(e) => setQuery((e.target as HTMLInputElement).value)}

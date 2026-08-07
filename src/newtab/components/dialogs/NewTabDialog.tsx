@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { useI18n } from '@shared/i18n';
 import { X } from 'lucide-preact';
+import { uiButtonPrimaryClass, uiButtonSecondaryClass, uiFieldClass, uiIconButtonClass, uiInputClass, uiLabelClass } from '@shared/ui/classes';
 
 interface NewTabDialogProps {
   open: boolean;
@@ -41,19 +42,20 @@ export function NewTabDialog({ open, onSave, onClose }: NewTabDialogProps) {
       <div className="modal">
         <div className="modal__header">
           <h2>{t('newTab.title')}</h2>
-          <button className="modal__close" onClick={onClose} aria-label={t('newTab.close')}>
+          <button className={uiIconButtonClass} onClick={onClose} aria-label={t('newTab.close')}>
             <X size={18} />
           </button>
         </div>
 
         <div className="dialog__body">
-          <label className="widget-editor__field">
-            <span>{t('newTab.name')}</span>
+          <label className={uiFieldClass}>
+            <span className={uiLabelClass}>{t('newTab.name')}</span>
             <input
               ref={inputRef}
               type="text"
               value={title}
               onChange={(e) => setTitle((e.target as HTMLInputElement).value)}
+              className={uiInputClass}
               placeholder={t('newTab.namePlaceholder')}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleSave();
@@ -65,12 +67,12 @@ export function NewTabDialog({ open, onSave, onClose }: NewTabDialogProps) {
         </div>
 
         <div className="modal__actions">
-          <button type="button" className="btn btn--secondary" onClick={onClose}>
+          <button type="button" className={uiButtonSecondaryClass} onClick={onClose}>
             {t('newTab.cancel')}
           </button>
           <button
             type="button"
-            className="btn btn--primary"
+            className={uiButtonPrimaryClass}
             onClick={handleSave}
             disabled={!title.trim()}
           >

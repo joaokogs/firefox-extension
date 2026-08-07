@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
 import { useI18n } from '@shared/i18n';
+import { uiButtonClass, uiButtonPrimaryClass, uiButtonSecondaryClass, uiInputClass } from '@shared/ui/classes';
 import {
   getSession,
   subscribeAuthState,
@@ -172,9 +173,6 @@ export function AuthPanel({ onAuthenticated }: AuthPanelProps) {
     setEmailSent(false);
   };
 
-  const inputClass = 'mt-1.5 min-h-11 w-full rounded-md border border-panel-border bg-panel-background px-3.5 text-sm text-panel-text outline-none transition-colors placeholder:text-panel-text-muted/80 hover:border-panel-border focus:border-panel-accent-text focus:ring-2 focus:ring-panel-accent-text/20 disabled:cursor-not-allowed disabled:opacity-50';
-  const buttonClass = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-md border px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-accent-text disabled:cursor-not-allowed disabled:opacity-50';
-
   if (session?.user) {
     return (
       <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
@@ -189,7 +187,7 @@ export function AuthPanel({ onAuthenticated }: AuthPanelProps) {
             </div>
           </div>
           <button
-            className={`${buttonClass} mt-5 w-full border-red-500/25 bg-red-500/10 text-panel-danger hover:border-red-500/40 hover:bg-red-500/15`}
+             className={`${uiButtonClass} mt-5 min-h-11 w-full border-ui-danger/25 bg-ui-danger/10 px-4 text-ui-danger hover:border-ui-danger/40 hover:bg-ui-danger/15 hover:text-ui-danger-hover`}
             onClick={handleSignOut}
             disabled={loading}
             aria-label={t('auth.signOut')}
@@ -233,7 +231,7 @@ export function AuthPanel({ onAuthenticated }: AuthPanelProps) {
             <div>
               <label className="flex items-center gap-2 text-sm font-semibold text-panel-text" htmlFor="auth-email"><Mail size={14} aria-hidden="true" />{t('auth.email')}</label>
               <input
-                className={inputClass}
+                 className={`${uiInputClass} mt-1.5 min-h-11 px-3.5`}
                 id="auth-email"
                 name="email"
                 type="email"
@@ -248,7 +246,7 @@ export function AuthPanel({ onAuthenticated }: AuthPanelProps) {
             <div>
               <label className="flex items-center gap-2 text-sm font-semibold text-panel-text" htmlFor="auth-password"><LockKeyhole size={14} aria-hidden="true" />{t('auth.password')}</label>
               <input
-                className={inputClass}
+                 className={`${uiInputClass} mt-1.5 min-h-11 px-3.5`}
                 id="auth-password"
                 name="password"
                 type="password"
@@ -265,7 +263,7 @@ export function AuthPanel({ onAuthenticated }: AuthPanelProps) {
               <div>
                 <label className="text-sm font-semibold text-panel-text" htmlFor="auth-confirm-password">{t('auth.confirmPassword')}</label>
                 <input
-                  className={inputClass}
+                   className={`${uiInputClass} mt-1.5 min-h-11 px-3.5`}
                   id="auth-confirm-password"
                   name="confirm-password"
                   type="password"
@@ -288,7 +286,7 @@ export function AuthPanel({ onAuthenticated }: AuthPanelProps) {
 
             <button
               type="submit"
-              className={`${buttonClass} w-full border-transparent bg-panel-accent text-white shadow-[0_10px_24px_rgba(15,23,42,0.2)] hover:bg-panel-accent-hover`}
+               className={`${uiButtonPrimaryClass} min-h-11 w-full px-4`}
               disabled={loading}
             >
               {loading ? t('auth.loading') : mode === 'signin' ? t('auth.signIn') : t('auth.signUp')}
@@ -300,7 +298,7 @@ export function AuthPanel({ onAuthenticated }: AuthPanelProps) {
 
         <button
           type="button"
-          className={`${buttonClass} w-full border-panel-border bg-panel-surface-muted text-panel-text-secondary hover:border-panel-border hover:bg-panel-surface-raised hover:text-panel-text`}
+           className={`${uiButtonSecondaryClass} min-h-11 w-full px-4`}
           onClick={handleGoogleSignIn}
           disabled={loading}
           aria-label={t('auth.signInWithGoogle')}

@@ -1,5 +1,6 @@
 import { useI18n } from '@shared/i18n';
 import { Trash2 } from 'lucide-preact';
+import { uiButtonDangerClass, uiButtonPrimaryClass, uiButtonSecondaryClass } from '@shared/ui/classes';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -47,12 +48,12 @@ export function ConfirmDialog({
           <p className="confirm-dialog__message">{message}</p>
         </div>
         <div className="modal__actions">
-          <button type="button" className="btn btn--secondary" onClick={onCancel}>
+          <button type="button" className={uiButtonSecondaryClass} onClick={onCancel}>
             {cancelLabel}
           </button>
           <button
             type="button"
-            className={`btn ${danger ? 'btn--danger' : 'btn--primary'}`}
+            className={danger ? uiButtonDangerClass : uiButtonPrimaryClass}
             onClick={onConfirm}
             autoFocus
           >

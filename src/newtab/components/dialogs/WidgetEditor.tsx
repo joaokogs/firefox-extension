@@ -5,6 +5,7 @@ import { X, ExternalLink, LayoutGrid, Clock, CloudSun, CheckSquare } from 'lucid
 import type { LucideIcon } from 'lucide-preact';
 import { CityAutocomplete } from '../ui/CityAutocomplete';
 import { useI18n } from '@shared/i18n';
+import { uiButtonPrimaryClass, uiButtonSecondaryClass, uiFieldClass, uiIconButtonClass, uiInputClass, uiLabelClass } from '@shared/ui/classes';
 
 interface WidgetEditorProps {
   widget?: Widget | null;
@@ -78,7 +79,7 @@ export function WidgetEditor({ widget, linksOnly = false, onSave, onClose }: Wid
       <div className="modal modal--wide">
         <div className="modal__header">
           <h2>{isEdit ? t('widgetEditor.editWidget') : linksOnly ? t('widgetEditor.newLinksWidget') : t('widgetEditor.newWidget')}</h2>
-          <button className="modal__close" onClick={onClose} aria-label={t('widgetEditor.close')}>
+          <button className={uiIconButtonClass} onClick={onClose} aria-label={t('widgetEditor.close')}>
             <X size={18} />
           </button>
         </div>
@@ -92,7 +93,7 @@ export function WidgetEditor({ widget, linksOnly = false, onSave, onClose }: Wid
                   <button
                     key={t.type}
                     type="button"
-                    className={`widget-editor__type ${type === t.type ? 'widget-editor__type--active' : ''}`}
+                     className={`widget-editor__type ${type === t.type ? 'widget-editor__type--active' : ''}`}
                     onClick={() => setType(t.type)}
                   >
                     <t.icon size={18} strokeWidth={2} />
@@ -105,19 +106,20 @@ export function WidgetEditor({ widget, linksOnly = false, onSave, onClose }: Wid
 
           <div className="widget-editor__row">
             {(linksOnly || (isEdit && (type === 'links' || type === 'todo'))) && (
-              <label className="widget-editor__field">
-                <span>{t('widgetEditor.title')}</span>
+              <label className={`${uiFieldClass} widget-editor__field`}>
+                <span className={uiLabelClass}>{t('widgetEditor.title')}</span>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle((e.target as HTMLInputElement).value)}
+                  className={uiInputClass}
                   placeholder={t('widgetEditor.titlePlaceholder')}
                 />
               </label>
             )}
             {isEdit && (widget?.type === 'links' || widget?.type === 'todo') && (
-              <label className="widget-editor__field widget-editor__field--small">
-                <span>{t('widgetEditor.height')}</span>
+              <label className={`${uiFieldClass} widget-editor__field widget-editor__field--small`}>
+                <span className={uiLabelClass}>{t('widgetEditor.height')}</span>
                 <input
                   type="number"
                   value={height}
@@ -125,6 +127,7 @@ export function WidgetEditor({ widget, linksOnly = false, onSave, onClose }: Wid
                     const val = (e.target as HTMLInputElement).value;
                     setHeight(val === '' ? '' : Number(val));
                   }}
+                  className={uiInputClass}
                   placeholder={t('widgetEditor.auto')}
                   min={120}
                 />
@@ -133,8 +136,8 @@ export function WidgetEditor({ widget, linksOnly = false, onSave, onClose }: Wid
           </div>
 
           {type === 'weather' && (
-            <label className="widget-editor__field">
-              <span>{t('widgetEditor.city')}</span>
+            <label className={`${uiFieldClass} widget-editor__field`}>
+              <span className={uiLabelClass}>{t('widgetEditor.city')}</span>
               <CityAutocomplete
                 value={city}
                 onChange={setCity}
@@ -146,21 +149,23 @@ export function WidgetEditor({ widget, linksOnly = false, onSave, onClose }: Wid
 
           {type === 'clock' && (
             <div className="widget-editor__row">
-              <label className="widget-editor__field">
-                <span>{t('widgetEditor.timezone')}</span>
+                <label className={`${uiFieldClass} widget-editor__field`}>
+                  <span className={uiLabelClass}>{t('widgetEditor.timezone')}</span>
                 <input
                   type="text"
                   value={timezone}
                   onChange={(e) => setTimezone((e.target as HTMLInputElement).value)}
+                  className={uiInputClass}
                   placeholder={t('widgetEditor.timezonePlaceholder')}
                 />
               </label>
-              <label className="widget-editor__field">
-                <span>{t('widgetEditor.label')}</span>
+                <label className={`${uiFieldClass} widget-editor__field`}>
+                  <span className={uiLabelClass}>{t('widgetEditor.label')}</span>
                 <input
                   type="text"
                   value={label}
                   onChange={(e) => setLabel((e.target as HTMLInputElement).value)}
+                  className={uiInputClass}
                   placeholder={t('widgetEditor.labelPlaceholder')}
                 />
               </label>
@@ -170,10 +175,10 @@ export function WidgetEditor({ widget, linksOnly = false, onSave, onClose }: Wid
         </div>
 
         <div className="modal__actions">
-          <button type="button" className="btn btn--secondary" onClick={onClose}>
+          <button type="button" className={uiButtonSecondaryClass} onClick={onClose}>
             {t('widgetEditor.cancel')}
           </button>
-          <button type="button" className="btn btn--primary" onClick={handleSave}>
+          <button type="button" className={uiButtonPrimaryClass} onClick={handleSave}>
             {t('widgetEditor.saveWidget')}
           </button>
         </div>

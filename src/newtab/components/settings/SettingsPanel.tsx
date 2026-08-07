@@ -2,6 +2,14 @@ import { useRef } from 'preact/hooks';
 import type { AppSettings } from '@shared/types';
 import { Trash2, Download, Upload, Bookmark } from 'lucide-preact';
 import { useI18n, type Locale } from '@shared/i18n';
+import {
+  uiButtonDangerClass,
+  uiButtonSecondaryClass,
+  uiSelectClass,
+  uiSwitchInputClass,
+  uiSwitchLabelClass,
+  uiSwitchTrackClass
+} from '@shared/ui/classes';
 
 interface SettingsPanelProps {
   settings: AppSettings;
@@ -15,19 +23,21 @@ interface SettingsPanelProps {
 export function SettingsPanel({ settings, onChange, onExport, onImport, onImportBookmarks, onClearRecentSearches }: SettingsPanelProps) {
   const { t, locale, setLocale } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const buttonClass = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-md border px-3.5 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-accent-text disabled:cursor-not-allowed disabled:opacity-50';
-  const secondaryButtonClass = `${buttonClass} border-panel-border bg-panel-surface-muted text-panel-text-secondary hover:border-panel-border hover:bg-panel-surface-raised hover:text-panel-text`;
+  const cardClass = 'group flex min-h-44 flex-col justify-between gap-4 rounded-xl border border-panel-border-subtle bg-panel-surface-muted p-4 transition-colors hover:border-panel-border hover:bg-panel-surface sm:p-5';
+  const descriptionClass = 'mt-1.5 block text-sm leading-5 text-panel-text-secondary';
+  const controlRowClass = 'flex h-10 items-center justify-between gap-4 rounded-lg border border-panel-border-subtle bg-panel-surface px-3.5';
+  const cardButtonClass = `${uiButtonSecondaryClass} h-10 text-xs`;
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="flex min-h-[170px] flex-col justify-between rounded-lg border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className={cardClass}>
           <div>
             <label className="block text-sm font-semibold tracking-[-0.01em] text-panel-text" htmlFor="settings-language">{t('settings.language')}</label>
-            <span className="mt-2 block text-sm leading-5 text-panel-text-secondary">{t('settings.languageDesc')}</span>
+            <span className={descriptionClass}>{t('settings.languageDesc')}</span>
           </div>
           <select
-            className="mt-5 min-h-10 w-full rounded-md border border-panel-border bg-panel-background px-3 text-sm font-medium text-panel-text outline-none transition-colors hover:border-panel-accent-text/70 focus:border-panel-accent-text focus:ring-2 focus:ring-panel-accent-text/20"
+            className={`${uiSelectClass} font-medium`}
             id="settings-language"
             value={locale}
             onChange={(e) => {
@@ -42,86 +52,86 @@ export function SettingsPanel({ settings, onChange, onExport, onImport, onImport
           </select>
         </div>
 
-        <div className="flex min-h-[170px] flex-col justify-between rounded-lg border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
+        <div className={cardClass}>
           <div>
             <label className="block text-sm font-semibold tracking-[-0.01em] text-panel-text" htmlFor="settings-edit-mode">{t('settings.editMode')}</label>
-            <span className="mt-2 block text-sm leading-5 text-panel-text-secondary">{t('settings.editModeDesc')}</span>
+            <span className={descriptionClass}>{t('settings.editModeDesc')}</span>
           </div>
-          <div className="mt-5 flex items-center justify-between gap-4 rounded-md border border-panel-border-subtle bg-panel-surface px-3.5 py-3">
-            <span className="text-xs font-semibold uppercase tracking-[0.1em] text-panel-text-muted">{t('settings.editMode')}</span>
-          <label className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center">
-            <input
-              className="peer sr-only"
-              id="settings-edit-mode"
-              type="checkbox"
-              checked={settings.editMode !== false}
-              onChange={() => onChange({ editMode: settings.editMode === false ? true : false })}
-            />
-              <span className="absolute inset-0 rounded-full bg-panel-toggle-off transition-colors peer-checked:bg-panel-accent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-panel-accent-text peer-disabled:opacity-50 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-5" />
-          </label>
+          <div className={controlRowClass}>
+            <span className="text-xs font-medium text-panel-text-secondary">{t('settings.editMode')}</span>
+            <label className={uiSwitchLabelClass}>
+              <input
+                className={uiSwitchInputClass}
+                id="settings-edit-mode"
+                type="checkbox"
+                checked={settings.editMode !== false}
+                onChange={() => onChange({ editMode: settings.editMode === false ? true : false })}
+              />
+              <span className={uiSwitchTrackClass} />
+            </label>
           </div>
         </div>
 
-        <div className="flex min-h-[170px] flex-col justify-between rounded-lg border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
+        <div className={cardClass}>
           <div>
             <label className="block text-sm font-semibold tracking-[-0.01em] text-panel-text" htmlFor="settings-open-in-new-tab">{t('settings.openInNewTab')}</label>
-            <span className="mt-2 block text-sm leading-5 text-panel-text-secondary">{t('settings.openInNewTabDesc')}</span>
+            <span className={descriptionClass}>{t('settings.openInNewTabDesc')}</span>
           </div>
-          <div className="mt-5 flex items-center justify-between gap-4 rounded-md border border-panel-border-subtle bg-panel-surface px-3.5 py-3">
-            <span className="text-xs font-semibold uppercase tracking-[0.1em] text-panel-text-muted">{t('settings.openInNewTab')}</span>
-          <label className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center">
-            <input
-              className="peer sr-only"
-              id="settings-open-in-new-tab"
-              type="checkbox"
-              checked={settings.openInNewTab !== false}
-              onChange={() => onChange({ openInNewTab: settings.openInNewTab === false ? true : false })}
-            />
-              <span className="absolute inset-0 rounded-full bg-panel-toggle-off transition-colors peer-checked:bg-panel-accent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-panel-accent-text peer-disabled:opacity-50 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-5" />
-          </label>
+          <div className={controlRowClass}>
+            <span className="text-xs font-medium text-panel-text-secondary">{t('settings.openInNewTab')}</span>
+            <label className={uiSwitchLabelClass}>
+              <input
+                className={uiSwitchInputClass}
+                id="settings-open-in-new-tab"
+                type="checkbox"
+                checked={settings.openInNewTab !== false}
+                onChange={() => onChange({ openInNewTab: settings.openInNewTab === false ? true : false })}
+              />
+              <span className={uiSwitchTrackClass} />
+            </label>
           </div>
         </div>
 
-        <div className="flex min-h-[150px] flex-col justify-between rounded-lg border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
+        <div className={cardClass}>
           <div>
             <span className="block text-sm font-semibold tracking-[-0.01em] text-panel-text">{t('settings.searchHistory')}</span>
           </div>
-          <button className={`${buttonClass} mt-5 w-full border-red-500/25 bg-red-500/10 text-panel-danger hover:border-red-500/40 hover:bg-red-500/15`} onClick={() => onClearRecentSearches?.()} disabled={!(settings.recentSearches && settings.recentSearches.length > 0)}>
+          <button className={`${uiButtonDangerClass} h-10 w-full text-xs`} onClick={() => onClearRecentSearches?.()} disabled={!(settings.recentSearches && settings.recentSearches.length > 0)}>
             <Trash2 size={14} strokeWidth={2} /> {t('settings.clearHistory')}
           </button>
         </div>
 
-        <div className="flex min-h-[150px] flex-col justify-between rounded-lg border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
+        <div className={cardClass}>
           <div>
             <span className="block text-sm font-semibold tracking-[-0.01em] text-panel-text">{t('settings.bookmarks')}</span>
           </div>
-          <button className={`${secondaryButtonClass} mt-5 w-full`} onClick={onImportBookmarks}>
+          <button className={`${cardButtonClass} w-full gap-1.5 px-2.5`} onClick={onImportBookmarks}>
             <Bookmark size={14} strokeWidth={2} aria-hidden="true" /> {t('settings.importBookmarks')}
           </button>
         </div>
 
-        <div className="rounded-lg border border-panel-border-subtle bg-panel-surface-muted p-4 sm:col-span-2 sm:p-5">
+        <div className={`${cardClass} min-h-0 sm:col-span-2`}>
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <span className="block text-sm font-semibold tracking-[-0.01em] text-panel-text">{t('settings.backup')}</span>
           </div>
           <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          <button className={secondaryButtonClass} onClick={onExport}>
-            <Download size={14} strokeWidth={2} /> {t('settings.exportJson')}
-          </button>
-          <button className={secondaryButtonClass} onClick={() => fileInputRef.current?.click()}>
-            <Upload size={14} strokeWidth={2} /> {t('settings.importJson')}
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            className="hidden"
-            onChange={(e) => {
-              const file = (e.target as HTMLInputElement).files?.[0];
-              if (file) onImport(file);
-             (e.target as HTMLInputElement).value = '';
-           }}
-          />
+            <button className={cardButtonClass} onClick={onExport}>
+              <Download size={14} strokeWidth={2} /> {t('settings.exportJson')}
+            </button>
+            <button className={cardButtonClass} onClick={() => fileInputRef.current?.click()}>
+              <Upload size={14} strokeWidth={2} /> {t('settings.importJson')}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={(e) => {
+                const file = (e.target as HTMLInputElement).files?.[0];
+                if (file) onImport(file);
+                (e.target as HTMLInputElement).value = '';
+              }}
+            />
           </div>
         </div>
       </div>

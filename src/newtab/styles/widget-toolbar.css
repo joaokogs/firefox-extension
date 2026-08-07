@@ -37,69 +37,6 @@
   font-size: 0.9rem;
 }
 
-.widget-toolbar__add-btn {
-  padding: 6px 16px;
-  border-radius: var(--radius-sm);
-  background: var(--bg-surface-solid);
-  color: var(--text-primary);
-  font-weight: 600;
-  font-size: 0.8rem;
-  border: 1px solid var(--border);
-  transition: background var(--transition-fast), color var(--transition-fast);
-}
-
-.widget-toolbar__add-btn:hover {
-  background: var(--accent);
-  color: #fff;
-  border-color: transparent;
-}
-
-.widget-toolbar__toggle {
-  position: relative;
-  display: inline-block;
-  width: 44px;
-  height: 24px;
-  flex-shrink: 0;
-}
-
-.widget-toolbar__toggle input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.widget-toolbar__toggle-slider {
-  position: absolute;
-  cursor: pointer;
-  inset: 0;
-  background: var(--bg-surface-solid);
-  border: 1px solid var(--border);
-  border-radius: 24px;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
-}
-
-.widget-toolbar__toggle-slider::before {
-  content: '';
-  position: absolute;
-  height: 18px;
-  width: 18px;
-  left: 2px;
-  bottom: 2px;
-  background: #fff;
-  border-radius: 50%;
-  transition: transform var(--transition-fast), background var(--transition-fast);
-}
-
-.widget-toolbar__toggle input:checked + .widget-toolbar__toggle-slider {
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-.widget-toolbar__toggle input:checked + .widget-toolbar__toggle-slider::before {
-  transform: translateX(20px);
-  background: #fff;
-}
-
 .widget-toolbar__city {
   display: flex;
   gap: 8px;
@@ -108,22 +45,4 @@
 
 .widget-toolbar__city .city-autocomplete {
   flex: 1;
-}
-
-.widget-toolbar__apply-btn {
-  padding: 8px 16px;
-  border-radius: var(--radius-sm);
-  background: var(--bg-surface-solid);
-  color: var(--text-primary);
-  font-weight: 600;
-  font-size: 0.8rem;
-  border: 1px solid var(--border);
-  transition: background var(--transition-fast), color var(--transition-fast);
-  white-space: nowrap;
-}
-
-.widget-toolbar__apply-btn:hover {
-  background: var(--accent);
-  color: #fff;
-  border-color: transparent;
 }
