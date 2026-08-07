@@ -20,12 +20,14 @@ export function SettingsPanel({ settings, onChange, onExport, onImport, onImport
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
-      <div className="mb-3 rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
-        <label className="block text-sm font-semibold tracking-[-0.01em] text-panel-text" htmlFor="settings-language">{t('settings.language')}</label>
-        <div className="mt-3 flex items-center justify-between gap-4 rounded-xl border border-panel-border-subtle bg-panel-surface p-3.5">
-          <span className="max-w-[28rem] text-sm leading-5 text-panel-text-secondary">{t('settings.languageDesc')}</span>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="flex min-h-[170px] flex-col justify-between rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
+          <div>
+            <label className="block text-sm font-semibold tracking-[-0.01em] text-panel-text" htmlFor="settings-language">{t('settings.language')}</label>
+            <span className="mt-2 block text-sm leading-5 text-panel-text-secondary">{t('settings.languageDesc')}</span>
+          </div>
           <select
-            className="min-h-10 rounded-xl border border-panel-border bg-panel-background px-3 text-sm font-medium text-panel-text outline-none transition-colors hover:border-panel-accent-text/70 focus:border-panel-accent-text focus:ring-2 focus:ring-panel-accent-text/20"
+            className="mt-5 min-h-10 w-full rounded-xl border border-panel-border bg-panel-background px-3 text-sm font-medium text-panel-text outline-none transition-colors hover:border-panel-accent-text/70 focus:border-panel-accent-text focus:ring-2 focus:ring-panel-accent-text/20"
             id="settings-language"
             value={locale}
             onChange={(e) => {
@@ -39,12 +41,14 @@ export function SettingsPanel({ settings, onChange, onExport, onImport, onImport
             <option value="pt-BR">{t('lang.pt-BR')}</option>
           </select>
         </div>
-      </div>
 
-      <div className="mb-3 rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
-        <label className="block text-sm font-semibold tracking-[-0.01em] text-panel-text" htmlFor="settings-edit-mode">{t('settings.editMode')}</label>
-        <div className="mt-3 flex items-center justify-between gap-4 rounded-xl border border-panel-border-subtle bg-panel-surface p-3.5">
-          <span className="max-w-[28rem] text-sm leading-5 text-panel-text-secondary">{t('settings.editModeDesc')}</span>
+        <div className="flex min-h-[170px] flex-col justify-between rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
+          <div>
+            <label className="block text-sm font-semibold tracking-[-0.01em] text-panel-text" htmlFor="settings-edit-mode">{t('settings.editMode')}</label>
+            <span className="mt-2 block text-sm leading-5 text-panel-text-secondary">{t('settings.editModeDesc')}</span>
+          </div>
+          <div className="mt-5 flex items-center justify-between gap-4 rounded-xl border border-panel-border-subtle bg-panel-surface px-3.5 py-3">
+            <span className="text-xs font-semibold uppercase tracking-[0.1em] text-panel-text-muted">{t('settings.editMode')}</span>
           <label className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center">
             <input
               className="peer sr-only"
@@ -53,15 +57,18 @@ export function SettingsPanel({ settings, onChange, onExport, onImport, onImport
               checked={settings.editMode !== false}
               onChange={() => onChange({ editMode: settings.editMode === false ? true : false })}
             />
-            <span className="absolute inset-0 rounded-full bg-panel-toggle-off transition-colors peer-checked:bg-panel-accent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-panel-accent-text peer-disabled:opacity-50 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-5" />
+              <span className="absolute inset-0 rounded-full bg-panel-toggle-off transition-colors peer-checked:bg-panel-accent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-panel-accent-text peer-disabled:opacity-50 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-5" />
           </label>
+          </div>
         </div>
-      </div>
 
-      <div className="mb-3 rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
-        <label className="block text-sm font-semibold tracking-[-0.01em] text-panel-text" htmlFor="settings-open-in-new-tab">{t('settings.openInNewTab')}</label>
-        <div className="mt-3 flex items-center justify-between gap-4 rounded-xl border border-panel-border-subtle bg-panel-surface p-3.5">
-          <span className="max-w-[28rem] text-sm leading-5 text-panel-text-secondary">{t('settings.openInNewTabDesc')}</span>
+        <div className="flex min-h-[170px] flex-col justify-between rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
+          <div>
+            <label className="block text-sm font-semibold tracking-[-0.01em] text-panel-text" htmlFor="settings-open-in-new-tab">{t('settings.openInNewTab')}</label>
+            <span className="mt-2 block text-sm leading-5 text-panel-text-secondary">{t('settings.openInNewTabDesc')}</span>
+          </div>
+          <div className="mt-5 flex items-center justify-between gap-4 rounded-xl border border-panel-border-subtle bg-panel-surface px-3.5 py-3">
+            <span className="text-xs font-semibold uppercase tracking-[0.1em] text-panel-text-muted">{t('settings.openInNewTab')}</span>
           <label className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center">
             <input
               className="peer sr-only"
@@ -70,32 +77,34 @@ export function SettingsPanel({ settings, onChange, onExport, onImport, onImport
               checked={settings.openInNewTab !== false}
               onChange={() => onChange({ openInNewTab: settings.openInNewTab === false ? true : false })}
             />
-            <span className="absolute inset-0 rounded-full bg-panel-toggle-off transition-colors peer-checked:bg-panel-accent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-panel-accent-text peer-disabled:opacity-50 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-5" />
+              <span className="absolute inset-0 rounded-full bg-panel-toggle-off transition-colors peer-checked:bg-panel-accent peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-panel-accent-text peer-disabled:opacity-50 after:absolute after:left-1 after:top-1 after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-transform peer-checked:after:translate-x-5" />
           </label>
+          </div>
         </div>
-      </div>
 
-      <div className="mb-3 rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
-        <span className="block text-sm font-semibold tracking-[-0.01em] text-panel-text">{t('settings.searchHistory')}</span>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button className={`${buttonClass} border-red-500/25 bg-red-500/10 text-panel-danger hover:border-red-500/40 hover:bg-red-500/15`} onClick={() => onClearRecentSearches?.()} disabled={!(settings.recentSearches && settings.recentSearches.length > 0)}>
+        <div className="flex min-h-[150px] flex-col justify-between rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
+          <div>
+            <span className="block text-sm font-semibold tracking-[-0.01em] text-panel-text">{t('settings.searchHistory')}</span>
+          </div>
+          <button className={`${buttonClass} mt-5 w-full border-red-500/25 bg-red-500/10 text-panel-danger hover:border-red-500/40 hover:bg-red-500/15`} onClick={() => onClearRecentSearches?.()} disabled={!(settings.recentSearches && settings.recentSearches.length > 0)}>
             <Trash2 size={14} strokeWidth={2} /> {t('settings.clearHistory')}
           </button>
         </div>
-      </div>
 
-      <div className="mb-3 rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
-        <span className="block text-sm font-semibold tracking-[-0.01em] text-panel-text">{t('settings.bookmarks')}</span>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button className={secondaryButtonClass} onClick={onImportBookmarks}>
+        <div className="flex min-h-[150px] flex-col justify-between rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
+          <div>
+            <span className="block text-sm font-semibold tracking-[-0.01em] text-panel-text">{t('settings.bookmarks')}</span>
+          </div>
+          <button className={`${secondaryButtonClass} mt-5 w-full`} onClick={onImportBookmarks}>
             <Bookmark size={14} strokeWidth={2} aria-hidden="true" /> {t('settings.importBookmarks')}
           </button>
         </div>
-      </div>
 
-      <div className="rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
-        <span className="block text-sm font-semibold tracking-[-0.01em] text-panel-text">{t('settings.backup')}</span>
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:col-span-2 sm:p-5">
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+            <span className="block text-sm font-semibold tracking-[-0.01em] text-panel-text">{t('settings.backup')}</span>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
           <button className={secondaryButtonClass} onClick={onExport}>
             <Download size={14} strokeWidth={2} /> {t('settings.exportJson')}
           </button>
@@ -110,9 +119,10 @@ export function SettingsPanel({ settings, onChange, onExport, onImport, onImport
             onChange={(e) => {
               const file = (e.target as HTMLInputElement).files?.[0];
               if (file) onImport(file);
-              (e.target as HTMLInputElement).value = '';
-            }}
+             (e.target as HTMLInputElement).value = '';
+           }}
           />
+          </div>
         </div>
       </div>
     </div>
