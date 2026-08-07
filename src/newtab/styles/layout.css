@@ -162,6 +162,11 @@ body {
   z-index: 100;
 }
 
+.app-fab-bar__btn--menu:not(.app-fab-bar__btn--active),
+.app-fab-bar__btn--menu:not(.app-fab-bar__btn--active):hover {
+  background: var(--bg-surface-solid);
+}
+
 .app-fab-bar__btn--menu .icon-rotate {
   transition: transform 0.3s ease;
 }
