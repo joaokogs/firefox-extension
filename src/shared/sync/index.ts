@@ -28,7 +28,7 @@ import {
   requeueDeadLetters,
   clearCommittedInMemory,
 } from './outbox';
-import { mergeAppData, mergeWorkspaces } from './merge';
+import { mergeAppData, mergeWorkspaces, purgeConfirmedDeletedWorkspaces } from './merge';
 
 let state: SyncState = { status: 'idle' };
 let realtimeCleanup: (() => void) | null = null;
@@ -617,19 +617,23 @@ async function syncWorkspaces(
   localWorkspaces: Workspace[],
   remoteWorkspaces: Workspace[],
   remoteRevisions: Record<string, number>,
-): Promise<{ pushed: number; revisions: Record<string, number> }> {
+): Promise<{ pushed: number; revisions: Record<string, number>; confirmedDeletedIds: Set<string> }> {
   const remoteMap = new Map(remoteWorkspaces.map((w) => [w.id, w]));
   const localMap = new Map(localWorkspaces.map((w) => [w.id, w]));
 
   let pushed = 0;
   const revisions: Record<string, number> = { ...remoteRevisions };
+  const confirmedDeletedIds = new Set<string>();
 
   for (const [index, workspace] of localWorkspaces.entries()) {
     const remote = remoteMap.get(workspace.id);
     const localWs = localMap.get(workspace.id);
     const baseRevision = remoteRevisions[workspace.id] ?? 0;
+    const shouldCompactRemote = Boolean(
+      workspace.deletedAt && remote?.deletedAt && remote.widgets.length > 0,
+    );
 
-    const shouldPush = !remote || Boolean(
+    const shouldPush = shouldCompactRemote || !remote || Boolean(
       localWs && (
         localWs.updatedAt > (remote.updatedAt ?? 0) ||
         (localWs.position ?? index) !== (remote.position ?? index)
@@ -641,6 +645,7 @@ async function syncWorkspaces(
         const result = await pushWorkspace(userId, workspace, baseRevision, workspace.position ?? index);
         if (result.accepted) {
           revisions[workspace.id] = result.revision;
+          if (workspace.deletedAt) confirmedDeletedIds.add(workspace.id);
           pushed++;
         }
       } catch (err) {
@@ -648,10 +653,11 @@ async function syncWorkspaces(
       }
     } else {
       revisions[workspace.id] = baseRevision;
+      if (workspace.deletedAt && remote?.deletedAt) confirmedDeletedIds.add(workspace.id);
     }
   }
 
-  return { pushed, revisions };
+  return { pushed, revisions, confirmedDeletedIds };
 }
 
 async function syncPreferences(
@@ -708,6 +714,11 @@ async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<A
 
     const remoteWorkspacesResult = await fetchRemoteWorkspaces(userId);
     const remotePreferencesResult = await fetchRemotePreferences(userId);
+    const remoteDeletedIds = new Set(
+      remoteWorkspacesResult.workspaces
+        .filter((workspace) => workspace.deletedAt)
+        .map((workspace) => workspace.id),
+    );
 
     let remoteAppData: AppData = {
       ...local,
@@ -743,7 +754,7 @@ async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<A
 
     const shouldPush = appliedOpIds.size > 0 || !sameContent(merged, remoteAppData);
 
-    const allWorkspaces = mergeWorkspaces(local.workspaces, remoteAppData.workspaces);
+    const allWorkspaces = mergeWorkspaces(merged.workspaces, remoteAppData.workspaces);
 
     const workspaceSync = shouldPush
       ? await syncWorkspaces(
@@ -752,7 +763,11 @@ async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<A
           remoteWorkspacesResult.workspaces,
           remoteWorkspacesResult.revisions,
         )
-      : { pushed: 0, revisions: remoteWorkspacesResult.revisions };
+      : {
+          pushed: 0,
+          revisions: remoteWorkspacesResult.revisions,
+          confirmedDeletedIds: new Set<string>(),
+        };
 
     const preferencesSync = shouldPush
       ? await syncPreferences(
@@ -799,6 +814,9 @@ async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<A
       }
     }
     merged = preserveLocalOnly(merged, live);
+
+    const confirmedDeletedIds = new Set([...remoteDeletedIds, ...workspaceSync.confirmedDeletedIds]);
+    merged = purgeConfirmedDeletedWorkspaces(merged, confirmedDeletedIds);
 
     const nextMeta: SyncMeta = {
       ...meta,

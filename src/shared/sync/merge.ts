@@ -44,3 +44,24 @@ export function mergeAppData(local: AppData, remote: AppData): AppData {
     installedAt: minInstalledAt === Number.MAX_SAFE_INTEGER ? Date.now() : minInstalledAt,
   };
 }
+
+export function purgeConfirmedDeletedWorkspaces(data: AppData, confirmedIds: Set<string>): AppData {
+  if (confirmedIds.size === 0) return data;
+
+  const workspaces = data.workspaces.filter(
+    (workspace) => !workspace.deletedAt || !confirmedIds.has(workspace.id),
+  );
+
+  if (workspaces.length === data.workspaces.length) return data;
+
+  const visible = workspaces.filter((workspace) => !workspace.deletedAt);
+  const lastBoardId = data.settings.lastBoardId && visible.some((workspace) => workspace.id === data.settings.lastBoardId)
+    ? data.settings.lastBoardId
+    : visible[0]?.id;
+
+  return {
+    ...data,
+    workspaces,
+    settings: { ...data.settings, lastBoardId },
+  };
+}

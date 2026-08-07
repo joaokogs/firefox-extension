@@ -144,7 +144,7 @@ export async function pushWorkspace(
     workspace_id_param: workspace.id,
     name_param: workspace.title,
     position_param: position,
-    new_data: { widgets: workspace.widgets },
+    new_data: { widgets: workspace.deletedAt ? [] : workspace.widgets },
     base_revision: baseRevision,
     client_updated_at_param: new Date(workspace.updatedAt).toISOString(),
     deleted_at_param: workspace.deletedAt ? new Date(workspace.deletedAt).toISOString() : null,
