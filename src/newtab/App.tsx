@@ -583,6 +583,7 @@ export function App() {
       if (widget.title !== undefined) payload.title = widget.title;
       if (widget.colSpan !== undefined) payload.colSpan = widget.colSpan;
       if (widget.height !== undefined) payload.height = widget.height;
+      if (widget.type === 'weather' && widget.city !== undefined) payload.city = widget.city;
       if (Object.keys(payload).length > 0) {
         safeRecordOperation('widget', `${activeBoardId}/${widget.id}`, 'patch', payload);
       }
@@ -818,12 +819,14 @@ export function App() {
   };
 
   const handleToolbarCityChange = (city: string) => {
-    const currentTopWidgets = data?.settings.topWidgets || [];
-    const next = currentTopWidgets.map((w) => 
-      w.type === 'weather' ? { ...w, city } : w
-    );
-    safeRecordOperation('topWidgets', 'topWidgets', 'patch', next);
-    handleSettingsChange({ topWidgets: next });
+    setData((prev) => {
+      if (!prev) return prev;
+      const next = (prev.settings.topWidgets || []).map((w) =>
+        w.type === 'weather' ? { ...w, city } : w
+      );
+      safeRecordOperation('topWidgets', 'topWidgets', 'patch', next);
+      return updateSettings(prev, { topWidgets: next });
+    });
   };
 
   const handleExport = () => {

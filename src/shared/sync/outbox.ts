@@ -89,10 +89,15 @@ function findLastIndex(ops: SyncOperation[], action: SyncAction): number {
   return -1;
 }
 
-function mergePatchPayloads(patches: SyncOperation[]): Record<string, unknown> {
+function mergePatchPayloads(patches: SyncOperation[]): unknown {
+  const lastPayload = patches[patches.length - 1]?.payload;
+  if (Array.isArray(lastPayload)) return lastPayload;
+
   const merged: Record<string, unknown> = {};
   for (const p of patches) {
-    Object.assign(merged, p.payload as Record<string, unknown>);
+    if (p.payload && typeof p.payload === 'object' && !Array.isArray(p.payload)) {
+      Object.assign(merged, p.payload as Record<string, unknown>);
+    }
   }
   return merged;
 }

@@ -154,7 +154,6 @@ export function WidgetToolbar({
               <CityAutocomplete
                 value={cityInput}
                 onChange={setCityInput}
-                onSelect={onCityChange}
                 placeholder={t('widgetToolbar.city')}
                 id="widget-toolbar-city"
               />
