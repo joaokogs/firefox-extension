@@ -165,15 +165,15 @@ export function AuthPanel() {
     setEmailSent(false);
   };
 
-  const inputClass = 'mt-1.5 min-h-11 w-full rounded-xl border border-panel-border bg-panel-background px-3.5 text-sm text-panel-text outline-none transition-colors placeholder:text-panel-text-muted/80 hover:border-panel-border focus:border-panel-accent-text focus:ring-2 focus:ring-panel-accent-text/20 disabled:cursor-not-allowed disabled:opacity-50';
-  const buttonClass = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-accent-text disabled:cursor-not-allowed disabled:opacity-50';
+  const inputClass = 'mt-1.5 min-h-11 w-full rounded-md border border-panel-border bg-panel-background px-3.5 text-sm text-panel-text outline-none transition-colors placeholder:text-panel-text-muted/80 hover:border-panel-border focus:border-panel-accent-text focus:ring-2 focus:ring-panel-accent-text/20 disabled:cursor-not-allowed disabled:opacity-50';
+  const buttonClass = 'inline-flex min-h-11 items-center justify-center gap-2 rounded-md border px-4 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-accent-text disabled:cursor-not-allowed disabled:opacity-50';
 
   if (session?.user) {
     return (
       <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
-        <div className="mx-auto w-full max-w-md rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
+        <div className="mx-auto w-full max-w-md rounded-lg border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
           <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-panel-accent/12 text-panel-accent-text">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-panel-accent/12 text-panel-accent-text">
               <UserRound size={20} aria-hidden="true" />
             </span>
             <div className="min-w-0">
@@ -201,8 +201,8 @@ export function AuthPanel() {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
       <div className="mx-auto w-full max-w-md">
-        <div className="mb-5 flex items-start gap-3 rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-panel-accent/12 text-panel-accent-text">
+        <div className="mb-5 flex items-start gap-3 rounded-lg border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-panel-accent/12 text-panel-accent-text">
             <LockKeyhole size={18} aria-hidden="true" />
           </span>
           <div>
@@ -212,14 +212,14 @@ export function AuthPanel() {
         </div>
 
         {emailSent && (
-          <div className="mb-4 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-3 text-sm leading-5 text-panel-success" role="status">
+          <div className="mb-4 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-3 text-sm leading-5 text-panel-success" role="status">
             {t('auth.emailConfirmation')}
           </div>
         )}
 
         <form
           onSubmit={mode === 'signin' ? handleSignIn : handleSignUp}
-          className="rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5"
+          className="rounded-lg border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5"
           aria-busy={loading}
         >
           <div className="flex flex-col gap-4">
@@ -274,7 +274,7 @@ export function AuthPanel() {
             )}
 
             {error && (
-              <div className="rounded-xl border border-red-500/25 bg-red-500/10 px-3.5 py-3 text-sm leading-5 text-panel-danger" role="alert">
+              <div className="rounded-md border border-red-500/25 bg-red-500/10 px-3.5 py-3 text-sm leading-5 text-panel-danger" role="alert">
                 {error}
               </div>
             )}
@@ -308,7 +308,7 @@ export function AuthPanel() {
         </button>
 
         <button
-          className="mt-4 w-full rounded-xl px-3 py-2.5 text-sm font-semibold text-panel-accent-text transition-colors hover:bg-panel-accent-text/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-accent-text disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-4 w-full rounded-md px-3 py-2.5 text-sm font-semibold text-panel-accent-text transition-colors hover:bg-panel-accent-text/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-accent-text disabled:cursor-not-allowed disabled:opacity-50"
           onClick={toggleMode}
           disabled={loading}
           type="button"

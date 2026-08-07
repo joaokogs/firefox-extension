@@ -112,7 +112,7 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
   const statusKey = syncAccess && (!subscription || !paidStatuses.has(subscription.status))
     ? 'coupon'
     : subscription?.status || 'none';
-  const buttonClass = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-accent-text disabled:cursor-not-allowed disabled:opacity-50';
+  const buttonClass = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-md border px-3.5 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-accent-text disabled:cursor-not-allowed disabled:opacity-50';
 
   return (
     <div className="mt-5 border-t border-panel-border-subtle pt-5">
@@ -160,7 +160,7 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
           <input
             id="promotional-coupon"
             type="text"
-            className="min-h-10 min-w-0 flex-1 rounded-xl border border-panel-border bg-panel-background px-3 text-sm text-panel-text outline-none transition-colors placeholder:text-panel-text-muted/80 hover:border-panel-border focus:border-panel-accent-text focus:ring-2 focus:ring-panel-accent-text/20 disabled:cursor-not-allowed disabled:opacity-50"
+            className="min-h-10 min-w-0 flex-1 rounded-md border border-panel-border bg-panel-background px-3 text-sm text-panel-text outline-none transition-colors placeholder:text-panel-text-muted/80 hover:border-panel-border focus:border-panel-accent-text focus:ring-2 focus:ring-panel-accent-text/20 disabled:cursor-not-allowed disabled:opacity-50"
             value={couponCode}
             onInput={(event) => setCouponCode((event.target as HTMLInputElement).value)}
             placeholder={t('payment.couponPlaceholder')}
@@ -174,12 +174,12 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
       </form>
 
       {couponSuccess && (
-        <div className="mt-3 rounded-xl border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-3 text-sm leading-5 text-panel-success" role="status">
+        <div className="mt-3 rounded-md border border-emerald-500/25 bg-emerald-500/10 px-3.5 py-3 text-sm leading-5 text-panel-success" role="status">
           {t('payment.couponSuccess')}
         </div>
       )}
       {error && (
-        <div className="mt-3 rounded-xl border border-red-500/25 bg-red-500/10 px-3.5 py-3 text-sm leading-5 text-panel-danger" role="alert">
+        <div className="mt-3 rounded-md border border-red-500/25 bg-red-500/10 px-3.5 py-3 text-sm leading-5 text-panel-danger" role="alert">
           {error}
         </div>
       )}

@@ -15,19 +15,19 @@ interface SettingsPanelProps {
 export function SettingsPanel({ settings, onChange, onExport, onImport, onImportBookmarks, onClearRecentSearches }: SettingsPanelProps) {
   const { t, locale, setLocale } = useI18n();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const buttonClass = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border px-3.5 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-accent-text disabled:cursor-not-allowed disabled:opacity-50';
+  const buttonClass = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-md border px-3.5 py-2 text-sm font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-accent-text disabled:cursor-not-allowed disabled:opacity-50';
   const secondaryButtonClass = `${buttonClass} border-panel-border bg-panel-surface-muted text-panel-text-secondary hover:border-panel-border hover:bg-panel-surface-raised hover:text-panel-text`;
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="flex min-h-[170px] flex-col justify-between rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
+        <div className="flex min-h-[170px] flex-col justify-between rounded-lg border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
           <div>
             <label className="block text-sm font-semibold tracking-[-0.01em] text-panel-text" htmlFor="settings-language">{t('settings.language')}</label>
             <span className="mt-2 block text-sm leading-5 text-panel-text-secondary">{t('settings.languageDesc')}</span>
           </div>
           <select
-            className="mt-5 min-h-10 w-full rounded-xl border border-panel-border bg-panel-background px-3 text-sm font-medium text-panel-text outline-none transition-colors hover:border-panel-accent-text/70 focus:border-panel-accent-text focus:ring-2 focus:ring-panel-accent-text/20"
+            className="mt-5 min-h-10 w-full rounded-md border border-panel-border bg-panel-background px-3 text-sm font-medium text-panel-text outline-none transition-colors hover:border-panel-accent-text/70 focus:border-panel-accent-text focus:ring-2 focus:ring-panel-accent-text/20"
             id="settings-language"
             value={locale}
             onChange={(e) => {
@@ -42,12 +42,12 @@ export function SettingsPanel({ settings, onChange, onExport, onImport, onImport
           </select>
         </div>
 
-        <div className="flex min-h-[170px] flex-col justify-between rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
+        <div className="flex min-h-[170px] flex-col justify-between rounded-lg border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
           <div>
             <label className="block text-sm font-semibold tracking-[-0.01em] text-panel-text" htmlFor="settings-edit-mode">{t('settings.editMode')}</label>
             <span className="mt-2 block text-sm leading-5 text-panel-text-secondary">{t('settings.editModeDesc')}</span>
           </div>
-          <div className="mt-5 flex items-center justify-between gap-4 rounded-xl border border-panel-border-subtle bg-panel-surface px-3.5 py-3">
+          <div className="mt-5 flex items-center justify-between gap-4 rounded-md border border-panel-border-subtle bg-panel-surface px-3.5 py-3">
             <span className="text-xs font-semibold uppercase tracking-[0.1em] text-panel-text-muted">{t('settings.editMode')}</span>
           <label className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center">
             <input
@@ -62,12 +62,12 @@ export function SettingsPanel({ settings, onChange, onExport, onImport, onImport
           </div>
         </div>
 
-        <div className="flex min-h-[170px] flex-col justify-between rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
+        <div className="flex min-h-[170px] flex-col justify-between rounded-lg border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
           <div>
             <label className="block text-sm font-semibold tracking-[-0.01em] text-panel-text" htmlFor="settings-open-in-new-tab">{t('settings.openInNewTab')}</label>
             <span className="mt-2 block text-sm leading-5 text-panel-text-secondary">{t('settings.openInNewTabDesc')}</span>
           </div>
-          <div className="mt-5 flex items-center justify-between gap-4 rounded-xl border border-panel-border-subtle bg-panel-surface px-3.5 py-3">
+          <div className="mt-5 flex items-center justify-between gap-4 rounded-md border border-panel-border-subtle bg-panel-surface px-3.5 py-3">
             <span className="text-xs font-semibold uppercase tracking-[0.1em] text-panel-text-muted">{t('settings.openInNewTab')}</span>
           <label className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center">
             <input
@@ -82,7 +82,7 @@ export function SettingsPanel({ settings, onChange, onExport, onImport, onImport
           </div>
         </div>
 
-        <div className="flex min-h-[150px] flex-col justify-between rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
+        <div className="flex min-h-[150px] flex-col justify-between rounded-lg border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
           <div>
             <span className="block text-sm font-semibold tracking-[-0.01em] text-panel-text">{t('settings.searchHistory')}</span>
           </div>
@@ -91,7 +91,7 @@ export function SettingsPanel({ settings, onChange, onExport, onImport, onImport
           </button>
         </div>
 
-        <div className="flex min-h-[150px] flex-col justify-between rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
+        <div className="flex min-h-[150px] flex-col justify-between rounded-lg border border-panel-border-subtle bg-panel-surface-muted p-4 sm:p-5">
           <div>
             <span className="block text-sm font-semibold tracking-[-0.01em] text-panel-text">{t('settings.bookmarks')}</span>
           </div>
@@ -100,7 +100,7 @@ export function SettingsPanel({ settings, onChange, onExport, onImport, onImport
           </button>
         </div>
 
-        <div className="rounded-2xl border border-panel-border-subtle bg-panel-surface-muted p-4 sm:col-span-2 sm:p-5">
+        <div className="rounded-lg border border-panel-border-subtle bg-panel-surface-muted p-4 sm:col-span-2 sm:p-5">
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
             <span className="block text-sm font-semibold tracking-[-0.01em] text-panel-text">{t('settings.backup')}</span>
           </div>

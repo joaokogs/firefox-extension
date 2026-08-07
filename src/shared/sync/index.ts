@@ -995,7 +995,10 @@ export async function syncOnOnline(): Promise<void> {
 
   try {
     const session = await getSession();
-    if (!session?.user) return;
+    if (!session?.user) {
+      setState({ status: 'idle' });
+      return;
+    }
 
     const userId = session.user.id;
 

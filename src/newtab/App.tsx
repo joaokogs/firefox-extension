@@ -136,7 +136,6 @@ export function App() {
   const [wallpaperObjectUrl, setWallpaperObjectUrl] = useState<string | null>(null);
   const [syncStatus, setSyncStatus] = useState<SyncState['status']>(() => getSyncState().status);
   const [storageFailure, setStorageFailure] = useState(false);
-  const [pendingOps, setPendingOps] = useState(0);
   const [deadLetterOps, setDeadLetterOps] = useState(0);
   const lastPullAtRef = useRef<number | undefined>(getSyncState().lastPullAt);
   const gcIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -279,7 +278,6 @@ export function App() {
   useEffect(() => {
     return onSyncStateChange((s) => {
       setSyncStatus(s.status);
-      setPendingOps(s.pendingOperations ?? 0);
       setDeadLetterOps(s.deadLetterCount ?? 0);
       if (s.storageFailure) {
         setStorageFailure(true);
@@ -978,11 +976,6 @@ export function App() {
           {syncStatus === 'syncing' && (
             <span className="app-sync-spinner" role="status" aria-label={t('app.syncing')} />
           )}
-          {(pendingOps > 0 || deadLetterOps > 0) && (
-            <span className="app-sync-badge" aria-label={t('app.pendingChanges')}>
-              {deadLetterOps > 0 ? '!' : pendingOps}
-            </span>
-          )}
         </button>
 
         <div className={`app-fab-menu ${menuOpen ? 'app-fab-menu--open' : ''}`}>
@@ -999,19 +992,14 @@ export function App() {
               {t('app.retryDeadLetters')} ({deadLetterOps})
             </button>
           )}
-          {pendingOps > 0 && (
-            <span className="app-fab-menu__pending">
-              {t('app.pendingChanges')}: {pendingOps}
-            </span>
-          )}
-            <button
-              className="app-fab-menu__item"
-              onClick={() => { setShowWidgetToolbar(true); setMenuOpen(false); }}
-              aria-label={t('app.addWidgets')}
-              title={t('app.addWidgets')}
-            >
-              <Plus size={20} strokeWidth={2} />
-            </button>
+          <button
+            className="app-fab-menu__item"
+            onClick={() => { setShowWidgetToolbar(true); setMenuOpen(false); }}
+            aria-label={t('app.addWidgets')}
+            title={t('app.addWidgets')}
+          >
+            <Plus size={20} strokeWidth={2} />
+          </button>
           <button
             className="app-fab-menu__item"
             onClick={() => { setShowBackground(true); setMenuOpen(false); }}

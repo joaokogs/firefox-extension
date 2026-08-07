@@ -101,7 +101,7 @@ export function ModalDialog({ open, onClose, title, children, wide, ariaLabel }:
       aria-labelledby={!ariaLabel ? titleId : undefined}
     >
       <div
-        className={`panel-modal relative flex animate-[modalIn_0.25s_cubic-bezier(0.16,1,0.3,1)] max-h-[min(760px,calc(100dvh-24px))] w-full flex-col overflow-hidden rounded-t-[28px] border border-panel-border bg-panel-surface font-panel text-panel-text shadow-[0_24px_80px_rgba(15,23,42,0.22)] sm:max-h-[min(760px,calc(100dvh-48px))] sm:rounded-[28px] ${wide ? 'max-w-[760px]' : 'max-w-[560px]'}`}
+            className={`panel-modal relative flex animate-[modalIn_0.25s_cubic-bezier(0.16,1,0.3,1)] max-h-[min(760px,calc(100dvh-24px))] w-full flex-col overflow-hidden rounded-t-lg border border-panel-border bg-panel-surface font-panel text-panel-text shadow-[0_24px_80px_rgba(15,23,42,0.22)] sm:max-h-[min(760px,calc(100dvh-48px))] sm:rounded-lg ${wide ? 'max-w-[760px]' : 'max-w-[560px]'}`}
         ref={dialogRef}
         tabIndex={-1}
       >
@@ -111,7 +111,7 @@ export function ModalDialog({ open, onClose, title, children, wide, ariaLabel }:
             <h2 id={titleId} className="truncate text-lg font-semibold tracking-[-0.02em] text-panel-text sm:text-xl">{title}</h2>
           </div>
           <button
-            className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-panel-border-subtle bg-panel-surface-muted text-panel-text-muted transition-colors hover:border-panel-border hover:bg-panel-surface-raised hover:text-panel-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-accent-text"
+              className="mt-0.5 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-panel-border-subtle bg-panel-surface-muted text-panel-text-muted transition-colors hover:border-panel-border hover:bg-panel-surface-raised hover:text-panel-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-panel-accent-text"
             onClick={() => onCloseRef.current()}
             aria-label={t('dialog.close')}
           >
