@@ -1,35 +1,107 @@
-import type { AppData, Board, LinkItem, TodoItem, Widget } from '@shared/types';
-import { generateId } from '@shared/types/defaults';
+import type { AppData, Board, LinkItem, TodoItem, TopWidgetConfig, Widget, Workspace } from '@shared/types';
+import { generateId, generateWorkspaceId } from '@shared/types/defaults';
 
 export function migrateAppData(data: AppData, fallbackTimestamp?: number): AppData {
   const now = Date.now();
   const fallback = fallbackTimestamp ?? data.installedAt ?? now - 86400000;
 
+  const legacyBoards = (data as unknown as { boards?: Board[] }).boards;
+  const sourceWorkspaces: Workspace[] = Array.isArray(data.workspaces)
+    ? data.workspaces
+    : Array.isArray(legacyBoards)
+      ? legacyBoards
+      : [];
+
   const base: AppData = {
     ...data,
     installedAt: data.installedAt ?? now,
+    settings: {
+      ...data.settings,
+      topWidgets: normalizeTopWidgets(data.settings?.topWidgets),
+    },
+    workspaces: sourceWorkspaces,
   };
 
-  const boardIds = new Set<string>();
-  const boards = base.boards.map((board) => migrateBoard(board, fallback, boardIds));
+  const legacyFields = base as unknown as {
+    boards?: unknown;
+    _tombstones?: unknown;
+    _owner?: unknown;
+    lastSyncedAt?: unknown;
+    settingsUpdatedAt?: unknown;
+  };
+  delete legacyFields.boards;
+  delete legacyFields._tombstones;
+  delete legacyFields._owner;
+  delete legacyFields.lastSyncedAt;
+  delete legacyFields.settingsUpdatedAt;
 
-  return { ...base, boards };
-}
+  const workspaceIds = new Set<string>();
+  const workspaceIdMap = new Map<string, string>();
+  const workspaces = base.workspaces.map((workspace, index) => {
+    const migrated = migrateWorkspace(workspace, fallback, workspaceIds, index);
+    workspaceIdMap.set(workspace.id, migrated.id);
+    return migrated;
+  });
 
-
-function migrateBoard(board: Board, fallback: number, usedBoardIds: Set<string>): Board {
-  const legacyBoard = board as Board & { id?: string; createdAt?: number; updatedAt?: number };
-  const id = getUniqueId(legacyBoard.id, 'board', usedBoardIds);
-  const widgetIds = new Set<string>();
-  const widgets = board.widgets.map((widget) => migrateWidget(widget, fallback, widgetIds));
+  const legacyLastBoardId = base.settings.lastBoardId;
+  const lastBoardId = legacyLastBoardId
+    ? workspaceIdMap.get(legacyLastBoardId) ?? legacyLastBoardId
+    : workspaces[0]?.id;
 
   return {
-    ...board,
+    ...base,
+    workspaces,
+    settings: { ...base.settings, lastBoardId },
+  };
+}
+
+function normalizeTopWidgets(value: unknown): TopWidgetConfig[] {
+  const fallback: TopWidgetConfig[] = [
+    { type: 'weather', city: 'New York' },
+    { type: 'clock' },
+    { type: 'search' },
+  ];
+
+  if (!Array.isArray(value)) return fallback;
+
+  return value.filter((widget): widget is TopWidgetConfig => {
+    if (!widget || typeof widget !== 'object') return false;
+    const type = (widget as { type?: unknown }).type;
+    return type === 'clock' || type === 'weather' || type === 'search';
+  });
+}
+
+function migrateWorkspace(workspace: Workspace, fallback: number, usedWorkspaceIds: Set<string>, position: number): Workspace {
+  const legacyWorkspace = workspace as Workspace & { id?: string; createdAt?: number; updatedAt?: number };
+  const id = getWorkspaceId(legacyWorkspace.id, usedWorkspaceIds);
+  const widgetIds = new Set<string>();
+  const widgets = workspace.widgets.map((widget) => migrateWidget(widget, fallback, widgetIds));
+
+  return {
+    ...workspace,
     id,
-    createdAt: getTimestamp(legacyBoard.createdAt, fallback),
-    updatedAt: getTimestamp(legacyBoard.updatedAt, fallback),
+    position,
+    createdAt: getTimestamp(legacyWorkspace.createdAt, fallback),
+    updatedAt: getTimestamp(legacyWorkspace.updatedAt, fallback),
     widgets,
   };
+}
+
+function getWorkspaceId(value: unknown, usedIds: Set<string>): string {
+  const candidate = typeof value === 'string' && value.trim() ? value : undefined;
+  const isUuid = candidate
+    ? /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate)
+    : false;
+
+  if (isUuid && !usedIds.has(candidate!)) {
+    usedIds.add(candidate!);
+    return candidate!;
+  }
+
+  let id = generateWorkspaceId();
+  while (usedIds.has(id)) id = generateWorkspaceId();
+  usedIds.add(id);
+  return id;
 }
 
 function migrateWidget(widget: Widget, fallback: number, usedWidgetIds: Set<string>): Widget {

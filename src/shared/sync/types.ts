@@ -1,11 +1,3 @@
-export interface RemoteTemplate {
-  user_id: string;
-  data: unknown;
-  revision: number;
-  updated_at: string;
-  created_at: string;
-}
-
 export type SyncErrorCategory =
   | 'supabase_not_configured'
   | 'access_denied'

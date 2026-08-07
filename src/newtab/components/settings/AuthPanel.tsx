@@ -12,7 +12,11 @@ import type { Session } from '@supabase/supabase-js';
 import { LockKeyhole, LogOut, Mail, UserRound } from 'lucide-preact';
 import { PaymentPanel } from './PaymentPanel';
 
-export function AuthPanel() {
+interface AuthPanelProps {
+  onAuthenticated?: () => void;
+}
+
+export function AuthPanel({ onAuthenticated }: AuthPanelProps) {
   const { t } = useI18n();
   const [session, setSession] = useState<Session | null>(null);
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
@@ -108,6 +112,7 @@ export function AuthPanel() {
     try {
       await signInWithEmail(email, password);
       resetForm();
+      onAuthenticated?.();
     } catch (err: unknown) {
       setError(getErrorMessage(err, t('auth.errorSignIn')));
     } finally {
@@ -127,6 +132,7 @@ export function AuthPanel() {
       const session = await signUpWithEmail(email, password);
       resetForm();
       setEmailSent(!session);
+      if (session) onAuthenticated?.();
     } catch (err: unknown) {
       setError(getErrorMessage(err, t('auth.errorSignUp')));
     } finally {
@@ -139,6 +145,7 @@ export function AuthPanel() {
     setLoading(true);
     try {
       await signInWithGoogle();
+      onAuthenticated?.();
     } catch (err: unknown) {
       setError(getErrorMessage(err, t('auth.errorGoogle')));
     } finally {

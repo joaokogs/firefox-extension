@@ -1,13 +1,24 @@
-import type { Board, AppData } from './index';
+import type { Workspace, AppData } from './index';
 import { DEFAULT_WALLPAPERS, DEFAULT_THEME } from './constants';
 
 export function generateId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-export const INITIAL_SAMPLE_BOARDS: Board[] = [
+export function generateWorkspaceId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (character) => {
+    const random = Math.random() * 16 | 0;
+    const value = character === 'x' ? random : (random & 0x3) | 0x8;
+    return value.toString(16);
+  });
+}
+
+export const INITIAL_SAMPLE_WORKSPACES: Workspace[] = [
   {
-    id: 'board-home',
+    id: generateWorkspaceId(),
     title: 'Home',
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -71,7 +82,7 @@ export const INITIAL_SAMPLE_BOARDS: Board[] = [
 
 export function getDefaultData(): AppData {
   return {
-    boards: INITIAL_SAMPLE_BOARDS,
+    workspaces: INITIAL_SAMPLE_WORKSPACES,
     settings: {
       theme: 'light',
       wallpaper: DEFAULT_WALLPAPERS[0],
@@ -88,7 +99,7 @@ export function getDefaultData(): AppData {
       },
       editMode: true,
       openInNewTab: true,
-      lastBoardId: 'board-home',
+      lastBoardId: INITIAL_SAMPLE_WORKSPACES[0].id,
       locale: 'en'
     },
     installedAt: Date.now()

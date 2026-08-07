@@ -65,6 +65,11 @@ export interface Board {
   updatedAt: number;
 }
 
+export interface Workspace extends Board {
+  position?: number;
+  deletedAt?: number;
+}
+
 export interface ThemeConfig {
   primaryColor: string;
   boardColor: string;
@@ -113,19 +118,15 @@ export interface TopWidgetConfig {
   searchEngine?: SearchEngine;
 }
 
-export interface SyncTombstones {
-  deletedBoards: Record<string, number>;
-  deletedWidgets: Record<string, number>;
-  deletedLinks: Record<string, number>;
-  deletedTodos: Record<string, number>;
-}
-
 export interface AppData {
-  boards: Board[];
+  workspaces: Workspace[];
   settings: AppSettings;
   installedAt: number;
-  lastSyncedAt?: number;
+}
+
+export interface SyncMeta {
+  owner?: string;
+  lastSyncAt?: number;
   settingsUpdatedAt?: number;
-  _tombstones?: SyncTombstones;
-  _owner?: string;
+  workspaceRevisions: Record<string, number>;
 }

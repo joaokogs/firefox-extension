@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Settings, Menu, Plus, Palette, User } from 'lucide-preact';
 import type { AppData, ThemeConfig, UploadedBackground, Widget, WidgetType, TopWidgetConfig, SearchEngine } from '@shared/types';
 import { DEFAULT_WALLPAPERS, SEARCH_ENGINES, LOCAL_ONLY_SETTINGS_KEYS } from '@shared/types/constants';
+import { getDefaultData } from '@shared/types/defaults';
 import { useI18n, setLocale as setI18nLocale } from '@shared/i18n';
 import {
   loadData,
   saveData,
   STORAGE_KEY,
   onStorageFailure,
+  getBoards,
 } from '@shared/storage';
 import { deleteBackground, getBackgroundBlob, gcOrphanedAssets } from '@shared/storage/backgrounds';
 import { createBoard, addBoard, renameBoard, reorderBoard, deleteBoard, getBoardById, getInitialBoardId, updateSettings, removeRecentSearch, clearRecentSearches, addRecentSearch } from '@shared/storage/boards';
@@ -47,7 +49,7 @@ import {
 } from '@shared/sync';
 import type { SyncState } from '@shared/sync/types';
 import { migrateAppData } from '@shared/sync/migrate';
-import { recordOperation, setOutboxOwner } from '@shared/sync/outbox';
+import { recordOperation } from '@shared/sync/outbox';
 import { showSyncToast } from './solidToast';
 import './styles/index.css';
 
@@ -109,6 +111,21 @@ async function removeVideoBackgrounds(data: AppData): Promise<AppData> {
   };
 }
 
+function ensureRenderableData(data: AppData): AppData {
+  const normalized = migrateAppData(data);
+  if (getBoards(normalized).length > 0) return normalized;
+
+  const fallback = getDefaultData();
+  return {
+    ...normalized,
+    workspaces: fallback.workspaces,
+    settings: {
+      ...normalized.settings,
+      lastBoardId: fallback.settings.lastBoardId,
+    },
+  };
+}
+
 function getThemeConfigForPersist(): Omit<ThemeConfig, 'derivedFromWallpaper'> {
   const { derivedFromWallpaper: _, ...config } = useThemeStore.getState().themeConfig;
   return config;
@@ -145,39 +162,56 @@ export function App() {
     setLocalDataProvider(() => latestDataRef.current);
     setRemoteAppliedHandler((next) => {
       if (!mounted) return;
+      const renderable = ensureRenderableData(next);
       initSyncPendingRef.current = false;
-      lastRemoteAppliedRef.current = next;
-      setData(next);
-      setActiveBoardId((current) => next.boards.some((board) => board.id === current) ? current : getInitialBoardId(next));
+      lastRemoteAppliedRef.current = renderable;
+      setData(renderable);
+      setActiveBoardId((current) => getBoards(renderable).some((board) => board.id === current) ? current : getInitialBoardId(renderable));
     });
     loadData().then(async (loaded) => {
       if (!mounted) return;
-      setOutboxOwner(loaded._owner);
-      const cleaned = await removeVideoBackgrounds(loaded);
-      if (!mounted) return;
-
-      setData(cleaned);
-      setActiveBoardId(getInitialBoardId(cleaned));
-      if (cleaned.settings.locale) {
-        setI18nLocale(cleaned.settings.locale as any);
+      const initial = ensureRenderableData(loaded);
+      setData(initial);
+      setActiveBoardId(getInitialBoardId(initial));
+      if (initial.settings.locale) {
+        setI18nLocale(initial.settings.locale as any);
       }
 
       initSyncPendingRef.current = true;
-      initializeSync(cleaned)
+      initializeSync(initial)
         .then((merged) => {
-          if (!merged.settings.themeConfig) {
+          const synchronized = ensureRenderableData(merged);
+          if (!synchronized.settings.themeConfig) {
             const themeConfig = getThemeConfigForPersist();
             safeRecordOperation('themeConfig', 'themeConfig', 'put', themeConfig);
             const backfilled: AppData = {
-              ...merged,
-              settings: { ...merged.settings, themeConfig },
+              ...synchronized,
+              settings: { ...synchronized.settings, themeConfig },
             };
             setData(backfilled);
+          } else if (synchronized !== merged && mounted) {
+            setData(synchronized);
+            setActiveBoardId((current) => getBoards(synchronized).some((board) => board.id === current) ? current : getInitialBoardId(synchronized));
           }
         })
         .finally(() => {
           initSyncPendingRef.current = false;
         });
+
+      void removeVideoBackgrounds(initial).then((cleaned) => {
+        if (!mounted || cleaned === initial || latestDataRef.current !== initial) return;
+        const renderable = ensureRenderableData(cleaned);
+        setData(renderable);
+        setActiveBoardId((current) => getBoards(renderable).some((board) => board.id === current) ? current : getInitialBoardId(renderable));
+      }).catch((err) => {
+        console.error('[App] failed to clean video backgrounds:', err);
+      });
+    }).catch((err) => {
+      if (!mounted) return;
+      console.error('[App] failed to initialize local data:', err);
+      const fallback = getDefaultData();
+      setData(fallback);
+      setActiveBoardId(getInitialBoardId(fallback));
     });
     return () => {
       mounted = false;
@@ -215,11 +249,11 @@ export function App() {
     const handleStorageChange = (changes: Record<string, Storage.StorageChange>, areaName: string) => {
       if (areaName !== 'local') return;
       const next = changes[STORAGE_KEY]?.newValue as AppData | undefined;
-      if (!next || !next.boards || !next.settings) return;
+      if (!next || !Array.isArray(next.workspaces) || !next.settings) return;
       if (latestDataRef.current && JSON.stringify(latestDataRef.current) === JSON.stringify(next)) return;
 
       setData(next);
-      setActiveBoardId((current) => next.boards.some((board) => board.id === current) ? current : getInitialBoardId(next));
+      setActiveBoardId((current) => getBoards(next).some((board) => board.id === current) ? current : getInitialBoardId(next));
     };
 
     browser.storage.onChanged.addListener(handleStorageChange);
@@ -505,7 +539,7 @@ export function App() {
     setData((prev) => {
       if (!prev || !activeBoardId) return prev;
       const next = addWidget(prev, activeBoardId, widget);
-      const inserted = next.boards.find((b) => b.id === activeBoardId)?.widgets.find((w) => w.id === widget.id);
+      const inserted = next.workspaces.find((w) => w.id === activeBoardId)?.widgets.find((widgetItem) => widgetItem.id === widget.id);
       if (inserted) safeRecordOperation('widget', `${activeBoardId}/${widget.id}`, 'put', inserted);
       return next;
     });
@@ -557,7 +591,7 @@ export function App() {
     if (!activeBoardId) return;
     setData((prev) => {
       if (!prev || !activeBoardId) return prev;
-      const board = prev.boards.find((b) => b.id === activeBoardId);
+      const board = getBoardById(prev, activeBoardId);
       if (!board) return prev;
       for (let i = 0; i < nextWidgets.length; i++) {
         const w = nextWidgets[i];
@@ -569,10 +603,10 @@ export function App() {
       }
       return {
         ...prev,
-        boards: prev.boards.map((b) =>
-          b.id === activeBoardId
-            ? { ...b, widgets: nextWidgets.map((w) => ({ ...w, updatedAt: Date.now() })), updatedAt: Date.now() }
-            : b
+        workspaces: prev.workspaces.map((w) =>
+          w.id === activeBoardId
+            ? { ...w, widgets: nextWidgets.map((widget) => ({ ...widget, updatedAt: Date.now() })), updatedAt: Date.now() }
+            : w
         )
       };
     });
@@ -659,8 +693,8 @@ export function App() {
     setData((prev) => {
       if (!prev || !activeBoardId) return prev;
       const next = toggleTodoItem(prev, activeBoardId, widgetId, todoId);
-      const board = next.boards.find(b => b.id === activeBoardId);
-      const widget = board?.widgets.find(w => w.id === widgetId);
+      const workspace = next.workspaces.find(w => w.id === activeBoardId);
+      const widget = workspace?.widgets.find(w => w.id === widgetId);
       const todoItem = widget && widget.type === 'todo' ? widget.items.find(t => t.id === todoId) : undefined;
       safeRecordOperation('todo', `${activeBoardId}/${widgetId}/${todoId}`, 'patch', { done: todoItem?.done });
       return next;
@@ -699,9 +733,9 @@ export function App() {
 
   const editingLinkData = useMemo(() => {
     if (!editingLink || !data || !activeBoardId) return null;
-    const widget = data.boards
-      .find((b) => b.id === activeBoardId)
-      ?.widgets.find((w) => w.id === editingLink.widgetId);
+    const widget = data.workspaces
+      .find((w) => w.id === activeBoardId)
+      ?.widgets.find((widget) => widget.id === editingLink.widgetId);
     if (!widget || widget.type !== 'links') return null;
     const link = widget.items.find((l) => l.id === editingLink.linkId);
     if (!link) return null;
@@ -753,7 +787,7 @@ export function App() {
     setData((prev) => {
       if (!prev || !activeBoardId) return prev;
       const next = addWidget(prev, activeBoardId, widget);
-      const inserted = next.boards.find((b) => b.id === activeBoardId)?.widgets.find((w) => w.id === widget.id);
+      const inserted = next.workspaces.find((w) => w.id === activeBoardId)?.widgets.find((widgetItem) => widgetItem.id === widget.id);
       if (inserted) safeRecordOperation('widget', `${activeBoardId}/${widget.id}`, 'put', inserted);
       return next;
     });
@@ -788,15 +822,15 @@ export function App() {
         : imported.data;
       const migrated = migrateAppData(nextData);
       if (data) {
-        const importedIds = new Set(migrated.boards.map((b) => b.id));
-        for (const board of data.boards) {
-          if (!importedIds.has(board.id)) {
-            safeRecordOperation('board', board.id, 'delete', null);
+        const importedIds = new Set(migrated.workspaces.map((w) => w.id));
+        for (const workspace of data.workspaces) {
+          if (!importedIds.has(workspace.id)) {
+            safeRecordOperation('board', workspace.id, 'delete', null);
           }
         }
       }
-      for (const board of migrated.boards) {
-        safeRecordOperation('board', board.id, 'put', board);
+      for (const workspace of migrated.workspaces) {
+        safeRecordOperation('board', workspace.id, 'put', workspace);
       }
       if (migrated.settings.themeConfig) {
         safeRecordOperation('themeConfig', 'themeConfig', 'patch', migrated.settings.themeConfig);
@@ -852,7 +886,7 @@ export function App() {
       setData((prev) => {
         if (!prev || !activeBoardId) return prev;
         const next = addWidget(prev, activeBoardId, widget);
-        const inserted = next.boards.find((b) => b.id === activeBoardId)?.widgets.find((w) => w.id === widget.id);
+        const inserted = next.workspaces.find((w) => w.id === activeBoardId)?.widgets.find((widgetItem) => widgetItem.id === widget.id);
         if (inserted) safeRecordOperation('widget', `${activeBoardId}/${widget.id}`, 'put', inserted);
         return next;
       });
@@ -931,7 +965,7 @@ export function App() {
 
       <header className="app-header">
         <BoardTabs
-          boards={data.boards}
+          boards={getBoards(data)}
           activeId={activeBoardId}
           onSelect={setActiveBoardId}
           onAdd={handleAddBoard}
@@ -1117,7 +1151,7 @@ export function App() {
         onClose={() => setShowAccount(false)}
         title={t('auth.title')}
       >
-        <AuthPanel />
+        <AuthPanel onAuthenticated={() => setShowAccount(false)} />
       </ModalDialog>
 
       <ModalDialog

@@ -1,6 +1,8 @@
 import type { AppData, Board, ThemeConfig, TopWidgetConfig, Widget } from '@shared/types';
 import { t } from '@shared/i18n';
 import { generateId, getDefaultData } from '@shared/types/defaults';
+import { migrateAppData } from '@shared/sync/migrate';
+import { getBoards } from './index';
 
 export interface TemplateWidgetPosition {
   column: number;
@@ -122,6 +124,7 @@ function serializeWidget(widget: Widget, position: TemplateWidgetPosition): Temp
 
 export function createTemplate(data: AppData, theme: Pick<ThemeConfig, 'primaryColor' | 'boardColor' | 'boardOpacity' | 'boardBlur'>): TemplateData {
   const columns = getCurrentColumnCount();
+  const boards = getBoards(data);
   return {
     format: 'prismi-template',
     version: 4,
@@ -133,7 +136,7 @@ export function createTemplate(data: AppData, theme: Pick<ThemeConfig, 'primaryC
       boardOpacity: theme.boardOpacity,
       boardBlur: theme.boardBlur
     },
-    boards: data.boards.map((board) => {
+    boards: boards.map((board) => {
       const positions = getWidgetPositions(board.widgets, columns);
       return {
         title: board.title,
@@ -220,7 +223,7 @@ function importTemplate(template: TemplateData): ImportResult {
   const now = Date.now();
   const boards: Board[] = template.boards.map((board, index) => {
     return {
-      id: generateId(`board-${index}`),
+      id: generateId(`workspace-${index}`),
       title: board.title,
       widgets: board.widgets.map((widget) => deserializeWidget(widget, widget.position, template.columns)),
       createdAt: now,
@@ -228,16 +231,16 @@ function importTemplate(template: TemplateData): ImportResult {
     };
   });
   const defaults = getDefaultData();
-  const importedBoards = boards.length > 0 ? boards : defaults.boards;
+  const importedWorkspaces = boards.length > 0 ? boards.map((b) => ({ ...b })) : defaults.workspaces;
 
   return {
     data: {
-      boards: importedBoards,
+      workspaces: importedWorkspaces,
       settings: {
         ...defaults.settings,
         themeConfig: template.theme,
         topWidgets: template.headerWidgets ?? defaults.settings.topWidgets,
-        lastBoardId: importedBoards[0].id
+        lastBoardId: importedWorkspaces[0].id
       },
       installedAt: now
     },
@@ -255,11 +258,15 @@ export function importData(file: File): Promise<ImportResult> {
           resolve(importTemplate(parsed));
           return;
         }
+        if (parsed.workspaces && Array.isArray(parsed.workspaces) && parsed.settings) {
+          resolve({ data: migrateAppData(parsed as AppData) });
+          return;
+        }
         if (!parsed.boards || !Array.isArray(parsed.boards) || !parsed.settings) {
           reject(new Error(t('storage.invalidFileFormat')));
           return;
         }
-        resolve({ data: parsed as AppData });
+        resolve({ data: migrateAppData(parsed as AppData) });
       } catch {
         reject(new Error(t('storage.invalidFileParse')));
       }

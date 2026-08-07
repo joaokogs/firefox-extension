@@ -10,6 +10,7 @@ export type {
   TodoWidget,
   Widget,
   Board,
+  Workspace,
   ThemeConfig,
   AppSettings,
   UploadedBackground,
@@ -19,7 +20,7 @@ export type {
   SearchEngine,
   TopWidgetConfig,
   AppData,
-  SyncTombstones,
+  SyncMeta,
 } from './types/index';
 
 export {
@@ -32,6 +33,7 @@ export {
 
 export {
   generateId,
-  INITIAL_SAMPLE_BOARDS,
+  generateWorkspaceId,
+  INITIAL_SAMPLE_WORKSPACES,
   getDefaultData,
 } from './types/defaults';

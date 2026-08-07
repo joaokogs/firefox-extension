@@ -4,6 +4,7 @@ import {
   loadData,
   saveData,
   getInitialBoardId,
+  getBoards,
   onStorageFailure,
 } from '@shared/storage';
 import { createWidget, addWidget, updateWidget, deleteWidget, getWidgetsForBoard } from '@shared/storage/widgets';
@@ -34,14 +35,10 @@ export function Popup() {
     loadData().then(async (loaded) => {
       setData(loaded);
       setActiveBoardId(getInitialBoardId(loaded));
-      if (loaded._owner) {
-        setOutboxOwner(loaded._owner);
-      } else {
-        try {
-          const session = await getSession();
-          if (session?.user) setOutboxOwner(session.user.id);
-        } catch { /* supabase not configured */ }
-      }
+      try {
+        const session = await getSession();
+        if (session?.user) setOutboxOwner(session.user.id);
+      } catch { /* supabase not configured */ }
     });
     queryActiveTab().then(setTabInfo);
   }, []);
@@ -52,7 +49,7 @@ export function Popup() {
     });
   }, []);
 
-  const activeBoard = data?.boards.find((b) => b.id === activeBoardId);
+  const activeBoard = data ? getBoards(data).find((b) => b.id === activeBoardId) : undefined;
 
   const linkWidgets = useMemo(() => {
     if (!data || !activeBoardId) return [];
@@ -82,7 +79,7 @@ export function Popup() {
         const widget = createWidget('links', activeBoard?.title || 'Links');
         next = addWidget(next, activeBoardId, widget);
         widgetId = widget.id;
-        const inserted = next.boards.find((b) => b.id === activeBoardId)?.widgets.find((w) => w.id === widgetId);
+        const inserted = next.workspaces.find((w) => w.id === activeBoardId)?.widgets.find((widget) => widget.id === widgetId);
         if (inserted) await recordOperation('widget', `${activeBoardId}/${widgetId}`, 'put', inserted);
       }
 
@@ -120,7 +117,7 @@ export function Popup() {
         next = addWidget(next, activeBoardId, widget);
         widgetId = widget.id;
         setSelectedWidgetId(widgetId);
-        const inserted = next.boards.find((b) => b.id === activeBoardId)?.widgets.find((w) => w.id === widgetId);
+        const inserted = next.workspaces.find((w) => w.id === activeBoardId)?.widgets.find((widget) => widget.id === widgetId);
         if (inserted) await recordOperation('widget', `${activeBoardId}/${widgetId}`, 'put', inserted);
       }
 
@@ -284,7 +281,7 @@ export function Popup() {
             onChange={(e) => setActiveBoardId((e.target as HTMLSelectElement).value)}
             aria-label={t('popup.selectBoard')}
           >
-            {data.boards.map((board) => (
+            {getBoards(data).map((board) => (
               <option key={board.id} value={board.id}>
                 {board.title}
               </option>

@@ -1,23 +1,23 @@
 import { browser } from '@shared/browser';
 import { getSession, subscribeAuthState } from '@shared/auth/auth';
 import { hasSyncAccess } from '@shared/payments/payments';
-import { loadData, saveData, onStorageFailure } from '@shared/storage';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
+import { loadData, saveData, onStorageFailure, loadSyncMeta, saveSyncMeta } from '@shared/storage';
 import { supabase } from '@shared/supabase/client';
 import {
-  fetchRemote,
-  pushSnapshotWithRevision,
+  fetchRemoteWorkspaces,
+  fetchRemotePreferences,
+  pushWorkspace,
+  pushPreferences,
   subscribeToRealtime,
   unsubscribeRealtime,
 } from './client';
 import { migrateAppData } from './migrate';
-import type { AppData, AppSettings } from '@shared/types';
+import type { AppData, AppSettings, SyncMeta, Workspace, Widget } from '@shared/types';
 import { LOCAL_ONLY_SETTINGS_KEYS } from '@shared/types/constants';
 import type { SyncState, SyncErrorCategory, SyncOperation } from './types';
-import { getDefaultData } from '@shared/types/defaults';
 import {
   getPendingOperations,
-  updateLastKnownRevision,
-  getLastKnownRevision,
   getPendingCount,
   ackOperations,
   setOutboxOwner,
@@ -28,7 +28,7 @@ import {
   requeueDeadLetters,
   clearCommittedInMemory,
 } from './outbox';
-import { pruneTombstones } from './merge';
+import { mergeAppData, mergeWorkspaces } from './merge';
 
 let state: SyncState = { status: 'idle' };
 let realtimeCleanup: (() => void) | null = null;
@@ -41,6 +41,8 @@ let syncChain: Promise<unknown> = Promise.resolve();
 let activeFullSync: { userId: string; promise: Promise<AppData> } | null = null;
 let currentOwner: string | undefined;
 let storageFailureUnsubscribe: (() => void) | null = null;
+let localMutationTimer: ReturnType<typeof setTimeout> | null = null;
+const SYNC_TIMEOUT_MS = 15_000;
 
 const OWNER_STASH_KEY = 'syncOwnerData';
 const MAX_OWNER_STASH = 10;
@@ -186,23 +188,20 @@ function syncSettingsDigest(settings: AppSettings): string {
 
 function sameContent(a: AppData, b: AppData): boolean {
   return (
-    stableStringify(a.boards) === stableStringify(b.boards) &&
+    stableStringify(a.workspaces) === stableStringify(b.workspaces) &&
     syncSettingsDigest(a.settings) === syncSettingsDigest(b.settings)
   );
 }
 
 async function canSync(): Promise<boolean> {
-  try {
-    const session = await getSession();
-    if (!session?.user) return false;
-    return hasSyncAccess();
-  } catch {
-    return false;
-  }
+  const session = await withSyncTimeout(() => getSession());
+  if (!session?.user) return false;
+  return await withSyncTimeout(() => hasSyncAccess());
 }
 
 function recordError(err: unknown, fallbackCategory?: SyncErrorCategory): void {
   const { message, category } = categorizeError(err);
+  console.error('Sync:', message);
   setState({
     status: 'error',
     lastError: message,
@@ -215,43 +214,53 @@ function logError(context: string, err: unknown): void {
   console.error(`Sync: ${context}:`, message);
 }
 
+function withSyncTimeout<T>(operation: () => Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('Sync timeout'));
+    }, SYNC_TIMEOUT_MS);
+
+    Promise.resolve()
+      .then(operation)
+      .then(resolve, reject)
+      .finally(() => clearTimeout(timer));
+  });
+}
+
 async function resolveOwnerForSync(
   local: AppData,
   userId: string,
 ): Promise<AppData> {
-  if (!local._owner) {
+  const meta = await loadSyncMeta();
+  if (!meta.owner) {
     currentOwner = userId;
     setOutboxOwner(userId);
     await claimAndMergeOutbox(userId);
-    return { ...local, _owner: userId };
+    await saveSyncMeta({ ...meta, owner: userId });
+    return local;
   }
-  if (local._owner !== userId) {
+  if (meta.owner !== userId) {
     currentOwner = userId;
     setOutboxOwner(userId);
 
     const stash = await readOwnerStash();
     try {
-      stash[local._owner] = { data: local, savedAt: Date.now() };
-      const remote = await fetchRemote(userId);
-      if (remote.data) {
-        await updateLastKnownRevision(remote.revision, userId);
-        await writeOwnerStash(capStash(stash));
-        await claimAndMergeOutbox(userId);
-        return { ...remote.data, _owner: userId };
-      }
+      stash[meta.owner] = { data: local, savedAt: Date.now() };
       const previous = stash[userId];
       await writeOwnerStash(capStash(stash));
       await claimAndMergeOutbox(userId);
-      if (previous) {
-        return { ...previous.data, _owner: userId };
-      }
-      const defaults = migrateAppData(getDefaultData());
-      return { ...defaults, _owner: userId };
+      const restored = previous
+        ? mergeAppData(migrateAppData(local), migrateAppData(previous.data))
+        : local;
+      await saveSyncMeta({ ...meta, owner: userId });
+      return restored;
     } catch (err) {
       await writeOwnerStash(capStash(stash)).catch(() => undefined);
       const previous = stash[userId];
       if (previous) {
-        return { ...previous.data, _owner: userId };
+        const restored = mergeAppData(migrateAppData(local), migrateAppData(previous.data));
+        await saveSyncMeta({ ...meta, owner: userId });
+        return restored;
       }
       throw err;
     }
@@ -302,7 +311,7 @@ function applyOperationsToData(base: AppData, operations: SyncOperation[]): Appl
 
 function applySingleOperation(data: AppData, op: SyncOperation): AppData | null {
   switch (op.entity) {
-    case 'board': return applyBoardOp(data, op);
+    case 'board': return applyWorkspaceOp(data, op);
     case 'widget': return applyWidgetOp(data, op);
     case 'link': return applyLinkOp(data, op);
     case 'todo': return applyTodoOp(data, op);
@@ -313,109 +322,123 @@ function applySingleOperation(data: AppData, op: SyncOperation): AppData | null 
   }
 }
 
-function applyBoardOp(data: AppData, op: SyncOperation): AppData | null {
-  const boardId = op.entityId;
+function applyWorkspaceOp(data: AppData, op: SyncOperation): AppData | null {
+  const workspaceId = op.entityId;
   if (op.action === 'put') {
-    const board = op.payload as AppData['boards'][number];
-    const existing = data.boards.findIndex((b) => b.id === boardId);
+    const workspace = op.payload as Workspace;
+    const existing = data.workspaces.findIndex((w) => w.id === workspaceId);
     if (existing >= 0) {
-      const boards = [...data.boards];
-      boards[existing] = { ...board, updatedAt: Date.now() };
-      return { ...data, boards };
+      const workspaces = [...data.workspaces];
+      workspaces[existing] = {
+        ...workspaces[existing],
+        ...workspace,
+        position: workspace.position ?? workspaces[existing].position,
+        updatedAt: Date.now(),
+      };
+      return { ...data, workspaces };
     }
-    return { ...data, boards: [...data.boards, { ...board, updatedAt: Date.now() }] };
+    return {
+      ...data,
+      workspaces: [...data.workspaces, { ...workspace, position: workspace.position ?? data.workspaces.length, updatedAt: Date.now() }],
+    };
   }
   if (op.action === 'patch') {
-    const idx = data.boards.findIndex((b) => b.id === boardId);
+    const idx = data.workspaces.findIndex((w) => w.id === workspaceId);
     if (idx < 0) return null;
-    const boards = [...data.boards];
-    boards[idx] = { ...boards[idx], ...(op.payload as object), updatedAt: Date.now() };
-    return { ...data, boards };
+    const workspaces = [...data.workspaces];
+    workspaces[idx] = { ...workspaces[idx], ...(op.payload as object), updatedAt: Date.now() };
+    return { ...data, workspaces };
   }
   if (op.action === 'delete') {
-    const idx = data.boards.findIndex((b) => b.id === boardId);
+    const idx = data.workspaces.findIndex((w) => w.id === workspaceId);
     if (idx < 0) return data;
-    const boards = data.boards.filter((b) => b.id !== boardId);
-    return { ...data, boards, settings: { ...data.settings, lastBoardId: boards[0]?.id } };
+    const deletedAt = Date.now();
+    const workspaces = [...data.workspaces];
+    workspaces[idx] = { ...workspaces[idx], deletedAt, updatedAt: deletedAt };
+    const visible = workspaces.filter((workspace) => !workspace.deletedAt);
+    return { ...data, workspaces, settings: { ...data.settings, lastBoardId: visible[0]?.id } };
   }
   if (op.action === 'move') {
     const { toIndex } = op.payload as { toIndex: number };
-    const idx = data.boards.findIndex((b) => b.id === boardId);
+    const idx = data.workspaces.findIndex((w) => w.id === workspaceId);
     if (idx < 0) return null;
-    const clamped = Math.max(0, Math.min(toIndex, data.boards.length - 1));
+    const clamped = Math.max(0, Math.min(toIndex, data.workspaces.length - 1));
     if (idx === clamped) return data;
-    const boards = [...data.boards];
-    const [moved] = boards.splice(idx, 1);
-    boards.splice(clamped, 0, moved);
-    return { ...data, boards };
+    const workspaces = [...data.workspaces];
+    const [moved] = workspaces.splice(idx, 1);
+    workspaces.splice(clamped, 0, moved);
+    return {
+      ...data,
+      workspaces: workspaces.map((workspace, position) => ({ ...workspace, position })),
+    };
   }
   return null;
 }
 
 function applyWidgetOp(data: AppData, op: SyncOperation): AppData | null {
   const parts = op.entityId.split('/');
-  const boardId = parts[0];
+  const workspaceId = parts[0];
   const widgetId = parts[1];
-  const boardIdx = data.boards.findIndex((b) => b.id === boardId);
-  if (boardIdx < 0) return null;
-  const board = data.boards[boardIdx];
+  const workspaceIdx = data.workspaces.findIndex((w) => w.id === workspaceId);
+  if (workspaceIdx < 0) return null;
+  const workspace = data.workspaces[workspaceIdx];
 
   if (op.action === 'put') {
-    const widget = op.payload as AppData['boards'][number]['widgets'][number];
-    const existingIdx = board.widgets.findIndex((w) => w.id === widgetId);
-    const widgets = [...board.widgets];
+    const widget = op.payload as Widget;
+    const existingIdx = workspace.widgets.findIndex((w) => w.id === widgetId);
+    const widgets = [...workspace.widgets];
     if (existingIdx >= 0) {
       widgets[existingIdx] = { ...widget, updatedAt: Date.now() };
     } else {
       widgets.push({ ...widget, updatedAt: Date.now() });
     }
-    const boards = [...data.boards];
-    boards[boardIdx] = { ...board, widgets, updatedAt: Date.now() };
-    return { ...data, boards };
+    const workspaces = [...data.workspaces];
+    workspaces[workspaceIdx] = { ...workspace, widgets, updatedAt: Date.now() };
+    return { ...data, workspaces };
   }
   if (op.action === 'patch') {
-    const wIdx = board.widgets.findIndex((w) => w.id === widgetId);
+    const wIdx = workspace.widgets.findIndex((w) => w.id === widgetId);
     if (wIdx < 0) return null;
-    const widgets = [...board.widgets];
+    const widgets = [...workspace.widgets];
     widgets[wIdx] = { ...widgets[wIdx], ...(op.payload as object), updatedAt: Date.now() };
-    const boards = [...data.boards];
-    boards[boardIdx] = { ...board, widgets, updatedAt: Date.now() };
-    return { ...data, boards };
+    const workspaces = [...data.workspaces];
+    workspaces[workspaceIdx] = { ...workspace, widgets, updatedAt: Date.now() };
+    return { ...data, workspaces };
   }
   if (op.action === 'delete') {
-    const wIdx = board.widgets.findIndex((w) => w.id === widgetId);
+    const wIdx = workspace.widgets.findIndex((w) => w.id === widgetId);
     if (wIdx < 0) return data;
-    const widgets = board.widgets.filter((w) => w.id !== widgetId);
-    const boards = [...data.boards];
-    boards[boardIdx] = { ...board, widgets, updatedAt: Date.now() };
-    return { ...data, boards };
+    const widgets = workspace.widgets.filter((w) => w.id !== widgetId);
+    const workspaces = [...data.workspaces];
+    workspaces[workspaceIdx] = { ...workspace, widgets, updatedAt: Date.now() };
+    return { ...data, workspaces };
   }
   if (op.action === 'move') {
     const { toIndex, col, layoutColumns } = op.payload as { toIndex: number; col?: number; layoutColumns?: number };
-    const wIdx = board.widgets.findIndex((w) => w.id === widgetId);
+    const wIdx = workspace.widgets.findIndex((w) => w.id === widgetId);
     if (wIdx < 0) return null;
-    const widgets = [...board.widgets];
+    const widgets = [...workspace.widgets];
     widgets[wIdx] = { ...widgets[wIdx], order: toIndex, updatedAt: Date.now() };
     if (col !== undefined) (widgets[wIdx] as unknown as Record<string, unknown>).col = col;
     if (layoutColumns !== undefined) (widgets[wIdx] as unknown as Record<string, unknown>).layoutColumns = layoutColumns;
-    const boards = [...data.boards];
-    boards[boardIdx] = { ...board, widgets, updatedAt: Date.now() };
-    return { ...data, boards };
+    const workspaces = [...data.workspaces];
+    workspaces[workspaceIdx] = { ...workspace, widgets, updatedAt: Date.now() };
+    return { ...data, workspaces };
   }
   return null;
 }
 
 function applyLinkOp(data: AppData, op: SyncOperation): AppData | null {
   const parts = op.entityId.split('/');
-  const boardId = parts[0];
+  const workspaceId = parts[0];
   const widgetId = parts[1];
   const linkId = parts[2];
-  const boardIdx = data.boards.findIndex((b) => b.id === boardId);
-  if (boardIdx < 0) return null;
-  const board = data.boards[boardIdx];
-  const widgetIdx = board.widgets.findIndex((w) => w.id === widgetId);
+  const workspaceIdx = data.workspaces.findIndex((w) => w.id === workspaceId);
+  if (workspaceIdx < 0) return null;
+  const workspace = data.workspaces[workspaceIdx];
+  const widgetIdx = workspace.widgets.findIndex((w) => w.id === widgetId);
   if (widgetIdx < 0) return null;
-  const widget = board.widgets[widgetIdx];
+  const widget = workspace.widgets[widgetIdx];
   if (widget.type !== 'links') return null;
 
   if (op.action === 'put') {
@@ -427,32 +450,32 @@ function applyLinkOp(data: AppData, op: SyncOperation): AppData | null {
     } else {
       items.push({ ...link, id: linkId, createdAt: (link.createdAt as number) ?? Date.now(), updatedAt: Date.now() } as typeof widget.items[number]);
     }
-    const widgets = [...board.widgets];
+    const widgets = [...workspace.widgets];
     widgets[widgetIdx] = { ...widget, items };
-    const boards = [...data.boards];
-    boards[boardIdx] = { ...board, widgets, updatedAt: Date.now() };
-    return { ...data, boards };
+    const workspaces = [...data.workspaces];
+    workspaces[workspaceIdx] = { ...workspace, widgets, updatedAt: Date.now() };
+    return { ...data, workspaces };
   }
   if (op.action === 'patch') {
     const lIdx = widget.items.findIndex((l) => l.id === linkId);
     if (lIdx < 0) return null;
     const items = [...widget.items];
     items[lIdx] = { ...items[lIdx], ...(op.payload as object), updatedAt: Date.now() };
-    const widgets = [...board.widgets];
+    const widgets = [...workspace.widgets];
     widgets[widgetIdx] = { ...widget, items };
-    const boards = [...data.boards];
-    boards[boardIdx] = { ...board, widgets, updatedAt: Date.now() };
-    return { ...data, boards };
+    const workspaces = [...data.workspaces];
+    workspaces[workspaceIdx] = { ...workspace, widgets, updatedAt: Date.now() };
+    return { ...data, workspaces };
   }
   if (op.action === 'delete') {
     const lIdx = widget.items.findIndex((l) => l.id === linkId);
     if (lIdx < 0) return data;
     const items = widget.items.filter((l) => l.id !== linkId);
-    const widgets = [...board.widgets];
+    const widgets = [...workspace.widgets];
     widgets[widgetIdx] = { ...widget, items };
-    const boards = [...data.boards];
-    boards[boardIdx] = { ...board, widgets, updatedAt: Date.now() };
-    return { ...data, boards };
+    const workspaces = [...data.workspaces];
+    workspaces[workspaceIdx] = { ...workspace, widgets, updatedAt: Date.now() };
+    return { ...data, workspaces };
   }
   if (op.action === 'move') {
     const { toWidgetId, toIndex } = op.payload as { toWidgetId: string; toIndex: number };
@@ -460,40 +483,40 @@ function applyLinkOp(data: AppData, op: SyncOperation): AppData | null {
     if (lIdx < 0) return null;
     const link = widget.items[lIdx];
 
-    let boards = [...data.boards];
-    const sourceWidgets = [...board.widgets];
+    let workspaces = [...data.workspaces];
+    const sourceWidgets = [...workspace.widgets];
     const sourceWidget = sourceWidgets[widgetIdx];
     if (sourceWidget.type !== 'links') return null;
     sourceWidgets[widgetIdx] = { ...sourceWidget, items: sourceWidget.items.filter((l) => l.id !== linkId) };
-    boards[boardIdx] = { ...board, widgets: sourceWidgets, updatedAt: Date.now() };
+    workspaces[workspaceIdx] = { ...workspace, widgets: sourceWidgets, updatedAt: Date.now() };
 
-    const targetWIdx = boards[boardIdx].widgets.findIndex((w) => w.id === toWidgetId);
+    const targetWIdx = workspaces[workspaceIdx].widgets.findIndex((w) => w.id === toWidgetId);
     if (targetWIdx < 0) return null;
-    const targetWidget = boards[boardIdx].widgets[targetWIdx];
+    const targetWidget = workspaces[workspaceIdx].widgets[targetWIdx];
     if (targetWidget.type !== 'links') return null;
     const targetItems = [...targetWidget.items];
     targetItems.splice(Math.min(toIndex, targetItems.length), 0, link);
-    const finalWidgets = [...boards[boardIdx].widgets];
+    const finalWidgets = [...workspaces[workspaceIdx].widgets];
     finalWidgets[targetWIdx] = { ...targetWidget, items: targetItems };
 
-    const finalBoards = [...data.boards];
-    finalBoards[boardIdx] = { ...boards[boardIdx], widgets: finalWidgets, updatedAt: Date.now() };
-    return { ...data, boards: finalBoards };
+    const finalWorkspaces = [...data.workspaces];
+    finalWorkspaces[workspaceIdx] = { ...workspaces[workspaceIdx], widgets: finalWidgets, updatedAt: Date.now() };
+    return { ...data, workspaces: finalWorkspaces };
   }
   return null;
 }
 
 function applyTodoOp(data: AppData, op: SyncOperation): AppData | null {
   const parts = op.entityId.split('/');
-  const boardId = parts[0];
+  const workspaceId = parts[0];
   const widgetId = parts[1];
   const todoId = parts[2];
-  const boardIdx = data.boards.findIndex((b) => b.id === boardId);
-  if (boardIdx < 0) return null;
-  const board = data.boards[boardIdx];
-  const widgetIdx = board.widgets.findIndex((w) => w.id === widgetId);
+  const workspaceIdx = data.workspaces.findIndex((w) => w.id === workspaceId);
+  if (workspaceIdx < 0) return null;
+  const workspace = data.workspaces[workspaceIdx];
+  const widgetIdx = workspace.widgets.findIndex((w) => w.id === widgetId);
   if (widgetIdx < 0) return null;
-  const widget = board.widgets[widgetIdx];
+  const widget = workspace.widgets[widgetIdx];
   if (widget.type !== 'todo') return null;
 
   if (op.action === 'put') {
@@ -505,32 +528,32 @@ function applyTodoOp(data: AppData, op: SyncOperation): AppData | null {
     } else {
       items.push({ ...todo, id: todoId, createdAt: (todo.createdAt as number) ?? Date.now(), updatedAt: Date.now() } as typeof widget.items[number]);
     }
-    const widgets = [...board.widgets];
+    const widgets = [...workspace.widgets];
     widgets[widgetIdx] = { ...widget, items };
-    const boards = [...data.boards];
-    boards[boardIdx] = { ...board, widgets, updatedAt: Date.now() };
-    return { ...data, boards };
+    const workspaces = [...data.workspaces];
+    workspaces[workspaceIdx] = { ...workspace, widgets, updatedAt: Date.now() };
+    return { ...data, workspaces };
   }
   if (op.action === 'patch') {
     const tIdx = widget.items.findIndex((t) => t.id === todoId);
     if (tIdx < 0) return null;
     const items = [...widget.items];
     items[tIdx] = { ...items[tIdx], ...(op.payload as object), updatedAt: Date.now() };
-    const widgets = [...board.widgets];
+    const widgets = [...workspace.widgets];
     widgets[widgetIdx] = { ...widget, items };
-    const boards = [...data.boards];
-    boards[boardIdx] = { ...board, widgets, updatedAt: Date.now() };
-    return { ...data, boards };
+    const workspaces = [...data.workspaces];
+    workspaces[workspaceIdx] = { ...workspace, widgets, updatedAt: Date.now() };
+    return { ...data, workspaces };
   }
   if (op.action === 'delete') {
     const tIdx = widget.items.findIndex((t) => t.id === todoId);
     if (tIdx < 0) return data;
     const items = widget.items.filter((t) => t.id !== todoId);
-    const widgets = [...board.widgets];
+    const widgets = [...workspace.widgets];
     widgets[widgetIdx] = { ...widget, items };
-    const boards = [...data.boards];
-    boards[boardIdx] = { ...board, widgets, updatedAt: Date.now() };
-    return { ...data, boards };
+    const workspaces = [...data.workspaces];
+    workspaces[workspaceIdx] = { ...workspace, widgets, updatedAt: Date.now() };
+    return { ...data, workspaces };
   }
   if (op.action === 'move') {
     const { toWidgetId, toIndex } = op.payload as { toWidgetId: string; toIndex: number };
@@ -538,25 +561,25 @@ function applyTodoOp(data: AppData, op: SyncOperation): AppData | null {
     if (tIdx < 0) return null;
     const todo = widget.items[tIdx];
 
-    let boards = [...data.boards];
-    const sourceWidgets = [...board.widgets];
+    let workspaces = [...data.workspaces];
+    const sourceWidgets = [...workspace.widgets];
     const sourceWidget = sourceWidgets[widgetIdx];
     if (sourceWidget.type !== 'todo') return null;
     sourceWidgets[widgetIdx] = { ...sourceWidget, items: sourceWidget.items.filter((t) => t.id !== todoId) };
-    boards[boardIdx] = { ...board, widgets: sourceWidgets, updatedAt: Date.now() };
+    workspaces[workspaceIdx] = { ...workspace, widgets: sourceWidgets, updatedAt: Date.now() };
 
-    const targetWIdx = boards[boardIdx].widgets.findIndex((w) => w.id === toWidgetId);
+    const targetWIdx = workspaces[workspaceIdx].widgets.findIndex((w) => w.id === toWidgetId);
     if (targetWIdx < 0) return null;
-    const targetWidget = boards[boardIdx].widgets[targetWIdx];
+    const targetWidget = workspaces[workspaceIdx].widgets[targetWIdx];
     if (targetWidget.type !== 'todo') return null;
     const targetItems = [...targetWidget.items];
     targetItems.splice(Math.min(toIndex, targetItems.length), 0, todo);
-    const finalWidgets = [...boards[boardIdx].widgets];
+    const finalWidgets = [...workspaces[workspaceIdx].widgets];
     finalWidgets[targetWIdx] = { ...targetWidget, items: targetItems };
 
-    const finalBoards = [...data.boards];
-    finalBoards[boardIdx] = { ...boards[boardIdx], widgets: finalWidgets, updatedAt: Date.now() };
-    return { ...data, boards: finalBoards };
+    const finalWorkspaces = [...data.workspaces];
+    finalWorkspaces[workspaceIdx] = { ...workspaces[workspaceIdx], widgets: finalWidgets, updatedAt: Date.now() };
+    return { ...data, workspaces: finalWorkspaces };
   }
   return null;
 }
@@ -569,55 +592,93 @@ function applySettingsOp(data: AppData, op: SyncOperation): AppData | null {
       delete syncPayload[key];
     }
     if (Object.keys(syncPayload).length === 0) return data;
-    return { ...data, settings: { ...data.settings, ...syncPayload }, settingsUpdatedAt: Date.now() };
+    return { ...data, settings: { ...data.settings, ...syncPayload } };
   }
   return null;
 }
 
 function applyThemeConfigOp(data: AppData, op: SyncOperation): AppData | null {
   if (op.action === 'put' || op.action === 'patch') {
-    return { ...data, settings: { ...data.settings, themeConfig: op.payload as AppSettings['themeConfig'] }, settingsUpdatedAt: Date.now() };
+    return { ...data, settings: { ...data.settings, themeConfig: op.payload as AppSettings['themeConfig'] } };
   }
   return null;
 }
 
 function applyTopWidgetsOp(data: AppData, op: SyncOperation): AppData | null {
   if (op.action === 'put' || op.action === 'patch') {
-    return { ...data, settings: { ...data.settings, topWidgets: op.payload as AppSettings['topWidgets'] }, settingsUpdatedAt: Date.now() };
+    if (!Array.isArray(op.payload)) return null;
+    return { ...data, settings: { ...data.settings, topWidgets: op.payload as AppSettings['topWidgets'] } };
   }
   return null;
 }
 
-async function pushAndAck(
+async function syncWorkspaces(
   userId: string,
-  data: AppData,
-  baseRevision: number,
-  appliedOpIds: Set<string>,
-): Promise<{ accepted: boolean; revision: number }> {
-  const pushResult = await pushSnapshotWithRevision(userId, data, baseRevision);
-  if (pushResult.accepted) {
-    if (appliedOpIds.size > 0) {
-      markOperationsCommitted(appliedOpIds, userId);
+  localWorkspaces: Workspace[],
+  remoteWorkspaces: Workspace[],
+  remoteRevisions: Record<string, number>,
+): Promise<{ pushed: number; revisions: Record<string, number> }> {
+  const remoteMap = new Map(remoteWorkspaces.map((w) => [w.id, w]));
+  const localMap = new Map(localWorkspaces.map((w) => [w.id, w]));
+
+  let pushed = 0;
+  const revisions: Record<string, number> = { ...remoteRevisions };
+
+  for (const [index, workspace] of localWorkspaces.entries()) {
+    const remote = remoteMap.get(workspace.id);
+    const localWs = localMap.get(workspace.id);
+    const baseRevision = remoteRevisions[workspace.id] ?? 0;
+
+    const shouldPush = !remote || Boolean(
+      localWs && (
+        localWs.updatedAt > (remote.updatedAt ?? 0) ||
+        (localWs.position ?? index) !== (remote.position ?? index)
+      )
+    );
+
+    if (shouldPush) {
       try {
-        await ackOperations(appliedOpIds, pushResult.revision, userId);
-      } catch {
-        logError('pushAndAck', new Error('ackOperations failed after push accepted; operations committed in memory'));
+        const result = await pushWorkspace(userId, workspace, baseRevision, workspace.position ?? index);
+        if (result.accepted) {
+          revisions[workspace.id] = result.revision;
+          pushed++;
+        }
+      } catch (err) {
+        logError(`push workspace ${workspace.id}`, err);
       }
+    } else {
+      revisions[workspace.id] = baseRevision;
     }
-    setState({ lastSyncAt: Date.now(), storageFailure: false });
   }
-  return { accepted: pushResult.accepted, revision: pushResult.revision };
+
+  return { pushed, revisions };
 }
 
-async function applyNewOperationsAfterPush(
+async function syncPreferences(
   userId: string,
-  merged: AppData,
-): Promise<AppData> {
-  const live = await currentLocalData();
-  const freshOps = await getPendingOperations(userId);
-  if (freshOps.length === 0) return preserveLocalOnly(merged, live);
-  const applied = applyOperationsToData(merged, freshOps);
-  return preserveLocalOnly(applied.data, live);
+  local: AppData,
+  remoteSettings: Partial<AppSettings> | null,
+  remoteRevision: number,
+  remoteUpdatedAt: string | null,
+  meta: SyncMeta,
+): Promise<{ pushed: boolean; revision: number }> {
+  const baseRevision = remoteRevision;
+  const localSettingsTime = meta.settingsUpdatedAt ?? 0;
+  const remoteSettingsTime = remoteUpdatedAt ? new Date(remoteUpdatedAt).getTime() : 0;
+
+  const shouldPush = !remoteSettings || localSettingsTime > remoteSettingsTime;
+
+  if (shouldPush) {
+    try {
+      const result = await pushPreferences(userId, local.settings, baseRevision);
+      return { pushed: result.accepted, revision: result.revision };
+    } catch (err) {
+      logError('push preferences', err);
+      return { pushed: false, revision: baseRevision };
+    }
+  }
+
+  return { pushed: false, revision: baseRevision };
 }
 
 function filterUnclassified(ops: SyncOperation[], classified: Set<string>): SyncOperation[] {
@@ -631,7 +692,7 @@ function filterUnclassified(ops: SyncOperation[], classified: Set<string>): Sync
   return result;
 }
 
-async function revisionSyncCycle(userId: string, incomingLocal?: AppData): Promise<AppData> {
+async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<AppData> {
   if (activeFullSync?.userId === userId) {
     return activeFullSync.promise;
   }
@@ -641,115 +702,119 @@ async function revisionSyncCycle(userId: string, incomingLocal?: AppData): Promi
 
     let local = incomingLocal ?? (await currentLocalData());
     local = migrateAppData(local);
-    local = pruneTombstones(local);
 
-    const knownRevision = await getLastKnownRevision(userId);
+    const meta = await loadSyncMeta();
     const pendingOps = await getPendingOperations(userId);
-    const remote = await fetchRemote(userId);
+
+    const remoteWorkspacesResult = await fetchRemoteWorkspaces(userId);
+    const remotePreferencesResult = await fetchRemotePreferences(userId);
+
+    let remoteAppData: AppData = {
+      ...local,
+      workspaces: remoteWorkspacesResult.workspaces,
+      settings: remotePreferencesResult.settings
+        ? { ...local.settings, ...remotePreferencesResult.settings }
+        : local.settings,
+    };
+    remoteAppData = migrateAppData(remoteAppData);
 
     let merged: AppData;
+    let appliedOpIds = new Set<string>();
+    let unapplied: SyncOperation[] = [];
+    const mergedBase = mergeAppData(local, remoteAppData);
 
-    if (remote.data) {
-      const remoteRevision = remote.revision;
-      let appliedOpIds = new Set<string>();
-      let unapplied: SyncOperation[] = [];
-
-      if (pendingOps.length > 0) {
-        const applied = applyOperationsToData(remote.data, pendingOps);
-        merged = applied.data;
-        appliedOpIds = applied.appliedOpIds;
-        unapplied = applied.unapplied;
-      } else {
-        merged = { ...remote.data };
-      }
-      merged = { ...merged, _owner: userId };
-      merged = preserveLocalOnly(merged, await currentLocalData() ?? local);
-
-      await updateLastKnownRevision(remoteRevision, userId);
-
-      const shouldPush = appliedOpIds.size > 0 || !sameContent(merged, remote.data);
-
-      if (shouldPush) {
-        try {
-          const result = await pushAndAck(userId, merged, remoteRevision, appliedOpIds);
-          if (!result.accepted) {
-            const freshRemote = await fetchRemote(userId);
-            if (freshRemote.data) {
-              const freshOps = await getPendingOperations(userId);
-              const rebased = applyOperationsToData(freshRemote.data, freshOps);
-              merged = rebased.data;
-              if (rebased.unapplied.length > 0) {
-                const fresh = filterUnclassified(rebased.unapplied, classifiedInCycle);
-                if (fresh.length > 0) await classifyDeadLetters(fresh, userId);
-              }
-              merged = { ...merged, _owner: userId };
-              merged = preserveLocalOnly(merged, await currentLocalData() ?? local);
-              await updateLastKnownRevision(freshRemote.revision, userId);
-              const retryResult = await pushAndAck(userId, merged, freshRemote.revision, rebased.appliedOpIds);
-              if (!retryResult.accepted) {
-                logError('revisionSyncCycle', new Error('Second retry also stale, keeping outbox, will retry later'));
-              }
-            }
-          }
-        } catch {
-          // Push failed, outbox preserved for next sync
-        }
-      }
-
-      if (unapplied.length > 0) {
-        const fresh = filterUnclassified(unapplied, classifiedInCycle);
-        if (fresh.length > 0) await classifyDeadLetters(fresh, userId);
-      }
-
-      merged = await applyNewOperationsAfterPush(userId, merged);
-      const saveResult = await saveData(merged);
-      if (saveResult.ok) {
-        setState({ storageFailure: false });
-      }
-      if (remoteRevision > knownRevision) {
-        setState({ lastPullAt: Date.now() });
-      }
-      remoteAppliedHandler?.(merged);
+    if (pendingOps.length > 0) {
+      const applied = applyOperationsToData(mergedBase, pendingOps);
+      merged = applied.data;
+      appliedOpIds = applied.appliedOpIds;
+      unapplied = applied.unapplied;
     } else {
-      if (pendingOps.length > 0) {
-        const applied = applyOperationsToData(local, pendingOps);
-        merged = applied.data;
-        const appliedOpIds = applied.appliedOpIds;
-        merged = { ...merged, _owner: userId };
+      merged = mergedBase;
+    }
 
-        if (appliedOpIds.size > 0) {
-          try {
-            await pushAndAck(userId, merged, 0, appliedOpIds);
-          } catch {
-            // Will retry on next sync
-          }
-        }
+    merged = preserveLocalOnly(merged, await currentLocalData());
 
-        if (applied.unapplied.length > 0) {
-          const fresh = filterUnclassified(applied.unapplied, classifiedInCycle);
-          if (fresh.length > 0) await classifyDeadLetters(fresh, userId);
-        }
+    const settingsChanged = pendingOps.some((op) =>
+      op.entity === 'settings' || op.entity === 'themeConfig' || op.entity === 'topWidgets'
+    );
+    if (settingsChanged) {
+      meta.settingsUpdatedAt = Date.now();
+    }
 
-        merged = await applyNewOperationsAfterPush(userId, merged);
-        const saveResult = await saveData(merged);
-        if (saveResult.ok) {
-          setState({ storageFailure: false });
-        }
-      } else {
-        merged = { ...local, _owner: userId };
-        try {
-          await pushAndAck(userId, merged, 0, new Set());
-        } catch {
-          // Initial push can wait
-        }
-        const saveResult = await saveData(merged);
-        if (saveResult.ok) {
-          setState({ storageFailure: false });
-        }
+    const shouldPush = appliedOpIds.size > 0 || !sameContent(merged, remoteAppData);
+
+    const allWorkspaces = mergeWorkspaces(local.workspaces, remoteAppData.workspaces);
+
+    const workspaceSync = shouldPush
+      ? await syncWorkspaces(
+          userId,
+          allWorkspaces,
+          remoteWorkspacesResult.workspaces,
+          remoteWorkspacesResult.revisions,
+        )
+      : { pushed: 0, revisions: remoteWorkspacesResult.revisions };
+
+    const preferencesSync = shouldPush
+      ? await syncPreferences(
+          userId,
+          merged,
+          remotePreferencesResult.settings,
+          remotePreferencesResult.revision,
+          remotePreferencesResult.updatedAt,
+          meta,
+        )
+      : { pushed: false, revision: remotePreferencesResult.revision };
+
+    const finalWorkspaces = mergeWorkspaces(merged.workspaces, remoteWorkspacesResult.workspaces);
+
+    merged = { ...merged, workspaces: finalWorkspaces };
+
+    if (appliedOpIds.size > 0) {
+      markOperationsCommitted(appliedOpIds, userId);
+      try {
+        const highestWorkspaceRevision = Math.max(
+          0,
+          ...Object.values(workspaceSync.revisions),
+          preferencesSync.revision,
+        );
+        await ackOperations(appliedOpIds, highestWorkspaceRevision, userId);
+      } catch {
+        logError('ackOperations', new Error('ackOperations failed after push'));
       }
     }
 
-    await updatePendingCount();
+    if (unapplied.length > 0) {
+      const fresh = filterUnclassified(unapplied, classifiedInCycle);
+      if (fresh.length > 0) await classifyDeadLetters(fresh, userId);
+    }
+
+    const live = await currentLocalData();
+    const freshOps = await getPendingOperations(userId);
+    if (freshOps.length > 0) {
+      const applied = applyOperationsToData(merged, freshOps);
+      merged = applied.data;
+      if (applied.unapplied.length > 0) {
+        const fresh = filterUnclassified(applied.unapplied, classifiedInCycle);
+        if (fresh.length > 0) await classifyDeadLetters(fresh, userId);
+      }
+    }
+    merged = preserveLocalOnly(merged, live);
+
+    const nextMeta: SyncMeta = {
+      ...meta,
+      owner: userId,
+      lastSyncAt: Date.now(),
+      settingsUpdatedAt: preferencesSync.pushed ? Date.now() : meta.settingsUpdatedAt,
+      workspaceRevisions: workspaceSync.revisions,
+    };
+
+    const saveResult = await saveData(merged);
+    if (saveResult.ok) {
+      setState({ storageFailure: false });
+    }
+    await saveSyncMeta(nextMeta);
+
+    remoteAppliedHandler?.(merged);
     return merged;
   };
 
@@ -774,11 +839,17 @@ async function updatePendingCount(): Promise<void> {
 async function drainOutbox(userId: string): Promise<void> {
   setState({ status: 'syncing' });
   try {
-    await updatePendingCount();
-    await revisionSyncCycle(userId);
+    await withSyncTimeout(async () => {
+      await updatePendingCount();
+      await fullSyncCycle(userId);
+    });
     setState({ status: 'idle' });
   } catch (err) {
     recordError(err);
+  } finally {
+    if (state.status === 'syncing') {
+      setState({ status: 'idle' });
+    }
   }
 }
 
@@ -802,7 +873,7 @@ export function syncNow(): void {
         return;
       }
 
-      const session = await getSession();
+      const session = await withSyncTimeout(() => getSession());
       if (!session?.user) {
         setState({ status: 'idle' });
         return;
@@ -811,7 +882,7 @@ export function syncNow(): void {
       const userId = session.user.id;
 
       let local = await currentLocalData();
-      local = await resolveOwnerForSync(local, userId);
+      local = await withSyncTimeout(() => resolveOwnerForSync(local, userId));
 
       startRealtime(userId);
 
@@ -828,7 +899,6 @@ export function syncNow(): void {
 export async function initializeSync(initialData?: AppData): Promise<AppData> {
   let local = initialData ?? (await loadData());
   local = migrateAppData(local);
-  local = pruneTombstones(local);
 
   if (!supabase) {
     setState({ status: 'idle' });
@@ -840,28 +910,28 @@ export async function initializeSync(initialData?: AppData): Promise<AppData> {
   startAuthListener();
   startStorageFailureListener();
 
-  const can = await canSync();
-  if (!can) {
-    setState({ status: 'idle' });
-    await updatePendingCount();
-    return local;
-  }
-
-  setState({ status: 'syncing' });
-
   try {
-    const session = await getSession();
+    const can = await canSync();
+    if (!can) {
+      setState({ status: 'idle' });
+      await updatePendingCount();
+      return local;
+    }
+
+    setState({ status: 'syncing' });
+
+    const session = await withSyncTimeout(() => getSession());
     if (!session?.user) {
       setState({ status: 'idle' });
       return local;
     }
 
     const userId = session.user.id;
-    local = await resolveOwnerForSync(local, userId);
+    local = await withSyncTimeout(() => resolveOwnerForSync(local, userId));
 
     startRealtime(userId);
 
-    local = await revisionSyncCycle(userId, local);
+    local = await withSyncTimeout(() => fullSyncCycle(userId, local));
 
     setState({ status: 'idle', lastSyncAt: Date.now() });
     await updatePendingCount();
@@ -875,6 +945,11 @@ export async function initializeSync(initialData?: AppData): Promise<AppData> {
 
 export function notifyLocalMutation(): void {
   updatePendingCount().catch(() => undefined);
+  if (localMutationTimer) clearTimeout(localMutationTimer);
+  localMutationTimer = setTimeout(() => {
+    localMutationTimer = null;
+    syncNow();
+  }, 750);
 }
 
 export async function retryDeadLetters(): Promise<number> {
@@ -894,7 +969,7 @@ export async function retryDeadLetters(): Promise<number> {
   }
 }
 
-async function handleRemoteChange(userId: string, remote: AppData, remoteRevision: number, _remoteUpdatedAt?: string): Promise<void> {
+async function handleRemoteChange(userId: string): Promise<void> {
   try {
     const session = await getSession();
     if (!session?.user || session.user.id !== userId) return;
@@ -902,33 +977,10 @@ async function handleRemoteChange(userId: string, remote: AppData, remoteRevisio
     const can = await canSync();
     if (!can) return;
 
-    const local = await currentLocalData();
-    if (local._owner && local._owner !== userId) return;
+    const meta = await loadSyncMeta();
+    if (meta.owner && meta.owner !== userId) return;
 
-    const pendingOps = await getPendingOperations(userId);
-    let merged: AppData;
-
-    if (pendingOps.length > 0) {
-      const applied = applyOperationsToData(remote, pendingOps);
-      merged = applied.data;
-      if (applied.unapplied.length > 0) {
-        await classifyDeadLetters(applied.unapplied, userId);
-      }
-    } else {
-      merged = { ...remote };
-    }
-
-    merged = { ...merged, _owner: userId };
-    merged = preserveLocalOnly(merged, await currentLocalData() ?? local);
-
-    if (sameContent(merged, local)) return;
-
-    await updateLastKnownRevision(remoteRevision, userId);
-    const saveResult = await saveData(merged);
-    if (saveResult.ok) {
-      setState({ storageFailure: false });
-    }
-    remoteAppliedHandler?.(merged);
+    await drainOutbox(userId);
 
     const syncedAt = Date.now();
     setState({ lastPullAt: syncedAt, lastSyncAt: syncedAt });
@@ -939,62 +991,76 @@ async function handleRemoteChange(userId: string, remote: AppData, remoteRevisio
 
 function startRealtime(userId: string): void {
   try {
-    realtimeCleanup = subscribeToRealtime(userId, (remote, revision, updatedAt) => {
-      void handleRemoteChange(userId, remote, revision, updatedAt);
+    realtimeCleanup = subscribeToRealtime(userId, () => {
+      void handleRemoteChange(userId);
     });
   } catch {
     // Realtime not available, fall back to pull-based sync
   }
 }
 
+async function handleAuthStateChange(session: Session | null, event: AuthChangeEvent): Promise<void> {
+  if (event === 'SIGNED_OUT') {
+    if (realtimeCleanup) {
+      realtimeCleanup();
+      realtimeCleanup = null;
+    }
+    unsubscribeRealtime();
+    setOutboxOwner(undefined);
+    currentOwner = undefined;
+    clearCommittedInMemory();
+    await updatePendingCount();
+    setState({ status: 'idle' });
+    return;
+  }
+
+  if (event !== 'INITIAL_SESSION' && event !== 'SIGNED_IN' && event !== 'USER_UPDATED') return;
+
+  if (session?.user) {
+    try {
+      const can = await canSync();
+      if (!can) return;
+
+      const userId = session.user.id;
+
+      let local = await currentLocalData();
+      local = await withSyncTimeout(() => resolveOwnerForSync(local, userId));
+
+      startRealtime(userId);
+
+      await drainOutbox(userId);
+    } catch (err) {
+      logError('auth change failed', err);
+      recordError(err);
+    }
+  }
+}
+
 function startAuthListener(): void {
   if (authUnsubscribe || !supabase) return;
 
-  authUnsubscribe = subscribeAuthState(async (session, event) => {
-    if (event === 'SIGNED_OUT') {
-      if (realtimeCleanup) {
-        realtimeCleanup();
-        realtimeCleanup = null;
-      }
-      unsubscribeRealtime();
-      setOutboxOwner(undefined);
-      currentOwner = undefined;
-      clearCommittedInMemory();
-      await updatePendingCount();
-      setState({ status: 'idle' });
-      return;
-    }
-
-    if (event !== 'INITIAL_SESSION' && event !== 'SIGNED_IN' && event !== 'USER_UPDATED') return;
-
-    if (session?.user) {
-      const can = await canSync();
-      if (can) {
-        try {
-          const userId = session.user.id;
-
-          let local = await currentLocalData();
-          local = await resolveOwnerForSync(local, userId);
-
-          startRealtime(userId);
-
-          await drainOutbox(userId);
-        } catch (err) {
-          logError('auth change failed', err);
-        }
-      }
-    }
+  authUnsubscribe = subscribeAuthState((session, event) => {
+    // Supabase holds its auth lock while notifying listeners. Defer all work
+    // that calls Supabase until that notification has fully returned.
+    setTimeout(() => {
+      void handleAuthStateChange(session, event).catch((err) => {
+        recordError(err);
+      });
+    }, 0);
   });
 }
 
 export async function syncOnOnline(): Promise<void> {
-  const can = await canSync();
-  if (!can) return;
-
-  setState({ status: 'syncing' });
-
   try {
-    const session = await getSession();
+    const can = await canSync();
+    if (!can) {
+      setState({ status: 'idle' });
+      return;
+    }
+
+    setState({ status: 'syncing' });
+
+    const session = await withSyncTimeout(() => getSession());
     if (!session?.user) {
       setState({ status: 'idle' });
       return;
@@ -1003,7 +1069,7 @@ export async function syncOnOnline(): Promise<void> {
     const userId = session.user.id;
 
     let local = await currentLocalData();
-    local = await resolveOwnerForSync(local, userId);
+    local = await withSyncTimeout(() => resolveOwnerForSync(local, userId));
 
     await drainOutbox(userId);
 
@@ -1056,6 +1122,10 @@ export function cleanup(): void {
     storageFailureUnsubscribe = null;
   }
   unsubscribeRealtime();
+  if (localMutationTimer) {
+    clearTimeout(localMutationTimer);
+    localMutationTimer = null;
+  }
   localDataProvider = null;
   remoteAppliedHandler = null;
   syncNowInFlight = false;
