@@ -29,6 +29,7 @@ import {
   clearCommittedInMemory,
 } from './outbox';
 import { mergeAppData, mergeWorkspaces, purgeConfirmedDeletedWorkspaces } from './merge';
+import { acquireSyncLease } from './coordinator';
 
 let state: SyncState = { status: 'idle' };
 let realtimeCleanup: (() => void) | null = null;
@@ -42,7 +43,9 @@ let activeFullSync: { userId: string; promise: Promise<AppData> } | null = null;
 let currentOwner: string | undefined;
 let storageFailureUnsubscribe: (() => void) | null = null;
 let localMutationTimer: ReturnType<typeof setTimeout> | null = null;
+let remoteChangeTimer: ReturnType<typeof setTimeout> | null = null;
 const SYNC_TIMEOUT_MS = 15_000;
+const LOCK_RETRY_MS = 1_000;
 
 const OWNER_STASH_KEY = 'syncOwnerData';
 const MAX_OWNER_STASH = 10;
@@ -854,28 +857,51 @@ async function updatePendingCount(): Promise<void> {
   setState({ pendingOperations: count, deadLetterCount: dlCount });
 }
 
-async function drainOutbox(userId: string): Promise<void> {
+function scheduleLocalSyncRetry(): void {
+  if (localMutationTimer) return;
+  localMutationTimer = setTimeout(() => {
+    localMutationTimer = null;
+    if (syncNowInFlight) {
+      scheduleLocalSyncRetry();
+      return;
+    }
+    syncNow();
+  }, LOCK_RETRY_MS);
+}
+
+async function drainOutbox(userId: string, force = false, incomingLocal?: AppData): Promise<AppData | null> {
+  const lease = await acquireSyncLease(userId, force);
+  if (!lease) {
+    await updatePendingCount();
+    if (force) scheduleLocalSyncRetry();
+    return null;
+  }
+
+  if (!realtimeCleanup) startRealtime(userId);
   setState({ status: 'syncing' });
+  let syncedData: AppData | null = null;
   try {
     await withSyncTimeout(async () => {
       await updatePendingCount();
-      await fullSyncCycle(userId);
+      syncedData = await fullSyncCycle(userId, incomingLocal);
     });
-    setState({ status: 'idle' });
+    await lease.complete();
+    setState({ status: 'idle', lastSyncAt: Date.now() });
   } catch (err) {
     recordError(err);
   } finally {
+    await lease.release().catch(() => undefined);
     if (state.status === 'syncing') {
       setState({ status: 'idle' });
     }
   }
+  return syncedData;
 }
 
 export function syncNow(): void {
   if (syncNowInFlight) return;
 
   syncNowInFlight = true;
-  setState({ status: 'syncing' });
 
   (async () => {
     try {
@@ -902,10 +928,7 @@ export function syncNow(): void {
       let local = await currentLocalData();
       local = await withSyncTimeout(() => resolveOwnerForSync(local, userId));
 
-      startRealtime(userId);
-
-      await drainOutbox(userId);
-      setState({ status: 'idle', lastSyncAt: Date.now() });
+      await drainOutbox(userId, true, local);
     } catch (err) {
       recordError(err);
     } finally {
@@ -936,8 +959,6 @@ export async function initializeSync(initialData?: AppData): Promise<AppData> {
       return local;
     }
 
-    setState({ status: 'syncing' });
-
     const session = await withSyncTimeout(() => getSession());
     if (!session?.user) {
       setState({ status: 'idle' });
@@ -947,11 +968,8 @@ export async function initializeSync(initialData?: AppData): Promise<AppData> {
     const userId = session.user.id;
     local = await withSyncTimeout(() => resolveOwnerForSync(local, userId));
 
-    startRealtime(userId);
-
-    local = await withSyncTimeout(() => fullSyncCycle(userId, local));
-
-    setState({ status: 'idle', lastSyncAt: Date.now() });
+    const synced = await drainOutbox(userId, false, local);
+    if (synced) local = synced;
     await updatePendingCount();
     return local;
   } catch (err) {
@@ -998,7 +1016,8 @@ async function handleRemoteChange(userId: string): Promise<void> {
     const meta = await loadSyncMeta();
     if (meta.owner && meta.owner !== userId) return;
 
-    await drainOutbox(userId);
+    const synced = await drainOutbox(userId, false);
+    if (!synced) return;
 
     const syncedAt = Date.now();
     setState({ lastPullAt: syncedAt, lastSyncAt: syncedAt });
@@ -1007,10 +1026,18 @@ async function handleRemoteChange(userId: string): Promise<void> {
   }
 }
 
+function scheduleRemoteChange(userId: string): void {
+  if (remoteChangeTimer) clearTimeout(remoteChangeTimer);
+  remoteChangeTimer = setTimeout(() => {
+    remoteChangeTimer = null;
+    void handleRemoteChange(userId);
+  }, 200);
+}
+
 function startRealtime(userId: string): void {
   try {
     realtimeCleanup = subscribeToRealtime(userId, () => {
-      void handleRemoteChange(userId);
+      scheduleRemoteChange(userId);
     });
   } catch {
     // Realtime not available, fall back to pull-based sync
@@ -1044,9 +1071,7 @@ async function handleAuthStateChange(session: Session | null, event: AuthChangeE
       let local = await currentLocalData();
       local = await withSyncTimeout(() => resolveOwnerForSync(local, userId));
 
-      startRealtime(userId);
-
-      await drainOutbox(userId);
+      await drainOutbox(userId, false, local);
     } catch (err) {
       logError('auth change failed', err);
       recordError(err);
@@ -1076,8 +1101,6 @@ export async function syncOnOnline(): Promise<void> {
       return;
     }
 
-    setState({ status: 'syncing' });
-
     const session = await withSyncTimeout(() => getSession());
     if (!session?.user) {
       setState({ status: 'idle' });
@@ -1089,9 +1112,7 @@ export async function syncOnOnline(): Promise<void> {
     let local = await currentLocalData();
     local = await withSyncTimeout(() => resolveOwnerForSync(local, userId));
 
-    await drainOutbox(userId);
-
-    setState({ status: 'idle', lastSyncAt: Date.now() });
+    await drainOutbox(userId, false, local);
   } catch (err) {
     recordError(err);
   }
@@ -1143,6 +1164,10 @@ export function cleanup(): void {
   if (localMutationTimer) {
     clearTimeout(localMutationTimer);
     localMutationTimer = null;
+  }
+  if (remoteChangeTimer) {
+    clearTimeout(remoteChangeTimer);
+    remoteChangeTimer = null;
   }
   localDataProvider = null;
   remoteAppliedHandler = null;

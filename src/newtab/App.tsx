@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { Settings, Menu, Plus, Palette, User } from 'lucide-preact';
+import { Settings, Menu, Plus, Palette, User, Check } from 'lucide-preact';
 import type { AppData, ThemeConfig, UploadedBackground, Widget, WidgetType, TopWidgetConfig, SearchEngine } from '@shared/types';
 import { DEFAULT_WALLPAPERS, SEARCH_ENGINES, LOCAL_ONLY_SETTINGS_KEYS } from '@shared/types/constants';
 import { getDefaultData } from '@shared/types/defaults';
@@ -47,11 +47,9 @@ import {
   onSyncStateChange,
   retryDeadLetters,
 } from '@shared/sync';
-import type { SyncState } from '@shared/sync/types';
 import { migrateAppData } from '@shared/sync/migrate';
 import { recordOperation } from '@shared/sync/outbox';
 import { mergeWorkspaces } from '@shared/sync/merge';
-import { showSyncToast } from './solidToast';
 import './styles/index.css';
 
 function looksLikeUrl(str: string): boolean {
@@ -112,6 +110,8 @@ async function removeVideoBackgrounds(data: AppData): Promise<AppData> {
   };
 }
 
+type SyncToastKind = 'syncing' | 'success' | null;
+
 function ensureRenderableData(data: AppData): AppData {
   const normalized = migrateAppData(data);
   if (getBoards(normalized).length > 0) return normalized;
@@ -152,10 +152,13 @@ export function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchEngine, setSearchEngine] = useState<SearchEngine>('google');
   const [wallpaperObjectUrl, setWallpaperObjectUrl] = useState<string | null>(null);
-  const [syncStatus, setSyncStatus] = useState<SyncState['status']>(() => getSyncState().status);
+  const [initialSyncPending, setInitialSyncPending] = useState(true);
+  const [syncToastKind, setSyncToastKind] = useState<SyncToastKind>('syncing');
+  const [syncToastVisible, setSyncToastVisible] = useState(false);
   const [storageFailure, setStorageFailure] = useState(false);
   const [deadLetterOps, setDeadLetterOps] = useState(0);
   const lastPullAtRef = useRef<number | undefined>(getSyncState().lastPullAt);
+  const syncToastHideTimerRef = useRef<number | null>(null);
   const gcIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -197,6 +200,7 @@ export function App() {
         })
         .finally(() => {
           initSyncPendingRef.current = false;
+          setInitialSyncPending(false);
         });
 
       void removeVideoBackgrounds(initial).then((cleaned) => {
@@ -213,6 +217,9 @@ export function App() {
       const fallback = getDefaultData();
       setData(fallback);
       setActiveBoardId(getInitialBoardId(fallback));
+      setInitialSyncPending(false);
+      setSyncToastKind(null);
+      setSyncToastVisible(false);
     });
     return () => {
       mounted = false;
@@ -312,7 +319,6 @@ export function App() {
 
   useEffect(() => {
     return onSyncStateChange((s) => {
-      setSyncStatus(s.status);
       setDeadLetterOps(s.deadLetterCount ?? 0);
       if (s.storageFailure) {
         setStorageFailure(true);
@@ -322,11 +328,28 @@ export function App() {
       if (s.lastPullAt && s.lastPullAt !== lastPullAtRef.current) {
         lastPullAtRef.current = s.lastPullAt;
         if (!initSyncPendingRef.current) {
-          showSyncToast(t('app.syncSuccess'));
+          if (syncToastHideTimerRef.current) {
+            window.clearTimeout(syncToastHideTimerRef.current);
+            syncToastHideTimerRef.current = null;
+          }
+          setSyncToastKind('success');
+          setSyncToastVisible(true);
+          syncToastHideTimerRef.current = window.setTimeout(() => {
+            syncToastHideTimerRef.current = null;
+            setSyncToastKind(null);
+            setSyncToastVisible(false);
+          }, 3000);
         }
       }
     });
   }, [t]);
+
+  useEffect(() => {
+    if (!initialSyncPending && syncToastKind === 'syncing') {
+      setSyncToastKind(null);
+      setSyncToastVisible(false);
+    }
+  }, [initialSyncPending, syncToastKind]);
 
   useEffect(() => {
     if (data && activeBoardId && data.settings.lastBoardId !== activeBoardId) {
@@ -947,6 +970,23 @@ export function App() {
             : data.settings.wallpaper.value
       }}
     >
+      {syncToastVisible && syncToastKind && (
+        <div
+          className={`app-sync-toast${syncToastKind === 'success' ? ' app-sync-toast--success' : ''}`}
+          role="status"
+          aria-live="polite"
+        >
+          {syncToastKind === 'syncing' ? (
+            <span className="app-sync-toast__spinner" aria-hidden="true" />
+          ) : (
+            <span className="app-sync-toast__icon" aria-hidden="true">
+              <Check size={16} strokeWidth={3} />
+            </span>
+          )}
+          <span>{t(syncToastKind === 'syncing' ? 'app.syncing' : 'app.syncSuccess')}</span>
+        </div>
+      )}
+
       {storageFailure && (
         <div className="app-storage-warning" role="alert">
           <span>{t('app.storageFailure')}</span>
@@ -997,16 +1037,13 @@ export function App() {
         <button
           className={`app-fab-bar__btn app-fab-bar__btn--menu ${menuOpen ? 'app-fab-bar__btn--active' : ''}`}
           onClick={() => {
-             if (!menuOpen) notifyMenuOpened();
-             setMenuOpen((s) => !s);
-           }}
+            if (!menuOpen) notifyMenuOpened();
+            setMenuOpen((s) => !s);
+          }}
           aria-label={menuOpen ? t('app.closeMenu') : t('app.openMenu')}
           title={menuOpen ? t('app.closeMenu') : t('app.menu')}
         >
           <Menu size={22} strokeWidth={2} />
-          {syncStatus === 'syncing' && (
-            <span className="app-sync-spinner" role="status" aria-label={t('app.syncing')} />
-          )}
         </button>
 
         <div className={`app-fab-menu ${menuOpen ? 'app-fab-menu--open' : ''}`}>
