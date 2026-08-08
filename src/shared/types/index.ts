@@ -6,6 +6,8 @@ export interface LinkItem {
   url: string;
   icon?: string;
   favicon?: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface BaseWidget {
@@ -17,6 +19,7 @@ export interface BaseWidget {
   height?: number;
   col?: number;
   layoutColumns?: number;
+  updatedAt?: number;
 }
 
 export interface LinksWidget extends BaseWidget {
@@ -43,6 +46,8 @@ export interface TodoItem {
   id: string;
   text: string;
   done: boolean;
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface TodoWidget extends BaseWidget {
@@ -60,6 +65,11 @@ export interface Board {
   updatedAt: number;
 }
 
+export interface Workspace extends Board {
+  position?: number;
+  deletedAt?: number;
+}
+
 export interface ThemeConfig {
   primaryColor: string;
   boardColor: string;
@@ -71,6 +81,7 @@ export interface ThemeConfig {
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system';
   wallpaper: WallpaperSetting;
+  themeConfig?: Omit<ThemeConfig, 'derivedFromWallpaper'>;
   lastBoardId?: string;
   topWidgets?: TopWidgetConfig[];
   editMode?: boolean;
@@ -108,7 +119,14 @@ export interface TopWidgetConfig {
 }
 
 export interface AppData {
-  boards: Board[];
+  workspaces: Workspace[];
   settings: AppSettings;
   installedAt: number;
+}
+
+export interface SyncMeta {
+  owner?: string;
+  lastSyncAt?: number;
+  settingsUpdatedAt?: number;
+  workspaceRevisions: Record<string, number>;
 }

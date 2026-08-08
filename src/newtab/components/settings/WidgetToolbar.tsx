@@ -3,6 +3,12 @@ import { CalendarDays, Clock3, Cloud, Search, CheckSquare, type LucideIcon } fro
 import type { WidgetType, TopWidgetConfig } from '@shared/types';
 import { CityAutocomplete } from '../ui/CityAutocomplete';
 import { useI18n } from '@shared/i18n';
+import {
+  uiButtonSecondaryClass,
+  uiSwitchInputClass,
+  uiSwitchLabelClass,
+  uiSwitchTrackClass
+} from '@shared/ui/classes';
 
 interface WidgetOption {
   type: WidgetType | 'search';
@@ -80,7 +86,7 @@ export function WidgetToolbar({
 
               {option.hasAdd && (
                 <button
-                  className="widget-toolbar__add-btn"
+                  className={`${uiButtonSecondaryClass} min-h-8 px-4 py-1.5 text-xs`}
                   onClick={() => onAddWidget(option.type as WidgetType)}
                 >
                   {t('widgetToolbar.add')}
@@ -88,13 +94,14 @@ export function WidgetToolbar({
               )}
 
               {option.hasToggle && (
-                <label className="widget-toolbar__toggle">
+                <label className={uiSwitchLabelClass}>
                   <input
+                    className={uiSwitchInputClass}
                     type="checkbox"
                     checked={isActive}
                     onChange={() => onToggleWidget(option.type as WidgetType)}
                   />
-                  <span className="widget-toolbar__toggle-slider" />
+                  <span className={uiSwitchTrackClass} />
                 </label>
               )}
             </div>
@@ -127,13 +134,14 @@ export function WidgetToolbar({
               )}
 
               {option.hasToggle && (
-                <label className="widget-toolbar__toggle">
+                <label className={uiSwitchLabelClass}>
                   <input
+                    className={uiSwitchInputClass}
                     type="checkbox"
                     checked={isActive}
                     onChange={() => onToggleWidget(option.type as WidgetType)}
                   />
-                  <span className="widget-toolbar__toggle-slider" />
+                  <span className={uiSwitchTrackClass} />
                 </label>
               )}
             </div>
@@ -146,12 +154,11 @@ export function WidgetToolbar({
               <CityAutocomplete
                 value={cityInput}
                 onChange={setCityInput}
-                onSelect={onCityChange}
                 placeholder={t('widgetToolbar.city')}
                 id="widget-toolbar-city"
               />
               <button
-                className="widget-toolbar__apply-btn"
+                className={`${uiButtonSecondaryClass} min-h-10 shrink-0 px-4 py-2 text-xs`}
                 onClick={handleApplyCity}
               >
                 {t('widgetToolbar.apply')}

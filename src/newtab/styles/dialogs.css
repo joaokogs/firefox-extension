@@ -5,6 +5,14 @@
 
 /* ── Overlay ── */
 
+:root {
+  --dialog-overlay: rgba(15, 23, 42, 0.24);
+}
+
+:root.theme-dark {
+  --dialog-overlay: rgba(2, 6, 23, 0.62);
+}
+
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -12,7 +20,7 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--dialog-overlay);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   z-index: 1000;
@@ -27,26 +35,32 @@
 /* ── Modal ── */
 
 .modal {
+  /* Keep legacy dialog internals on the same fixed theme tokens as settings. */
+  --bg-body: var(--panel-background);
+  --bg-surface: var(--panel-surface);
+  --bg-surface-solid: var(--panel-surface);
+  --bg-surface-hover: var(--panel-surface-raised);
+  --bg-hover: var(--panel-surface-muted);
+  --bg-active: var(--panel-surface-raised);
+  --border: var(--panel-border);
+  --text-primary: var(--panel-text);
+  --text-secondary: var(--panel-text-secondary);
+  --text-muted: var(--panel-text-muted);
+  --accent: var(--panel-accent);
+  --accent-hover: var(--panel-accent-hover);
+  --danger: var(--panel-danger);
+  --danger-hover: var(--panel-danger-hover);
   width: 100%;
   max-width: 460px;
   max-height: 85vh;
   overflow-y: auto;
   padding: 24px;
-  background: var(--bg-surface-solid);
-  border: 1px solid color-mix(in srgb, var(--text-muted) 16%, transparent);
+  background: var(--panel-surface);
+  border: 1px solid var(--panel-border);
   border-radius: var(--radius-xl);
-  box-shadow:
-    0 24px 48px -12px rgba(0, 0, 0, 0.15),
-    0 8px 20px -8px rgba(0, 0, 0, 0.06),
-    0 0 0 1px rgba(0, 0, 0, 0.04);
+  color: var(--panel-text);
+  box-shadow: var(--shadow-lg);
   animation: modalIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-:root.theme-dark .modal {
-  box-shadow:
-    0 24px 48px -12px rgba(0, 0, 0, 0.5),
-    0 8px 20px -8px rgba(0, 0, 0, 0.3),
-    0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
 .modal--wide {
@@ -83,7 +97,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 20px 24px 16px;
-  border-bottom: 1px solid color-mix(in srgb, var(--text-muted) 14%, transparent);
+  border-bottom: 1px solid var(--panel-border-subtle);
   flex-shrink: 0;
 }
 
@@ -119,7 +133,7 @@
 
 .dialog__divider {
   height: 1px;
-  background: color-mix(in srgb, var(--text-muted) 14%, transparent);
+   background: var(--panel-border-subtle);
   margin: 20px 0;
 }
 
@@ -137,6 +151,7 @@
   font-size: 1.2rem;
   font-weight: 700;
   letter-spacing: -0.01em;
+  color: var(--panel-text);
 }
 
 .modal__subtitle {
@@ -170,6 +185,38 @@
   outline-offset: 2px;
 }
 
+.dialog__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-body);
+  color: var(--panel-text-secondary);
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+
+.dialog__close:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.dialog__close:active {
+  transform: scale(0.94);
+}
+
+.dialog__close:focus-visible,
+.dialog__button:focus-visible,
+.dialog__input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 /* ── Actions footer ── */
 
 .modal__actions {
@@ -178,84 +225,97 @@
   gap: 10px;
   margin-top: 24px;
   padding-top: 20px;
-  border-top: 1px solid color-mix(in srgb, var(--text-muted) 14%, transparent);
+  border-top: 1px solid var(--border);
 }
 
-/* ── Buttons ── */
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 20px;
-  border-radius: 10px;
+.dialog__label {
+  font-size: 0.8125rem;
   font-weight: 600;
-  font-size: 0.875rem;
-  transition:
-    background var(--transition-fast),
-    color var(--transition-fast),
-    transform var(--transition-fast),
-    box-shadow var(--transition-fast);
+  color: var(--text-secondary);
 }
 
-.btn:active {
+.dialog__input {
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-body);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+}
+
+.dialog__input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.85;
+}
+
+.dialog__input:hover {
+  border-color: color-mix(in srgb, var(--accent) 65%, var(--text-primary));
+}
+
+.dialog__input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.dialog__button {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+
+.dialog__button:active {
   transform: scale(0.97);
 }
 
-.btn:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+.dialog__button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
-/* Primary — accent reserved for primary actions */
-.btn--primary {
+.dialog__button--secondary {
+  border-color: var(--border);
+  background: var(--bg-body);
+  color: var(--text-secondary);
+}
+
+.dialog__button--secondary:hover:not(:disabled) {
+  border-color: var(--accent);
   background: var(--accent);
   color: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
-.btn--primary:hover {
+.dialog__button--primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 12px var(--shadow-accent);
+}
+
+.dialog__button--primary:hover:not(:disabled) {
   background: var(--accent-hover);
-  box-shadow: 0 2px 8px var(--shadow-accent);
 }
 
-.btn--primary:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-/* Secondary — fully neutral */
-.btn--secondary {
-  background: color-mix(in srgb, var(--text-muted) 10%, transparent);
-  color: var(--text-primary);
-}
-
-.btn--secondary:hover {
-  background: color-mix(in srgb, var(--text-muted) 20%, transparent);
-}
-
-.btn--secondary:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* Danger — subtle red tint, red text */
-.btn--danger {
-  background: color-mix(in srgb, var(--danger) 10%, transparent);
+.dialog__button--danger {
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
   color: var(--danger);
 }
 
-.btn--danger:hover {
-  background: color-mix(in srgb, var(--danger) 18%, transparent);
-  color: var(--danger-hover);
-}
-
-.btn--danger:disabled {
-  background: color-mix(in srgb, var(--text-muted) 10%, transparent);
-  color: var(--text-muted);
-  opacity: 0.5;
-  cursor: not-allowed;
+.dialog__button--danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: #fff;
 }
 
 /* ── Confirm dialog ── */
@@ -302,47 +362,12 @@
 
 /* ── Form fields ── */
 
-.field,
-.widget-editor__field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 16px;
-}
-
-.field span,
-.field label,
-.widget-editor__label,
-.widget-editor__field span {
+.widget-editor__label {
+  display: block;
   font-size: 0.8125rem;
   font-weight: 600;
   color: var(--text-secondary);
-}
-
-.field input,
-.widget-editor__field input,
-.widget-editor__field select,
-.widget-editor__types select {
-  padding: 10px 14px;
-  border: 1px solid color-mix(in srgb, var(--text-muted) 22%, transparent);
-  border-radius: 10px;
-  background: var(--bg-body);
-  color: var(--text-primary);
-  outline: none;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.field input:focus,
-.widget-editor__field input:focus,
-.widget-editor__field select:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
-}
-
-.field input::placeholder,
-.widget-editor__field input::placeholder {
-  color: var(--text-muted);
-  opacity: 0.6;
+  margin-bottom: 10px;
 }
 
 /* ── Widget editor ── */
@@ -519,23 +544,6 @@
     0 16px 32px -8px rgba(0, 0, 0, 0.12),
     0 4px 12px -4px rgba(0, 0, 0, 0.06);
   padding: 8px;
-}
-
-.icon-picker__search {
-  width: 100%;
-  padding: 8px 10px;
-  margin-bottom: 8px;
-  border: 1px solid color-mix(in srgb, var(--text-muted) 22%, transparent);
-  border-radius: 8px;
-  background: var(--bg-body);
-  color: var(--text-primary);
-  outline: none;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.icon-picker__search:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
 }
 
 .icon-picker__grid {

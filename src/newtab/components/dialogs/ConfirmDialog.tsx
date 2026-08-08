@@ -47,12 +47,12 @@ export function ConfirmDialog({
           <p className="confirm-dialog__message">{message}</p>
         </div>
         <div className="modal__actions">
-          <button type="button" className="btn btn--secondary" onClick={onCancel}>
+          <button type="button" className="dialog__button dialog__button--secondary" onClick={onCancel}>
             {cancelLabel}
           </button>
           <button
             type="button"
-            className={`btn ${danger ? 'btn--danger' : 'btn--primary'}`}
+            className={`dialog__button ${danger ? 'dialog__button--danger' : 'dialog__button--primary'}`}
             onClick={onConfirm}
             autoFocus
           >

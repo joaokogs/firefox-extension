@@ -1,0 +1,195 @@
+{
+  "boards": [
+    {
+      "id": "board-0-mshspmlh-dh7zm",
+      "title": "Pessoal",
+      "widgets": [
+        {
+          "id": "widget-mshspmlh-95fts",
+          "col": 0,
+          "type": "links",
+          "items": [
+            {
+              "id": "link-mshspmlh-movpi",
+              "url": "https://github.com/",
+              "icon": "fab:github",
+              "title": "Github",
+              "createdAt": 1786037665445,
+              "updatedAt": 1786037665445
+            },
+            {
+              "id": "link-mshspmlh-nny8a",
+              "url": "https://mail.google.com/mail/u/0/?service=mail&flowName=GlifWebSignIn&flowEntry=AccountChooser&ec=asw-gmail-globalnav-signin#inbox",
+              "icon": "fa:envelope",
+              "title": "Gmail",
+              "createdAt": 1786037665445,
+              "updatedAt": 1786037665445
+            },
+            {
+              "id": "link-mshspmlh-g68r3",
+              "url": "https://addons.mozilla.org/pt-BR/developers/addons",
+              "title": "Dev - FireFox Extension",
+              "createdAt": 1786037665445,
+              "updatedAt": 1786037665445
+            },
+            {
+              "id": "link-mshspmlh-3fe0p",
+              "url": "https://chrome.google.com/u/1/webstore/devconsole/80e053cc-6c8f-48da-86d7-07b41ea749a0",
+              "title": "Dev - Chrome Extensions",
+              "createdAt": 1786037665445,
+              "updatedAt": 1786037665445
+            },
+            {
+              "id": "link-mshspmlh-pogty",
+              "url": "https://dashboard.stripe.com/acct_1TyKFiJ3WZPaTqeL/dashboard",
+              "title": "Stripe",
+              "createdAt": 1786037665445,
+              "updatedAt": 1786037665445
+            }
+          ],
+          "order": 0,
+          "title": "Work",
+          "height": 282,
+          "colSpan": 1,
+          "updatedAt": 1786037665445,
+          "layoutColumns": 5
+        },
+        {
+          "id": "widget-mshspmlh-uaooj",
+          "col": 0,
+          "type": "links",
+          "items": [
+            {
+              "id": "link-mshspmlh-e8gnk",
+              "url": "https://chatgpt.com/",
+              "title": "ChatGPT",
+              "createdAt": 1786037665445,
+              "updatedAt": 1786037665445
+            },
+            {
+              "id": "link-mshspmlh-daqc6",
+              "url": "https://chatgpt.com/codex/cloud/settings/analytics",
+              "title": "Codex",
+              "createdAt": 1786037665445,
+              "updatedAt": 1786037665445
+            },
+            {
+              "id": "link-mshspmlh-sde2l",
+              "url": "https://opencode.ai/workspace/wrk_01KRKJGT37YK75FZP2MHRC5B8J/go",
+              "title": "Opencode",
+              "createdAt": 1786037665445,
+              "updatedAt": 1786037665445
+            }
+          ],
+          "order": 1,
+          "title": "IA",
+          "colSpan": 1,
+          "updatedAt": 1786037665445,
+          "layoutColumns": 5
+        },
+        {
+          "id": "widget-mshspmlh-cta5o",
+          "col": 0,
+          "type": "links",
+          "items": [
+            {
+              "id": "link-mshspmlh-kkutf",
+              "url": "https://www.youtube.com",
+              "title": "Youtube",
+              "createdAt": 1786037665445,
+              "updatedAt": 1786037665445
+            },
+            {
+              "id": "link-mshspmlh-brnpy",
+              "url": "https://www.netflix.com/br/",
+              "title": "Netflix",
+              "createdAt": 1786037665445,
+              "updatedAt": 1786037665445
+            }
+          ],
+          "order": 2,
+          "title": "Watch",
+          "colSpan": 1,
+          "updatedAt": 1786037665445,
+          "layoutColumns": 5
+        },
+        {
+          "id": "widget-mshspmlh-ce7oj",
+          "col": 1,
+          "type": "calendar",
+          "order": 0,
+          "title": "Calendar",
+          "colSpan": 1,
+          "updatedAt": 1786037665445,
+          "layoutColumns": 5
+        },
+        {
+          "id": "widget-mshspmlh-g1rq8",
+          "col": 4,
+          "type": "todo",
+          "items": [
+            {
+              "id": "todo-mshspmlh-fnx4q",
+              "done": false,
+              "text": "Adicionar um dialog personalizado no synergy",
+              "createdAt": 1786037665445,
+              "updatedAt": 1786037665445
+            },
+            {
+              "id": "todo-mshspmlh-f7d6u",
+              "done": false,
+              "text": "https://pocketbase.io/",
+              "createdAt": 1786037665445,
+              "updatedAt": 1786037665445
+            }
+          ],
+          "order": 0,
+          "title": "Anotações",
+          "height": 612,
+          "colSpan": 1,
+          "updatedAt": 1786037665445,
+          "layoutColumns": 5
+        }
+      ],
+      "createdAt": 1786037665445,
+      "updatedAt": 1786037665445
+    }
+  ],
+  "settings": {
+    "theme": "dark",
+    "locale": "pt-BR",
+    "editMode": true,
+    "topWidgets": [
+      {
+        "type": "search"
+      }
+    ],
+    "lastBoardId": "board-0-mshspmlh-dh7zm",
+    "themeConfig": {
+      "boardBlur": 10,
+      "boardColor": "#3b3b3b",
+      "boardOpacity": 0.5,
+      "primaryColor": "#8000ff"
+    },
+    "openInNewTab": false,
+    "recentSearches": []
+  },
+  "_tombstones": {
+    "deletedLinks": {},
+    "deletedTodos": {
+      "board-0-mshspmlh-dh7zm/widget-mshspmlh-g1rq8/todo-mshsrmq4-v6ljv": 1786037870598
+    },
+    "deletedBoards": {
+      "board-home": 1786039269568,
+      "board-ms1wqgbb-ln81g": 1786037686500,
+      "board-mshtn0ew-621ld": 1786039261172
+    },
+    "deletedWidgets": {
+      "board-home/widget-mrt7t31d-we636": 1786035195734,
+      "board-home/widget-mrttmumx-i35pd": 1786035189024,
+      "board-home/widget-mrttn8hd-bowuy": 1786035191443
+    }
+  },
+  "installedAt": 1784551366634,
+  "settingsUpdatedAt": 1786043623106
+}

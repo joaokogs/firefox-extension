@@ -3,9 +3,20 @@ export {
   saveData,
   ensureData,
   STORAGE_KEY,
-  updateBoard,
-  updateWidgetInBoard,
+  SYNC_META_KEY,
+  loadSyncMeta,
+  saveSyncMeta,
+  getWorkspaces,
+  getBoards,
+  getWorkspaceById,
+  toWorkspace,
+  toBoard,
+  updateWorkspace,
+  updateWidgetInWorkspace,
+  onStorageFailure,
+  notifyStorageFailure,
 } from './storage/index';
+export type { WriteResult } from './storage/index';
 
 export {
   createBoard,

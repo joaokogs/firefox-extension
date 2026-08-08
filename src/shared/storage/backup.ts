@@ -1,6 +1,9 @@
 import type { AppData, Board, ThemeConfig, TopWidgetConfig, Widget } from '@shared/types';
 import { t } from '@shared/i18n';
-import { generateId, getDefaultData } from '@shared/types/defaults';
+import { DEFAULT_THEME } from '@shared/types/constants';
+import { generateId, generateWorkspaceId, getDefaultData } from '@shared/types/defaults';
+import { migrateAppData } from '@shared/sync/migrate';
+import { getBoards } from './index';
 
 export interface TemplateWidgetPosition {
   column: number;
@@ -122,6 +125,7 @@ function serializeWidget(widget: Widget, position: TemplateWidgetPosition): Temp
 
 export function createTemplate(data: AppData, theme: Pick<ThemeConfig, 'primaryColor' | 'boardColor' | 'boardOpacity' | 'boardBlur'>): TemplateData {
   const columns = getCurrentColumnCount();
+  const boards = getBoards(data);
   return {
     format: 'prismi-template',
     version: 4,
@@ -133,7 +137,7 @@ export function createTemplate(data: AppData, theme: Pick<ThemeConfig, 'primaryC
       boardOpacity: theme.boardOpacity,
       boardBlur: theme.boardBlur
     },
-    boards: data.boards.map((board) => {
+    boards: boards.map((board) => {
       const positions = getWidgetPositions(board.widgets, columns);
       return {
         title: board.title,
@@ -165,6 +169,7 @@ function getCurrentColumnCount(): number {
 }
 
 function deserializeWidget(widget: TemplateWidget, position: TemplateWidgetPosition, columns: number): Widget {
+  const now = Date.now();
   const base = {
     id: generateId('widget'),
     title: widget.title,
@@ -184,6 +189,8 @@ function deserializeWidget(widget: TemplateWidget, position: TemplateWidgetPosit
           id: generateId('link'),
           title: item.title,
           url: item.url,
+          createdAt: now,
+          updatedAt: now,
           ...(item.icon ? { icon: item.icon } : {})
         }))
       };
@@ -202,22 +209,199 @@ function deserializeWidget(widget: TemplateWidget, position: TemplateWidgetPosit
       return {
         ...base,
         type: 'todo',
-        items: widget.items.map((item) => ({ id: generateId('todo'), text: item.text, done: item.done }))
+        items: widget.items.map((item) => ({ id: generateId('todo'), text: item.text, done: item.done, createdAt: now, updatedAt: now }))
       };
   }
 }
 
-function isTemplateData(value: unknown): value is TemplateData {
-  if (!value || typeof value !== 'object') return false;
-  const candidate = value as Partial<TemplateData>;
-  return candidate.format === 'prismi-template' && candidate.version === 4 && Number.isInteger(candidate.columns) && candidate.columns !== undefined && candidate.columns > 0 && Array.isArray(candidate.boards) && !!candidate.theme;
+type JsonRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is JsonRecord {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function asString(value: unknown, fallback: string): string {
+  return typeof value === 'string' && value.trim() ? value : fallback;
+}
+
+function asPositiveNumber(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function normalizeTheme(value: unknown): TemplateTheme {
+  const theme = isRecord(value) ? value : {};
+  return {
+    primaryColor: asString(theme.primaryColor, DEFAULT_THEME.primaryColor),
+    boardColor: asString(theme.boardColor, DEFAULT_THEME.boardColor),
+    boardOpacity: typeof theme.boardOpacity === 'number' && Number.isFinite(theme.boardOpacity)
+      ? Math.min(Math.max(theme.boardOpacity, 0), 1)
+      : DEFAULT_THEME.boardOpacity,
+    boardBlur: typeof theme.boardBlur === 'number' && Number.isFinite(theme.boardBlur)
+      ? Math.max(theme.boardBlur, 0)
+      : DEFAULT_THEME.boardBlur,
+  };
+}
+
+function normalizeTopWidgets(value: unknown): TopWidgetConfig[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+
+  const widgets = value.flatMap((entry) => {
+    if (!isRecord(entry)) return [];
+    const type = entry.type;
+    if (type !== 'clock' && type !== 'weather' && type !== 'search') return [];
+
+    const widget: TopWidgetConfig = { type };
+    if (typeof entry.city === 'string') widget.city = entry.city;
+    if (typeof entry.timezone === 'string') widget.timezone = entry.timezone;
+    if (typeof entry.label === 'string') widget.label = entry.label;
+    if (entry.searchEngine === 'google' || entry.searchEngine === 'yahoo' || entry.searchEngine === 'bing' || entry.searchEngine === 'duckduckgo') {
+      widget.searchEngine = entry.searchEngine;
+    }
+    return [widget];
+  });
+
+  return widgets;
+}
+
+function getLegacyWidgetPosition(widget: JsonRecord, index: number): TemplateWidgetPosition {
+  const nested = isRecord(widget.position) ? widget.position : {};
+  const column = typeof nested.column === 'number'
+    ? nested.column
+    : typeof widget.col === 'number' ? widget.col : 0;
+  const row = typeof nested.row === 'number'
+    ? nested.row
+    : typeof widget.order === 'number' ? widget.order : index;
+
+  return {
+    column: Math.max(0, Math.floor(column)),
+    row: Math.max(0, Math.floor(row)),
+  };
+}
+
+function getLegacyColumnCount(boards: unknown[]): number {
+  let columns = 1;
+  for (const board of boards) {
+    if (!isRecord(board) || !Array.isArray(board.widgets)) continue;
+    board.widgets.forEach((entry, index) => {
+      if (!isRecord(entry)) return;
+      columns = Math.max(columns, getLegacyWidgetPosition(entry, index).column + 1);
+    });
+  }
+  return columns;
+}
+
+function normalizeTemplateWidget(value: unknown, index: number): TemplateWidget | null {
+  if (!isRecord(value)) return null;
+
+  const type = value.type;
+  if (type !== 'links' && type !== 'calendar' && type !== 'clock' && type !== 'weather' && type !== 'todo') return null;
+
+  const base = {
+    title: asString(value.title, t(`defaults.${type === 'todo' ? 'todoWidget' : `${type}Widget`}`)),
+    colSpan: asPositiveNumber(value.colSpan, 1),
+    ...(typeof value.height === 'number' && Number.isFinite(value.height) && value.height > 0 ? { height: value.height } : {}),
+    position: getLegacyWidgetPosition(value, index),
+  };
+
+  switch (type) {
+    case 'links':
+      return {
+        ...base,
+        type,
+        items: Array.isArray(value.items)
+          ? value.items.flatMap((item) => {
+              if (!isRecord(item) || typeof item.url !== 'string') return [];
+              return [{
+                title: asString(item.title, t('defaults.newLink')),
+                url: item.url,
+                ...(typeof item.icon === 'string' && item.icon ? { icon: item.icon } : {}),
+              }];
+            })
+          : [],
+      };
+    case 'calendar':
+      return { ...base, type };
+    case 'clock':
+      return {
+        ...base,
+        type,
+        ...(typeof value.timezone === 'string' ? { timezone: value.timezone } : {}),
+        ...(typeof value.label === 'string' ? { label: value.label } : {}),
+      };
+    case 'weather':
+      return { ...base, type, ...(typeof value.city === 'string' ? { city: value.city } : {}) };
+    case 'todo':
+      return {
+        ...base,
+        type,
+        items: Array.isArray(value.items)
+          ? value.items.flatMap((item) => {
+              if (!isRecord(item)) return [];
+              return [{
+                text: asString(item.text, t('defaults.newNote')),
+                done: item.done === true,
+              }];
+            })
+          : [],
+      };
+  }
+}
+
+function normalizeTemplate(value: unknown): TemplateData {
+  if (!isRecord(value) || value.format !== 'prismi-template') {
+    throw new Error(t('storage.invalidFileFormat'));
+  }
+
+  const version = value.version === undefined ? 1 : value.version;
+  if (typeof version !== 'number' || !Number.isInteger(version) || version < 1) {
+    throw new Error(t('storage.invalidFileFormat'));
+  }
+  if (version > 4) {
+    throw new Error(t('storage.unsupportedVersion', { version }));
+  }
+  if (!Array.isArray(value.boards)) {
+    throw new Error(t('storage.invalidFileFormat'));
+  }
+
+  const columns = Number.isInteger(value.columns) && Number(value.columns) > 0
+    ? Number(value.columns)
+    : getLegacyColumnCount(value.boards);
+  const boards: TemplateBoard[] = value.boards.map((entry, boardIndex) => {
+    if (!isRecord(entry)) {
+      return { title: t('defaults.newBoard'), widgets: [] };
+    }
+    const widgets = Array.isArray(entry.widgets)
+      ? entry.widgets.flatMap((widget, index) => {
+          const normalized = normalizeTemplateWidget(widget, index);
+          return normalized ? [normalized] : [];
+        })
+      : [];
+    return {
+      title: asString(entry.title, `${t('defaults.newBoard')} ${boardIndex + 1}`),
+      widgets,
+    };
+  });
+
+  return {
+    format: 'prismi-template',
+    version: 4,
+    columns,
+    theme: normalizeTheme(value.theme),
+    ...(normalizeTopWidgets(value.headerWidgets ?? value.topWidgets) ? { headerWidgets: normalizeTopWidgets(value.headerWidgets ?? value.topWidgets) } : {}),
+    boards,
+  };
+}
+
+function isAppDataLike(value: unknown): value is AppData {
+  if (!isRecord(value) || !isRecord(value.settings)) return false;
+  return Array.isArray(value.workspaces) || Array.isArray(value.boards);
 }
 
 function importTemplate(template: TemplateData): ImportResult {
   const now = Date.now();
-  const boards: Board[] = template.boards.map((board, index) => {
+  const boards: Board[] = template.boards.map((board) => {
     return {
-      id: generateId(`board-${index}`),
+      id: generateWorkspaceId(),
       title: board.title,
       widgets: board.widgets.map((widget) => deserializeWidget(widget, widget.position, template.columns)),
       createdAt: now,
@@ -225,15 +409,16 @@ function importTemplate(template: TemplateData): ImportResult {
     };
   });
   const defaults = getDefaultData();
-  const importedBoards = boards.length > 0 ? boards : defaults.boards;
+  const importedWorkspaces = boards.length > 0 ? boards.map((b) => ({ ...b })) : defaults.workspaces;
 
   return {
     data: {
-      boards: importedBoards,
+      workspaces: importedWorkspaces,
       settings: {
         ...defaults.settings,
+        themeConfig: template.theme,
         topWidgets: template.headerWidgets ?? defaults.settings.topWidgets,
-        lastBoardId: importedBoards[0].id
+        lastBoardId: importedWorkspaces[0].id
       },
       installedAt: now
     },
@@ -245,19 +430,27 @@ export function importData(file: File): Promise<ImportResult> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
+      let parsed: unknown;
       try {
-        const parsed = JSON.parse(reader.result as string);
-        if (isTemplateData(parsed)) {
-          resolve(importTemplate(parsed));
-          return;
-        }
-        if (!parsed.boards || !Array.isArray(parsed.boards) || !parsed.settings) {
-          reject(new Error(t('storage.invalidFileFormat')));
-          return;
-        }
-        resolve({ data: parsed as AppData });
+        parsed = JSON.parse(reader.result as string);
       } catch {
         reject(new Error(t('storage.invalidFileParse')));
+        return;
+      }
+
+      try {
+        if (isRecord(parsed) && parsed.format === 'prismi-template') {
+          const template = normalizeTemplate(parsed);
+          resolve(importTemplate(template));
+          return;
+        }
+        if (isAppDataLike(parsed)) {
+          resolve({ data: migrateAppData(parsed) });
+          return;
+        }
+        reject(new Error(t('storage.invalidFileFormat')));
+      } catch (error) {
+        reject(error instanceof Error ? error : new Error(t('storage.invalidFileFormat')));
       }
     };
     reader.onerror = () => reject(new Error(t('storage.errorReadingFile')));

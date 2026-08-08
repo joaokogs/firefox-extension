@@ -1,8 +1,8 @@
 import { getSupabaseClient } from '@shared/supabase/client';
-import type { Session, User } from '@supabase/supabase-js';
+import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import { browser } from '@shared/browser';
 
-type AuthStateCallback = (session: Session | null) => void;
+type AuthStateCallback = (session: Session | null, event: AuthChangeEvent) => void;
 
 interface Identity {
   launchWebAuthFlow: (details: { url: string; interactive: boolean }) => Promise<string | undefined>;
@@ -36,8 +36,8 @@ export async function getSession(): Promise<Session | null> {
 }
 
 export function subscribeAuthState(callback: AuthStateCallback): () => void {
-  const { data } = getSupabaseClient().auth.onAuthStateChange((_event, session) => {
-    callback(session);
+  const { data } = getSupabaseClient().auth.onAuthStateChange((event, session) => {
+    callback(session, event);
   });
   return () => {
     void data.subscription.unsubscribe();
@@ -45,7 +45,10 @@ export function subscribeAuthState(callback: AuthStateCallback): () => void {
 }
 
 export async function signInWithEmail(email: string, password: string): Promise<void> {
-  const { error } = await getSupabaseClient().auth.signInWithPassword({ email, password });
+  const { error } = await getSupabaseClient().auth.signInWithPassword({
+    email: email.trim(),
+    password,
+  });
   if (error) throw error;
 }
 
@@ -54,7 +57,7 @@ export async function signUpWithEmail(
   password: string,
 ): Promise<Session | null> {
   const { data, error } = await getSupabaseClient().auth.signUp({
-    email,
+    email: email.trim(),
     password,
   });
   if (error) throw error;

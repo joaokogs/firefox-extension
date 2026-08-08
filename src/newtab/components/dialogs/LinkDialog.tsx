@@ -4,6 +4,7 @@ import type { LinkItem } from '@shared/types';
 import { normalizeUrl } from '@shared/utils/url';
 import { X } from 'lucide-preact';
 import { IconPicker } from '../ui/IconPicker';
+import { uiButtonPrimaryClass, uiButtonSecondaryClass, uiFieldClass, uiIconButtonClass, uiInputClass, uiLabelClass } from '@shared/ui/classes';
 
 interface LinkDialogProps {
   widgetTitle?: string;
@@ -38,14 +39,14 @@ export function LinkDialog({ widgetTitle, link, onSave, onClose }: LinkDialogPro
             {isEdit ? t('linkDialog.editLink') : t('linkDialog.newLink')}
             {widgetTitle ? <span className="modal__subtitle"> {t('linkDialog.in', { widget: widgetTitle })}</span> : null}
           </h2>
-          <button className="modal__close" onClick={onClose} aria-label={t('linkDialog.close')}>
+          <button className={uiIconButtonClass} onClick={onClose} aria-label={t('linkDialog.close')}>
             <X size={18} />
           </button>
         </div>
 
         <div className="dialog__body">
-          <label className="widget-editor__field">
-            <span>{t('linkDialog.iconOptional')}</span>
+          <label className={uiFieldClass}>
+            <span className={uiLabelClass}>{t('linkDialog.iconOptional')}</span>
             <div className="link-dialog__icon-row">
               <IconPicker selected={icon} onSelect={setIcon} />
               {icon && (
@@ -61,23 +62,25 @@ export function LinkDialog({ widgetTitle, link, onSave, onClose }: LinkDialogPro
             </div>
           </label>
 
-          <label className="widget-editor__field">
-            <span>{t('linkDialog.title')}</span>
+          <label className={uiFieldClass}>
+            <span className={uiLabelClass}>{t('linkDialog.title')}</span>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle((e.target as HTMLInputElement).value)}
+              className={uiInputClass}
               placeholder={t('linkDialog.titlePlaceholder')}
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
             />
           </label>
 
-          <label className="widget-editor__field">
-            <span>{t('linkDialog.url')}</span>
+          <label className={uiFieldClass}>
+            <span className={uiLabelClass}>{t('linkDialog.url')}</span>
             <input
               type="url"
               value={url}
               onChange={(e) => setUrl((e.target as HTMLInputElement).value)}
+              className={uiInputClass}
               placeholder={t('linkDialog.urlPlaceholder')}
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
             />
@@ -85,12 +88,12 @@ export function LinkDialog({ widgetTitle, link, onSave, onClose }: LinkDialogPro
         </div>
 
         <div className="modal__actions">
-          <button type="button" className="btn btn--secondary" onClick={onClose}>
+          <button type="button" className={uiButtonSecondaryClass} onClick={onClose}>
             {t('linkDialog.cancel')}
           </button>
           <button
             type="button"
-            className="btn btn--primary"
+            className={uiButtonPrimaryClass}
             onClick={handleSave}
             disabled={!url.trim()}
           >

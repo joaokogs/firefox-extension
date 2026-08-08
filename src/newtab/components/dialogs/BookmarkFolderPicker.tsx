@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { useI18n } from '@shared/i18n';
+import { uiButtonPrimaryClass, uiButtonSecondaryClass, uiFieldClass, uiLabelClass, uiSelectClass } from '@shared/ui/classes';
 
 export interface BookmarkFolder {
   id: string;
@@ -27,11 +28,11 @@ export function BookmarkFolderPicker({ folders, onImport, onClose }: BookmarkFol
     <div className="dialog__body">
       <div className="dialog__section settings-panel__section">
         <p className="settings-panel__toggle-desc">{t('bookmarks.description')}</p>
-        <label className="bookmark-folder-picker__field" htmlFor="bookmark-folder-select">
-          <span>{t('bookmarks.folder')}</span>
+        <label className={uiFieldClass} htmlFor="bookmark-folder-select">
+          <span className={uiLabelClass}>{t('bookmarks.folder')}</span>
           <select
             id="bookmark-folder-select"
-            className="settings-panel__select bookmark-folder-picker__select"
+            className={`${uiSelectClass} mt-2`}
             value={folderId}
             onChange={(event) => setFolderId((event.target as HTMLSelectElement).value)}
           >
@@ -44,12 +45,12 @@ export function BookmarkFolderPicker({ folders, onImport, onClose }: BookmarkFol
         </label>
       </div>
       <div className="modal__actions">
-        <button type="button" className="btn btn--secondary" onClick={onClose}>
+        <button type="button" className={uiButtonSecondaryClass} onClick={onClose}>
           {t('bookmarks.cancel')}
         </button>
         <button
           type="button"
-          className="btn btn--primary"
+          className={uiButtonPrimaryClass}
           disabled={!selectedFolder}
           onClick={() => selectedFolder && onImport(selectedFolder)}
         >

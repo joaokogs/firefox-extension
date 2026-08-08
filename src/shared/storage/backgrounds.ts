@@ -50,11 +50,19 @@ export async function saveBackground(blob: Blob, file: Pick<File, 'name' | 'type
 
 export async function getBackgroundBlob(id: string): Promise<Blob | null> {
   const cached = blobCache.get(id);
-  if (cached) return cached;
+  if (cached) {
+    return cached.catch(() => {
+      blobCache.delete(id);
+      return null;
+    });
+  }
 
   const read = readBackgroundBlob(id);
   blobCache.set(id, read);
-  return read;
+  return read.catch(() => {
+    blobCache.delete(id);
+    return null;
+  });
 }
 
 async function readBackgroundBlob(id: string): Promise<Blob | null> {
@@ -84,4 +92,42 @@ export async function deleteBackground(id: string): Promise<void> {
   } finally {
     database.close();
   }
+}
+
+export async function listBackgroundIds(): Promise<string[]> {
+  const database = await openDatabase();
+  try {
+    return await new Promise<string[]>((resolve, reject) => {
+      const request = database.transaction(STORE_NAME, 'readonly').objectStore(STORE_NAME).getAllKeys();
+      request.onsuccess = () => resolve((request.result as string[]) ?? []);
+      request.onerror = () => reject(request.error ?? new Error('Failed to list background IDs'));
+    });
+  } finally {
+    database.close();
+  }
+}
+
+export async function gcOrphanedAssets(referencedIds: Set<string>): Promise<number> {
+  let deleted = 0;
+
+  for (const [key, promise] of blobCache) {
+    if (!referencedIds.has(key)) {
+      blobCache.delete(key);
+      promise.catch(() => undefined);
+    }
+  }
+
+  const allIds = await listBackgroundIds();
+  const orphanedIds = allIds.filter((id) => !referencedIds.has(id));
+
+  for (const id of orphanedIds) {
+    try {
+      await deleteBackground(id);
+      deleted++;
+    } catch {
+      // Don't remove metadata reference if blob delete fails
+    }
+  }
+
+  return deleted;
 }

@@ -2,26 +2,37 @@ import type { AppData, LinkItem } from '@shared/types';
 import { generateId } from '@shared/types/defaults';
 import { t } from '@shared/i18n';
 import { normalizeUrl } from '@shared/utils/url';
-import { updateWidgetInBoard } from './index';
+import { getWorkspaces, updateWidgetInWorkspace } from './index';
 
 export function createLink(title: string, url: string, icon?: string | null): LinkItem {
+  const now = Date.now();
   return {
     id: generateId('link'),
     title: title.trim() || t('defaults.newLink'),
     url: normalizeUrl(url),
-    icon: icon || undefined
+    icon: icon || undefined,
+    createdAt: now,
+    updatedAt: now
   };
 }
 
 export function addLink(data: AppData, boardId: string, widgetId: string, link: LinkItem): AppData {
-  return updateWidgetInBoard(data, boardId, widgetId, (w) =>
-    w.type === 'links' ? { ...w, items: [...w.items, link] } : w
+  return updateWidgetInWorkspace(
+    data,
+    boardId,
+    widgetId,
+    (w) => w.type === 'links' ? { ...w, items: [...w.items, link] } : w,
+    true,
   );
 }
 
 export function deleteLink(data: AppData, boardId: string, widgetId: string, linkId: string): AppData {
-  return updateWidgetInBoard(data, boardId, widgetId, (w) =>
-    w.type === 'links' ? { ...w, items: w.items.filter((l) => l.id !== linkId) } : w
+  return updateWidgetInWorkspace(
+    data,
+    boardId,
+    widgetId,
+    (w) => w.type === 'links' ? { ...w, items: w.items.filter((l) => l.id !== linkId) } : w,
+    true,
   );
 }
 
@@ -32,10 +43,14 @@ export function updateLink(
   linkId: string,
   updates: Partial<LinkItem>
 ): AppData {
-  return updateWidgetInBoard(data, boardId, widgetId, (w) =>
-    w.type === 'links'
-      ? { ...w, items: w.items.map((l) => (l.id === linkId ? { ...l, ...updates } : l)) }
-      : w
+  return updateWidgetInWorkspace(
+    data,
+    boardId,
+    widgetId,
+    (w) => w.type === 'links'
+      ? { ...w, items: w.items.map((l) => (l.id === linkId ? { ...l, ...updates, updatedAt: Date.now() } : l)) }
+      : w,
+    true,
   );
 }
 
@@ -43,8 +58,9 @@ export function searchLinks(data: AppData, query: string): LinkItem[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
   const matches: LinkItem[] = [];
-  for (const board of data.boards) {
-    for (const widget of board.widgets) {
+  for (const workspace of getWorkspaces(data)) {
+    if (workspace.deletedAt) continue;
+    for (const widget of workspace.widgets) {
       if (widget.type !== 'links') continue;
       for (const item of widget.items) {
         if (item.title.toLowerCase().includes(q) || item.url.toLowerCase().includes(q)) {
@@ -64,19 +80,21 @@ export function moveLink(
   linkId: string,
   toIndex: number
 ): AppData {
-  return {
+  const now = Date.now();
+  let moved = false;
+  const next = {
     ...data,
-    boards: data.boards.map((b) => {
-      if (b.id !== boardId) return b;
+    workspaces: data.workspaces.map((workspace) => {
+      if (workspace.id !== boardId || workspace.deletedAt) return workspace;
 
       let movedLink: LinkItem | undefined;
       let originalIndex = -1;
-      let widgets = b.widgets.map((w) => {
+      let widgets = workspace.widgets.map((w) => {
         if (w.id === fromWidgetId && w.type === 'links') {
           const idx = w.items.findIndex((l) => l.id === linkId);
           if (idx !== -1) {
             originalIndex = idx;
-            movedLink = w.items[idx];
+            movedLink = { ...w.items[idx], updatedAt: now };
             return { ...w, items: w.items.filter((l) => l.id !== linkId) };
           }
         }
@@ -93,13 +111,17 @@ export function moveLink(
             const items = [...w.items];
             const clampedIndex = Math.min(adjustedIndex, items.length);
             items.splice(clampedIndex, 0, movedLink!);
+            moved = true;
             return { ...w, items };
           }
           return w;
         });
       }
 
-      return { ...b, widgets, updatedAt: Date.now() };
+      return { ...workspace, widgets, updatedAt: Date.now() };
     })
   };
+
+  if (!moved) return data;
+  return next;
 }

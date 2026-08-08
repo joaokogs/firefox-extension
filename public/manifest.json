@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_appName__",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "default_locale": "en",
   "description": "__MSG_appDescription__",
   "author": "João Pedro Koguishi",
@@ -26,7 +26,8 @@
     "*://geocoding-api.open-meteo.com/*",
     "*://api.bigdatacloud.net/*",
     "*://api.bing.com/*",
-    "*://duckduckgo.com/*"
+    "*://duckduckgo.com/*",
+    "https://*.supabase.co/*"
   ],
   "chrome_url_overrides": {
     "newtab": "newtab.html"
@@ -49,6 +50,6 @@
     }
   },
   "content_security_policy": {
-    "extension_pages": "default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https:;"
+    "extension_pages": "default-src 'self'; img-src 'self' data: blob: https:; media-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' https: wss:;"
   }
 }

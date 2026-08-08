@@ -6,6 +6,7 @@ import { useI18n } from '@shared/i18n';
 import { deleteBackground, getBackgroundBlob, saveBackground } from '@shared/storage/backgrounds';
 import { useThemeStore } from '../../store/useThemeStore';
 import { Sun, Moon, Upload, Trash2 } from 'lucide-preact';
+import { uiButtonPrimaryClass, uiButtonSecondaryClass, uiInputClass } from '@shared/ui/classes';
 
 const MAX_UPLOADS = 5;
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
@@ -229,7 +230,7 @@ export function BackgroundPanel({ settings, onChange }: BackgroundPanelProps) {
         <label className="dialog__section-title">{t('background.theme')}</label>
         <div className="theme-toggle">
           <button
-            className={settings.theme === 'light' ? 'active' : ''}
+            className={`${settings.theme === 'light' ? uiButtonPrimaryClass : uiButtonSecondaryClass} flex-1`}
             onClick={() => onChange({ theme: 'light' })}
             aria-label={t('background.lightLabel')}
           >
@@ -237,7 +238,7 @@ export function BackgroundPanel({ settings, onChange }: BackgroundPanelProps) {
             <span>{t('background.light')}</span>
           </button>
           <button
-            className={settings.theme === 'dark' ? 'active' : ''}
+            className={`${settings.theme === 'dark' ? uiButtonPrimaryClass : uiButtonSecondaryClass} flex-1`}
             onClick={() => onChange({ theme: 'dark' })}
             aria-label={t('background.darkLabel')}
           >
@@ -245,7 +246,7 @@ export function BackgroundPanel({ settings, onChange }: BackgroundPanelProps) {
             <span>{t('background.dark')}</span>
           </button>
           <button
-            className={settings.theme === 'system' ? 'active' : ''}
+            className={`${settings.theme === 'system' ? uiButtonPrimaryClass : uiButtonSecondaryClass} flex-1`}
             onClick={() => onChange({ theme: 'system' })}
             aria-label={t('background.systemLabel')}
           >
@@ -364,7 +365,7 @@ export function BackgroundPanel({ settings, onChange }: BackgroundPanelProps) {
                   updateThemeConfig({ primaryColor: val });
                 }
               }}
-              className="theme-color-input"
+              className={`${uiInputClass} flex-1 font-mono text-sm`}
               aria-label={t('background.primaryColorHex')}
             />
           </div>
@@ -393,7 +394,7 @@ export function BackgroundPanel({ settings, onChange }: BackgroundPanelProps) {
                   updateThemeConfig({ boardColor: val });
                 }
               }}
-              className="theme-color-input"
+              className={`${uiInputClass} flex-1 font-mono text-sm`}
               aria-label={t('background.boardColorHex')}
             />
           </div>
@@ -438,8 +439,7 @@ export function BackgroundPanel({ settings, onChange }: BackgroundPanelProps) {
 
       <div className="dialog__section settings-panel__section">
         <button
-          className="btn btn--primary"
-          style={{ width: '100%' }}
+          className={`${uiButtonPrimaryClass} w-full`}
           onClick={handleResetFromWallpaper}
           disabled={applying}
         >

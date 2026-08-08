@@ -1,7 +1,7 @@
 import type { AppData, Widget, WidgetType, LinksWidget, CalendarWidget, ClockWidget, WeatherWidget, TodoWidget } from '@shared/types';
 import { generateId } from '@shared/types/defaults';
 import { t } from '@shared/i18n';
-import { updateBoard, updateWidgetInBoard } from './index';
+import { getWorkspaceById, updateWorkspace, updateWidgetInWorkspace } from './index';
 
 export function createWidget(type: 'links', title: string): LinksWidget;
 export function createWidget(type: 'calendar', title: string): CalendarWidget;
@@ -15,7 +15,8 @@ export function createWidget(type: WidgetType, title: string): Widget {
     type,
     title: title.trim() || defaultWidgetTitle(type),
     colSpan: 1,
-    order: 0
+    order: 0,
+    updatedAt: Date.now()
   };
 
   switch (type) {
@@ -48,59 +49,54 @@ export function defaultWidgetTitle(type: WidgetType): string {
 }
 
 export function addWidget(data: AppData, boardId: string, widget: Widget): AppData {
-  return updateBoard(data, boardId, (board) => {
-    const maxOrder = board.widgets.reduce((max, w) => Math.max(max, w.order), -1);
-    return { ...board, widgets: [...board.widgets, { ...widget, order: maxOrder + 1 }], updatedAt: Date.now() };
+  return updateWorkspace(data, boardId, (workspace) => {
+    const maxOrder = workspace.widgets.reduce((max, w) => Math.max(max, w.order), -1);
+    return { ...workspace, widgets: [...workspace.widgets, { ...widget, order: maxOrder + 1 }], updatedAt: Date.now() };
   });
 }
 
 export function deleteWidget(data: AppData, boardId: string, widgetId: string): AppData {
-  return updateBoard(data, boardId, (board) => ({
-    ...board,
-    widgets: board.widgets.filter((w) => w.id !== widgetId),
+  return updateWorkspace(data, boardId, (workspace) => ({
+    ...workspace,
+    widgets: workspace.widgets.filter((w) => w.id !== widgetId),
     updatedAt: Date.now()
   }));
 }
 
 export function updateWidget(data: AppData, boardId: string, widgetId: string, updates: Partial<Omit<Widget, 'id' | 'type'>> & { title?: string; colSpan?: number; order?: number; height?: number; col?: number }): AppData {
-  return updateWidgetInBoard(data, boardId, widgetId, (w) => ({ ...w, ...updates }));
+  return updateWidgetInWorkspace(data, boardId, widgetId, (w) => ({ ...w, ...updates, updatedAt: Date.now() }));
 }
 
 export function moveWidgetOrder(data: AppData, boardId: string, fromIndex: number, toIndex: number): AppData {
-  return {
-    ...data,
-    boards: data.boards.map((b) => {
-      if (b.id !== boardId) return b;
-      const sorted = [...b.widgets].sort((a, c) => a.order - c.order);
-      const [moved] = sorted.splice(fromIndex, 1);
-      sorted.splice(toIndex, 0, moved);
-      const reordered = sorted.map((w, i) => ({ ...w, order: i }));
-      return { ...b, widgets: reordered, updatedAt: Date.now() };
-    })
-  };
+  const workspace = getWorkspaceById(data, boardId);
+  if (!workspace || workspace.deletedAt) return data;
+  const sorted = [...workspace.widgets].sort((a, c) => a.order - c.order);
+  const [moved] = sorted.splice(fromIndex, 1);
+  sorted.splice(toIndex, 0, moved);
+  const reordered = sorted.map((w, i) => ({ ...w, order: i, updatedAt: Date.now() }));
+  return updateWorkspace(data, boardId, (w) => ({ ...w, widgets: reordered, updatedAt: Date.now() }));
 }
 
 export function reorderWidgets(data: AppData, boardId: string, widgetIds: string[]): AppData {
-  return {
-    ...data,
-    boards: data.boards.map((b) => {
-      if (b.id !== boardId) return b;
-      const map = new Map(b.widgets.map((w) => [w.id, w]));
-      const reordered = widgetIds.map((id, i) => {
-        const w = map.get(id);
-        return w ? { ...w, order: i } : undefined;
-      }).filter((w): w is Widget => !!w);
-      return { ...b, widgets: reordered, updatedAt: Date.now() };
-    })
-  };
+  const workspace = getWorkspaceById(data, boardId);
+  if (!workspace || workspace.deletedAt) return data;
+  const map = new Map(workspace.widgets.map((w) => [w.id, w]));
+  const reordered: Widget[] = [];
+  for (const [i, id] of widgetIds.entries()) {
+    const w = map.get(id);
+    if (w) reordered.push({ ...w, order: i, updatedAt: Date.now() });
+  }
+  return updateWorkspace(data, boardId, (w) => ({ ...w, widgets: reordered, updatedAt: Date.now() }));
 }
 
 export function getWidgetById(data: AppData, boardId: string, widgetId: string): Widget | undefined {
-  return data.boards.find((b) => b.id === boardId)?.widgets.find((w) => w.id === widgetId);
+  const workspace = getWorkspaceById(data, boardId);
+  if (!workspace || workspace.deletedAt) return undefined;
+  return workspace.widgets.find((w) => w.id === widgetId);
 }
 
 export function getWidgetsForBoard(data: AppData, boardId: string): Widget[] {
-  const board = data.boards.find((b) => b.id === boardId);
-  if (!board) return [];
-  return [...board.widgets].sort((a, b) => a.order - b.order);
+  const workspace = getWorkspaceById(data, boardId);
+  if (!workspace || workspace.deletedAt) return [];
+  return [...workspace.widgets].sort((a, b) => a.order - b.order);
 }

@@ -1,0 +1,35 @@
+@theme {
+  --color-ui-background: var(--ui-background);
+  --color-ui-surface: var(--ui-surface);
+  --color-ui-surface-muted: var(--ui-surface-muted);
+  --color-ui-surface-raised: var(--ui-surface-raised);
+  --color-ui-border: var(--ui-border);
+  --color-ui-border-subtle: var(--ui-border-subtle);
+  --color-ui-text: var(--ui-text);
+  --color-ui-text-secondary: var(--ui-text-secondary);
+  --color-ui-text-muted: var(--ui-text-muted);
+  --color-ui-accent: var(--ui-accent);
+  --color-ui-accent-hover: var(--ui-accent-hover);
+  --color-ui-accent-text: var(--ui-accent-text);
+  --color-ui-toggle-off: var(--ui-toggle-off);
+  --color-ui-danger: var(--ui-danger);
+  --color-ui-danger-hover: var(--ui-danger-hover);
+}
+
+:root {
+  --ui-background: var(--panel-background, var(--bg-body, #f8fafc));
+  --ui-surface: var(--panel-surface, var(--bg-surface-solid, var(--bg-surface, #ffffff)));
+  --ui-surface-muted: var(--panel-surface-muted, var(--bg-hover, #f1f5f9));
+  --ui-surface-raised: var(--panel-surface-raised, var(--bg-active, #e2e8f0));
+  --ui-border: var(--panel-border, var(--border, #cbd5e1));
+  --ui-border-subtle: var(--panel-border-subtle, var(--border, #e2e8f0));
+  --ui-text: var(--panel-text, var(--text-primary, #0f172a));
+  --ui-text-secondary: var(--panel-text-secondary, var(--text-secondary, #475569));
+  --ui-text-muted: var(--panel-text-muted, var(--text-muted, #64748b));
+  --ui-accent: var(--panel-accent, var(--accent, #4f46e5));
+  --ui-accent-hover: var(--panel-accent-hover, var(--accent-hover, #4338ca));
+  --ui-accent-text: var(--panel-accent-text, var(--accent, #4f46e5));
+  --ui-toggle-off: var(--panel-toggle-off, var(--text-muted, #64748b));
+  --ui-danger: var(--panel-danger, var(--danger, #dc2626));
+  --ui-danger-hover: var(--panel-danger-hover, var(--danger-hover, #b91c1c));
+}

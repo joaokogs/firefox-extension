@@ -1,16 +1,14 @@
 {
   "name": "prismi-dashboard",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Prismi Dashboard — nova aba bonita e rápida para Firefox com boards visuais para organizar links, abas e notas.",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build:icons": "node scripts/build-icons.js",
-    "build": "npm run build:firefox",
-    "build:firefox": "npm run build:icons && tsc && vite build",
-    "build:chrome": "npm run build:icons && tsc && vite build && node scripts/build-chrome.js",
+    "build": "npm run build:icons && tsc && vite build",
     "preview": "vite preview",
-    "clean": "rimraf dist dist-chrome",
+    "clean": "rimraf dist",
     "postinstall": "patch-package"
   },
   "dependencies": {
@@ -19,17 +17,21 @@
     "lucide-preact": "^1.25.0",
     "preact": "^10.22.0",
     "react-colorful": "^5.8.0",
-    "webextension-polyfill": "^0.12.0",
+    "solid-js": "^1.9.14",
+    "solid-toast": "^0.5.0",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.8.3",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.1.1",
     "@types/webextension-polyfill": "^0.10.7",
     "patch-package": "^8.0.1",
     "rimraf": "^5.0.7",
     "sharp": "^0.35.3",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.4.5",
-    "vite": "^5.2.13"
+    "vite": "^5.2.13",
+    "webextension-polyfill": "^0.12.0"
   }
 }
