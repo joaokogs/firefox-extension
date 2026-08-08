@@ -51,7 +51,7 @@ Your collection is waiting in every new tab, ready when the next task starts.
 
 ## Build From Source
 
-This repository contains the editable source code for Prismi Dashboard v1.6.1. It does not include vendored third-party libraries or production build output.
+This repository contains the editable source code for Prismi Dashboard v16.1.1. It does not include vendored third-party libraries or production build output.
 
 ### Requirements
 
@@ -82,7 +82,7 @@ The resulting extension is written to `dist/`. The contents of `dist/` are the f
 npm run build:chrome
 ```
 
-This creates the unpacked package in `dist-chrome/` and the upload-ready ZIP at `release/prismi-dashboard-v1.6.0-chrome.zip`. The ZIP has `manifest.json` at its root and removes Firefox-only metadata. The Chrome build requires `VITE_GOOGLE_CLIENT_ID` in `.env.local`; the `.env.local` file is not included in the ZIP.
+This creates the unpacked package in `dist-chrome/` and the upload-ready ZIP at `release/prismi-dashboard-v16.1.1-chrome.zip`. The ZIP has `manifest.json` at its root and removes Firefox-only metadata. The Chrome build requires `VITE_GOOGLE_CLIENT_ID` in `.env.local`; the `.env.local` file is not included in the ZIP.
 
 See [BUILD.md](BUILD.md) for the full build layout and verification notes.
 
