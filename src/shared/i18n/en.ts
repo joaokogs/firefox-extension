@@ -378,6 +378,7 @@ export const en: Record<string, string> = {
   'payment.activeDescription': 'Your account has access to synced data.',
   'payment.subscribe': 'Subscribe now',
   'payment.manage': 'Manage subscription',
+  'payment.recover': 'Recover payment',
   'payment.couponLabel': 'Promotional coupon',
   'payment.couponDescription': 'Have a code? Apply it to unlock a benefit on your account.',
   'payment.couponPlaceholder': 'Enter your coupon',

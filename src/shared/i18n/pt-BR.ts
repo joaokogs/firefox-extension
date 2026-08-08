@@ -378,6 +378,7 @@ export const ptBR: Record<string, string> = {
   'payment.activeDescription': 'Sua conta tem acesso aos dados sincronizados.',
   'payment.subscribe': 'Assinar agora',
   'payment.manage': 'Gerenciar assinatura',
+  'payment.recover': 'Recuperar pagamento',
   'payment.couponLabel': 'Cupom promocional',
   'payment.couponDescription': 'Tem um código? Aplique-o para liberar um benefício na sua conta.',
   'payment.couponPlaceholder': 'Digite seu cupom',

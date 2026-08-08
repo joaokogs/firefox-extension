@@ -17,7 +17,7 @@ import { LinkDialog } from './components/LinkDialog';
 import { WidgetDialog } from './components/WidgetDialog';
 import { recordOperation, setOutboxOwner } from '@shared/sync/outbox';
 import { notifyLocalMutation } from '@shared/sync';
-import { getSession } from '@shared/auth/auth';
+import { getSession, subscribeAuthState } from '@shared/auth/auth';
 import { uiButtonPrimaryClass, uiButtonSecondaryClass, uiIconButtonClass, uiSelectClass } from '@shared/ui/classes';
 
 type DialogMode = 'add-link' | { edit: string } | 'widget';
@@ -38,10 +38,27 @@ export function Popup() {
       setActiveBoardId(getInitialBoardId(loaded));
       try {
         const session = await getSession();
-        if (session?.user) setOutboxOwner(session.user.id);
+        setOutboxOwner(session?.user?.id);
       } catch { /* supabase not configured */ }
     });
     queryActiveTab().then(setTabInfo);
+  }, []);
+
+  useEffect(() => {
+    try {
+      return subscribeAuthState((session, event) => {
+        if (event === 'SIGNED_OUT') {
+          setOutboxOwner(undefined);
+        } else if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+          setOutboxOwner(session.user.id);
+        } else if (event === 'INITIAL_SESSION') {
+          setOutboxOwner(undefined);
+        }
+      });
+    } catch {
+      setOutboxOwner(undefined);
+      return undefined;
+    }
   }, []);
 
   useEffect(() => {
@@ -70,6 +87,12 @@ export function Popup() {
 
   const handleSave = async () => {
     if (!tabInfo?.url || !activeBoardId || !data) return;
+
+    try {
+      const session = await getSession();
+      setOutboxOwner(session?.user?.id);
+    } catch { /* supabase not configured */ }
+
     setStatus('saving');
 
     try {
@@ -108,6 +131,11 @@ export function Popup() {
 
   const handleAddLink = async (title: string, url: string) => {
     if (!data || !activeBoardId) return;
+
+    try {
+      const session = await getSession();
+      setOutboxOwner(session?.user?.id);
+    } catch { /* supabase not configured */ }
 
     try {
       let next = data;
@@ -422,7 +450,7 @@ function LinkRow({
   const handleOpen = (e: MouseEvent) => {
     if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
     e.preventDefault();
-    void openUrl(link.url, data?.settings.openInNewTab !== false);
+    void openUrl(link.url, data?.settings.openInNewTab !== false).catch(() => undefined);
   };
 
   return (

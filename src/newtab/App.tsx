@@ -951,10 +951,10 @@ export function App() {
     const q = query.trim();
     if (!q) return;
     if (looksLikeUrl(q)) {
-      void openUrl(ensureProtocol(q), data.settings.openInNewTab !== false);
+      void openUrl(ensureProtocol(q), data.settings.openInNewTab !== false).catch(() => undefined);
     } else {
       const engineUrl = SEARCH_ENGINES.find((e) => e.id === searchEngine)?.url || SEARCH_ENGINES[0].url;
-      void openUrl(`${engineUrl}${encodeURIComponent(q)}`, data.settings.openInNewTab !== false);
+      void openUrl(`${engineUrl}${encodeURIComponent(q)}`, data.settings.openInNewTab !== false).catch(() => undefined);
     }
     setData((prev) => (prev ? addRecentSearch(prev, q) : prev));
   };
@@ -1022,7 +1022,7 @@ export function App() {
             onEngineChange={handleEngineChange}
             onSearch={handleSearch}
             onOpenLink={(url) => {
-              void openUrl(ensureProtocol(url), data.settings.openInNewTab !== false);
+              void openUrl(ensureProtocol(url), data.settings.openInNewTab !== false).catch(() => undefined);
             }}
             recentSearches={data.settings.recentSearches || []}
             linkSuggestions={linkSuggestions}
@@ -1103,7 +1103,7 @@ export function App() {
           <WidgetGrid
             widgets={widgets}
             openInNewTab={data.settings.openInNewTab !== false}
-            onOpenLink={(url) => void openUrl(ensureProtocol(url), data.settings.openInNewTab !== false)}
+            onOpenLink={(url) => void openUrl(ensureProtocol(url), data.settings.openInNewTab !== false).catch(() => undefined)}
             onReorder={handleReorder}
             onEditWidget={setEditingWidget}
             onDeleteWidget={handleDeleteWidget}

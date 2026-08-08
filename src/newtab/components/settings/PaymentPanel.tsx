@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import type { Session } from '@supabase/supabase-js';
 import { Check, CreditCard, ExternalLink, Sparkles } from 'lucide-preact';
-import { openUrl } from '@shared/browser';
+import { isValidStripeUrl, openUrl } from '@shared/browser';
 import { useI18n } from '@shared/i18n';
 import { uiButtonPrimaryClass, uiButtonSecondaryClass, uiInputClass } from '@shared/ui/classes';
 import { syncNow } from '@shared/sync';
@@ -20,7 +20,7 @@ interface PaymentPanelProps {
   session: Session;
 }
 
-const paidStatuses = new Set(['active', 'trialing']);
+const recoveryStatuses = new Set(['past_due', 'unpaid', 'incomplete']);
 
 function formatPlanPrice(
   price: ProPlanPrice | null,
@@ -66,14 +66,18 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
   const [couponSuccess, setCouponSuccess] = useState(false);
   const prevSyncAccessRef = useRef(false);
   const subscriptionRefreshTimerRef = useRef<number | null>(null);
+  const refreshRequestRef = useRef(0);
 
   const refreshSubscription = async (syncOnAccessChange = false) => {
+    const requestId = ++refreshRequestRef.current;
     setLoadingSubscription(true);
     try {
       const [nextSubscription, nextSyncAccess] = await Promise.all([getSubscription(), hasSyncAccess()]);
+      if (requestId !== refreshRequestRef.current) return;
+
       setSubscription(nextSubscription);
       setSyncAccess(nextSyncAccess);
-      const nextHasPaidAccess = nextSyncAccess || Boolean(nextSubscription && paidStatuses.has(nextSubscription.status));
+      const nextHasPaidAccess = nextSyncAccess;
       if (nextHasPaidAccess) setCheckoutPending(false);
       if (nextHasPaidAccess) {
         setProPrice(null);
@@ -81,13 +85,17 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
         setProPrice(getProPlanPrice());
       }
       if (syncOnAccessChange && nextSyncAccess && !prevSyncAccessRef.current) {
-        syncNow();
+        await syncNow();
       }
       prevSyncAccessRef.current = nextSyncAccess;
     } catch (err: unknown) {
-      setError(t(getPaymentErrorKey(err)));
+      if (requestId === refreshRequestRef.current) {
+        setError(t(getPaymentErrorKey(err)));
+      }
     } finally {
-      setLoadingSubscription(false);
+      if (requestId === refreshRequestRef.current) {
+        setLoadingSubscription(false);
+      }
     }
   };
 
@@ -103,7 +111,7 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
 
     subscriptionRefreshTimerRef.current = window.setInterval(() => {
       attempts += 1;
-      void refreshSubscription();
+      void refreshSubscription(true);
 
       if (attempts >= 12) {
         stopSubscriptionRefresh();
@@ -128,6 +136,7 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
     document.addEventListener('visibilitychange', refreshOnReturn);
 
     return () => {
+      refreshRequestRef.current += 1;
       window.removeEventListener('focus', refreshOnReturn);
       document.removeEventListener('visibilitychange', refreshOnReturn);
       stopSubscriptionRefresh();
@@ -139,7 +148,9 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
     setCheckoutPending(true);
     setCheckoutLoading(true);
     try {
-      await openUrl(await createCheckoutSession(), true);
+      const url = await createCheckoutSession();
+      if (!isValidStripeUrl(url)) throw new Error('CHECKOUT_URL_MISSING');
+      await openUrl(url, true);
       startSubscriptionRefresh();
     } catch (err: unknown) {
       setCheckoutPending(false);
@@ -153,7 +164,9 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
     setError('');
     setPortalLoading(true);
     try {
-      await openUrl(await createPortalSession(), true);
+      const url = await createPortalSession();
+      if (!isValidStripeUrl(url)) throw new Error('PORTAL_URL_MISSING');
+      await openUrl(url, true);
       startSubscriptionRefresh();
     } catch (err: unknown) {
       setError(t(getPaymentErrorKey(err)));
@@ -179,11 +192,30 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
     }
   };
 
-  const hasPaidAccess = syncAccess || Boolean(subscription && paidStatuses.has(subscription.status));
+  const hasPaidAccess = syncAccess;
+  const hasBillingRecord = Boolean(subscription?.stripe_customer_id && subscription?.stripe_subscription_id);
+  const needsBillingRecovery = !hasPaidAccess && Boolean(subscription && recoveryStatuses.has(subscription.status));
+  const canManageBilling = hasBillingRecord;
+  const showPortal = canManageBilling;
+  const hasCouponOnlyAccess = hasPaidAccess && !hasBillingRecord;
   const isFreeSelected = !loadingSubscription && !hasPaidAccess;
   const isProSelected = !loadingSubscription && hasPaidAccess;
   const formattedOriginalProPrice = formatPlanPrice(proPrice, locale, t);
   const formattedFirstMonthProPrice = formatPlanPrice(proPrice, locale, t, 0.5);
+
+  let buttonLabel: string;
+  let buttonDisabled: boolean;
+  let buttonAction: () => void;
+
+  if (showPortal) {
+    buttonLabel = portalLoading ? t('payment.loading') : needsBillingRecovery ? t('payment.recover') : t('payment.manage');
+    buttonDisabled = portalLoading || loadingSubscription;
+    buttonAction = handlePortal;
+  } else {
+    buttonLabel = checkoutLoading ? t('payment.loading') : checkoutPending ? t('payment.verifying') : t('payment.subscribe');
+    buttonDisabled = checkoutLoading || checkoutPending || loadingSubscription;
+    buttonAction = handleCheckout;
+  }
 
   return (
     <div className="mt-6 border-t border-panel-border-subtle pt-6">
@@ -251,17 +283,17 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
               </li>
             ))}
           </ul>
-          <button
-            type="button"
-            className={`${hasPaidAccess ? uiButtonSecondaryClass : uiButtonPrimaryClass} mt-5 w-full`}
-            onClick={hasPaidAccess ? handlePortal : handleCheckout}
-            disabled={(hasPaidAccess ? portalLoading : checkoutLoading || checkoutPending) || loadingSubscription}
-          >
-            <ExternalLink size={15} aria-hidden="true" />
-            {hasPaidAccess
-              ? portalLoading ? t('payment.loading') : t('payment.manage')
-              : checkoutLoading ? t('payment.loading') : checkoutPending ? t('payment.verifying') : t('payment.subscribe')}
-          </button>
+          {!hasCouponOnlyAccess && (
+            <button
+              type="button"
+              className={`${showPortal ? uiButtonSecondaryClass : uiButtonPrimaryClass} mt-5 w-full`}
+              onClick={buttonAction}
+              disabled={buttonDisabled}
+            >
+              <ExternalLink size={15} aria-hidden="true" />
+              {buttonLabel}
+            </button>
+          )}
         </div>
       </div>
 
