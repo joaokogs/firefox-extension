@@ -14,6 +14,7 @@ import {
 } from './client';
 import { migrateAppData } from './migrate';
 import type { AppData, AppSettings, SyncMeta, Workspace, Widget } from '@shared/types';
+import { getDefaultData } from '@shared/types';
 import { LOCAL_ONLY_SETTINGS_KEYS } from '@shared/types/constants';
 import type { SyncState, SyncErrorCategory, SyncOperation } from './types';
 import {
@@ -38,14 +39,22 @@ let stateListeners: Array<(s: SyncState) => void> = [];
 let localDataProvider: (() => AppData | null) | null = null;
 let remoteAppliedHandler: ((data: AppData) => void) | null = null;
 let syncNowInFlight = false;
+let syncNowPromise: Promise<void> | null = null;
 let syncChain: Promise<unknown> = Promise.resolve();
-let activeFullSync: { userId: string; promise: Promise<AppData> } | null = null;
+let activeFullSync: { userId: string; epoch: number; promise: Promise<AppData> } | null = null;
 let currentOwner: string | undefined;
+let currentOwnerEpoch = 0;
 let storageFailureUnsubscribe: (() => void) | null = null;
 let localMutationTimer: ReturnType<typeof setTimeout> | null = null;
 let remoteChangeTimer: ReturnType<typeof setTimeout> | null = null;
 const SYNC_TIMEOUT_MS = 15_000;
 const LOCK_RETRY_MS = 1_000;
+
+function assertCurrentSyncContext(userId: string, epoch: number): void {
+  if (currentOwner !== userId || currentOwnerEpoch !== epoch) {
+    throw new Error('SYNC_CANCELLED');
+  }
+}
 
 const OWNER_STASH_KEY = 'syncOwnerData';
 const MAX_OWNER_STASH = 10;
@@ -237,6 +246,7 @@ async function resolveOwnerForSync(
   const meta = await loadSyncMeta();
   if (!meta.owner) {
     currentOwner = userId;
+    currentOwnerEpoch++;
     setOutboxOwner(userId);
     await claimAndMergeOutbox(userId);
     await saveSyncMeta({ ...meta, owner: userId });
@@ -244,6 +254,7 @@ async function resolveOwnerForSync(
   }
   if (meta.owner !== userId) {
     currentOwner = userId;
+    currentOwnerEpoch++;
     setOutboxOwner(userId);
 
     const stash = await readOwnerStash();
@@ -251,17 +262,14 @@ async function resolveOwnerForSync(
       stash[meta.owner] = { data: local, savedAt: Date.now() };
       const previous = stash[userId];
       await writeOwnerStash(capStash(stash));
-      await claimAndMergeOutbox(userId);
-      const restored = previous
-        ? mergeAppData(migrateAppData(local), migrateAppData(previous.data))
-        : local;
+      const restored = previous ? migrateAppData(previous.data) : getDefaultData();
       await saveSyncMeta({ ...meta, owner: userId });
       return restored;
     } catch (err) {
       await writeOwnerStash(capStash(stash)).catch(() => undefined);
       const previous = stash[userId];
       if (previous) {
-        const restored = mergeAppData(migrateAppData(local), migrateAppData(previous.data));
+        const restored = migrateAppData(previous.data);
         await saveSyncMeta({ ...meta, owner: userId });
         return restored;
       }
@@ -269,6 +277,7 @@ async function resolveOwnerForSync(
     }
   }
   currentOwner = userId;
+  currentOwnerEpoch++;
   setOutboxOwner(userId);
   await claimAndMergeOutbox(userId);
   return local;
@@ -620,6 +629,7 @@ async function syncWorkspaces(
   localWorkspaces: Workspace[],
   remoteWorkspaces: Workspace[],
   remoteRevisions: Record<string, number>,
+  epoch: number,
 ): Promise<{
   pushed: number;
   revisions: Record<string, number>;
@@ -635,6 +645,7 @@ async function syncWorkspaces(
   const failedWorkspaceIds = new Set<string>();
 
   for (const [index, workspace] of localWorkspaces.entries()) {
+    assertCurrentSyncContext(userId, epoch);
     const remote = remoteMap.get(workspace.id);
     const localWs = localMap.get(workspace.id);
     const baseRevision = remoteRevisions[workspace.id] ?? 0;
@@ -661,6 +672,7 @@ async function syncWorkspaces(
           failedWorkspaceIds.add(workspace.id);
         }
       } catch (err) {
+        if (err instanceof Error && err.message === 'SYNC_CANCELLED') throw err;
         logError(`push workspace ${workspace.id}`, err);
         failedWorkspaceIds.add(workspace.id);
       }
@@ -680,6 +692,7 @@ async function syncPreferences(
   remoteRevision: number,
   remoteUpdatedAt: string | null,
   meta: SyncMeta,
+  epoch: number,
 ): Promise<{ pushed: boolean; revision: number; failed: boolean }> {
   const baseRevision = remoteRevision;
   const localSettingsTime = meta.settingsUpdatedAt ?? 0;
@@ -689,9 +702,11 @@ async function syncPreferences(
 
   if (shouldPush) {
     try {
+      assertCurrentSyncContext(userId, epoch);
       const result = await pushPreferences(userId, local.settings, baseRevision);
       return { pushed: result.accepted, revision: result.revision, failed: !result.accepted };
     } catch (err) {
+      if (err instanceof Error && err.message === 'SYNC_CANCELLED') throw err;
       logError('push preferences', err);
       return { pushed: false, revision: baseRevision, failed: true };
     }
@@ -724,7 +739,8 @@ function filterUnclassified(ops: SyncOperation[], classified: Set<string>): Sync
 }
 
 async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<AppData> {
-  if (activeFullSync?.userId === userId) {
+  const cycleEpoch = currentOwnerEpoch;
+  if (activeFullSync?.userId === userId && activeFullSync.epoch === cycleEpoch) {
     return activeFullSync.promise;
   }
 
@@ -732,13 +748,18 @@ async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<A
     const classifiedInCycle = new Set<string>();
 
     let local = incomingLocal ?? (await currentLocalData());
+    assertCurrentSyncContext(userId, cycleEpoch);
     local = migrateAppData(local);
 
     const meta = await loadSyncMeta();
+    assertCurrentSyncContext(userId, cycleEpoch);
     const pendingOps = await getPendingOperations(userId);
+    assertCurrentSyncContext(userId, cycleEpoch);
 
     const remoteWorkspacesResult = await fetchRemoteWorkspaces(userId);
+    assertCurrentSyncContext(userId, cycleEpoch);
     const remotePreferencesResult = await fetchRemotePreferences(userId);
+    assertCurrentSyncContext(userId, cycleEpoch);
     let remoteAppData: AppData = {
       ...local,
       workspaces: remoteWorkspacesResult.workspaces,
@@ -762,7 +783,9 @@ async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<A
       merged = mergedBase;
     }
 
-    merged = preserveLocalOnly(merged, await currentLocalData());
+    const liveBeforePush = await currentLocalData();
+    assertCurrentSyncContext(userId, cycleEpoch);
+    merged = preserveLocalOnly(merged, liveBeforePush);
 
     const settingsChanged = pendingOps.some((op) =>
       op.entity === 'settings' || op.entity === 'themeConfig' || op.entity === 'topWidgets'
@@ -779,6 +802,7 @@ async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<A
           merged.workspaces,
           remoteWorkspacesResult.workspaces,
           remoteWorkspacesResult.revisions,
+          cycleEpoch,
         )
       : {
           pushed: 0,
@@ -786,6 +810,7 @@ async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<A
           confirmedDeletedIds: new Set<string>(),
           failedWorkspaceIds: new Set<string>(),
         };
+    assertCurrentSyncContext(userId, cycleEpoch);
 
     const preferencesSync = shouldPush
       ? await syncPreferences(
@@ -795,8 +820,10 @@ async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<A
           remotePreferencesResult.revision,
           remotePreferencesResult.updatedAt,
           meta,
+          cycleEpoch,
         )
       : { pushed: false, revision: remotePreferencesResult.revision, failed: false };
+    assertCurrentSyncContext(userId, cycleEpoch);
 
     const ackableOpIds = new Set(
       [...appliedOpIds].filter((opId) => {
@@ -828,6 +855,7 @@ async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<A
     }
 
     const live = await currentLocalData();
+    assertCurrentSyncContext(userId, cycleEpoch);
     const freshOps = await getPendingOperations(userId);
     if (freshOps.length > 0) {
       const applied = applyOperationsToData(merged, freshOps);
@@ -856,19 +884,23 @@ async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<A
       workspaceRevisions: workspaceSync.revisions,
     };
 
+    assertCurrentSyncContext(userId, cycleEpoch);
+
     const saveResult = await saveData(merged);
     if (saveResult.ok) {
       setState({ storageFailure: false });
     }
+    assertCurrentSyncContext(userId, cycleEpoch);
     await saveSyncMeta(nextMeta);
 
+    assertCurrentSyncContext(userId, cycleEpoch);
     remoteAppliedHandler?.(merged);
     return merged;
   };
 
   const promise = syncChain.then(run, run);
   syncChain = promise.then(() => undefined, () => undefined);
-  activeFullSync = { userId, promise };
+  activeFullSync = { userId, epoch: cycleEpoch, promise };
   try {
     return await promise;
   } finally {
@@ -915,7 +947,11 @@ async function drainOutbox(userId: string, force = false, incomingLocal?: AppDat
     await lease.complete();
     setState({ status: 'idle', lastSyncAt: Date.now() });
   } catch (err) {
-    recordError(err);
+    if (err instanceof Error && err.message === 'SYNC_CANCELLED') {
+      setState({ status: 'idle' });
+    } else {
+      recordError(err);
+    }
   } finally {
     await lease.release().catch(() => undefined);
     if (state.status === 'syncing') {
@@ -925,12 +961,13 @@ async function drainOutbox(userId: string, force = false, incomingLocal?: AppDat
   return syncedData;
 }
 
-export function syncNow(): void {
-  if (syncNowInFlight) return;
+export function syncNow(): Promise<void> {
+  if (syncNowPromise) return syncNowPromise;
 
   syncNowInFlight = true;
+  const startEpoch = currentOwnerEpoch;
 
-  (async () => {
+  const run = (async () => {
     try {
       if (!supabase) {
         setState({ status: 'idle' });
@@ -944,8 +981,18 @@ export function syncNow(): void {
         return;
       }
 
+      if (currentOwnerEpoch !== startEpoch) {
+        setState({ status: 'idle' });
+        return;
+      }
+
       const session = await withSyncTimeout(() => getSession());
       if (!session?.user) {
+        setState({ status: 'idle' });
+        return;
+      }
+
+      if (currentOwnerEpoch !== startEpoch) {
         setState({ status: 'idle' });
         return;
       }
@@ -957,11 +1004,21 @@ export function syncNow(): void {
 
       await drainOutbox(userId, true, local);
     } catch (err) {
-      recordError(err);
+      if (err instanceof Error && err.message === 'SYNC_CANCELLED') {
+        setState({ status: 'idle' });
+      } else {
+        recordError(err);
+      }
     } finally {
       syncNowInFlight = false;
     }
   })();
+
+  syncNowPromise = run.finally(() => {
+    syncNowPromise = null;
+  });
+
+  return syncNowPromise;
 }
 
 export async function initializeSync(initialData?: AppData): Promise<AppData> {
@@ -1078,8 +1135,11 @@ async function handleAuthStateChange(session: Session | null, event: AuthChangeE
       realtimeCleanup = null;
     }
     unsubscribeRealtime();
-    setOutboxOwner(undefined);
     currentOwner = undefined;
+    currentOwnerEpoch++;
+    syncChain = Promise.resolve();
+    activeFullSync = null;
+    setOutboxOwner(undefined);
     clearCommittedInMemory();
     await updatePendingCount();
     setState({ status: 'idle' });
@@ -1199,7 +1259,10 @@ export function cleanup(): void {
   localDataProvider = null;
   remoteAppliedHandler = null;
   syncNowInFlight = false;
+  syncChain = Promise.resolve();
+  activeFullSync = null;
   currentOwner = undefined;
+  currentOwnerEpoch++;
   setOutboxOwner(undefined);
   clearCommittedInMemory();
   setState({ status: 'idle' });
