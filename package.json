@@ -7,8 +7,10 @@
     "dev": "vite",
     "build:icons": "node scripts/build-icons.js",
     "build": "npm run build:icons && tsc && vite build",
+    "build:firefox": "npm run build",
+    "build:chrome": "node scripts/build-chrome.js",
     "preview": "vite preview",
-    "clean": "rimraf dist",
+    "clean": "rimraf dist dist-chrome",
     "postinstall": "patch-package"
   },
   "dependencies": {

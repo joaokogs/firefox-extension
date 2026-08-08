@@ -82,7 +82,7 @@ The resulting extension is written to `dist/`. The contents of `dist/` are the f
 npm run build:chrome
 ```
 
-This creates the unpacked package in `dist-chrome/` and the upload-ready ZIP at `release/prismi-dashboard-v1.5.0-chrome.zip`. The ZIP has `manifest.json` at its root and removes Firefox-only metadata.
+This creates the unpacked package in `dist-chrome/` and the upload-ready ZIP at `release/prismi-dashboard-v1.6.0-chrome.zip`. The ZIP has `manifest.json` at its root and removes Firefox-only metadata. The Chrome build requires `VITE_GOOGLE_CLIENT_ID` in `.env.local`; the `.env.local` file is not included in the ZIP.
 
 See [BUILD.md](BUILD.md) for the full build layout and verification notes.
 

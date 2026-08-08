@@ -58,10 +58,12 @@ npm run build:chrome
 The unpacked Chrome extension is written to `dist-chrome/`. The ZIP is written to:
 
 ```
-release/prismi-dashboard-v1.5.0-chrome.zip
+release/prismi-dashboard-v1.6.0-chrome.zip
 ```
 
 The ZIP contains `manifest.json` at its root and excludes Firefox-only metadata.
+
+The Chrome build reads `VITE_GOOGLE_CLIENT_ID` from `.env.local` — ensure it is set before running `build:chrome`. The `.env.local` file is not included in the ZIP.
 
 ## Build Scripts (package.json)
 
