@@ -28,7 +28,7 @@ import {
   requeueDeadLetters,
   clearCommittedInMemory,
 } from './outbox';
-import { mergeAppData, mergeWorkspaces, purgeConfirmedDeletedWorkspaces } from './merge';
+import { mergeAppData, purgeConfirmedDeletedWorkspaces } from './merge';
 import { acquireSyncLease } from './coordinator';
 
 let state: SyncState = { status: 'idle' };
@@ -620,13 +620,19 @@ async function syncWorkspaces(
   localWorkspaces: Workspace[],
   remoteWorkspaces: Workspace[],
   remoteRevisions: Record<string, number>,
-): Promise<{ pushed: number; revisions: Record<string, number>; confirmedDeletedIds: Set<string> }> {
+): Promise<{
+  pushed: number;
+  revisions: Record<string, number>;
+  confirmedDeletedIds: Set<string>;
+  failedWorkspaceIds: Set<string>;
+}> {
   const remoteMap = new Map(remoteWorkspaces.map((w) => [w.id, w]));
   const localMap = new Map(localWorkspaces.map((w) => [w.id, w]));
 
   let pushed = 0;
   const revisions: Record<string, number> = { ...remoteRevisions };
   const confirmedDeletedIds = new Set<string>();
+  const failedWorkspaceIds = new Set<string>();
 
   for (const [index, workspace] of localWorkspaces.entries()) {
     const remote = remoteMap.get(workspace.id);
@@ -650,9 +656,13 @@ async function syncWorkspaces(
           revisions[workspace.id] = result.revision;
           if (workspace.deletedAt) confirmedDeletedIds.add(workspace.id);
           pushed++;
+        } else {
+          revisions[workspace.id] = result.revision;
+          failedWorkspaceIds.add(workspace.id);
         }
       } catch (err) {
         logError(`push workspace ${workspace.id}`, err);
+        failedWorkspaceIds.add(workspace.id);
       }
     } else {
       revisions[workspace.id] = baseRevision;
@@ -660,7 +670,7 @@ async function syncWorkspaces(
     }
   }
 
-  return { pushed, revisions, confirmedDeletedIds };
+  return { pushed, revisions, confirmedDeletedIds, failedWorkspaceIds };
 }
 
 async function syncPreferences(
@@ -670,7 +680,7 @@ async function syncPreferences(
   remoteRevision: number,
   remoteUpdatedAt: string | null,
   meta: SyncMeta,
-): Promise<{ pushed: boolean; revision: number }> {
+): Promise<{ pushed: boolean; revision: number; failed: boolean }> {
   const baseRevision = remoteRevision;
   const localSettingsTime = meta.settingsUpdatedAt ?? 0;
   const remoteSettingsTime = remoteUpdatedAt ? new Date(remoteUpdatedAt).getTime() : 0;
@@ -680,14 +690,26 @@ async function syncPreferences(
   if (shouldPush) {
     try {
       const result = await pushPreferences(userId, local.settings, baseRevision);
-      return { pushed: result.accepted, revision: result.revision };
+      return { pushed: result.accepted, revision: result.revision, failed: !result.accepted };
     } catch (err) {
       logError('push preferences', err);
-      return { pushed: false, revision: baseRevision };
+      return { pushed: false, revision: baseRevision, failed: true };
     }
   }
 
-  return { pushed: false, revision: baseRevision };
+  return { pushed: false, revision: baseRevision, failed: false };
+}
+
+function getOperationWorkspaceId(operation: SyncOperation): string | null {
+  if (operation.entity === 'board') return operation.entityId;
+  if (operation.entity === 'widget' || operation.entity === 'link' || operation.entity === 'todo') {
+    return operation.entityId.split('/')[0] ?? null;
+  }
+  return null;
+}
+
+function isSettingsOperation(operation: SyncOperation): boolean {
+  return operation.entity === 'settings' || operation.entity === 'themeConfig' || operation.entity === 'topWidgets';
 }
 
 function filterUnclassified(ops: SyncOperation[], classified: Set<string>): SyncOperation[] {
@@ -717,12 +739,6 @@ async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<A
 
     const remoteWorkspacesResult = await fetchRemoteWorkspaces(userId);
     const remotePreferencesResult = await fetchRemotePreferences(userId);
-    const remoteDeletedIds = new Set(
-      remoteWorkspacesResult.workspaces
-        .filter((workspace) => workspace.deletedAt)
-        .map((workspace) => workspace.id),
-    );
-
     let remoteAppData: AppData = {
       ...local,
       workspaces: remoteWorkspacesResult.workspaces,
@@ -757,12 +773,10 @@ async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<A
 
     const shouldPush = appliedOpIds.size > 0 || !sameContent(merged, remoteAppData);
 
-    const allWorkspaces = mergeWorkspaces(merged.workspaces, remoteAppData.workspaces);
-
     const workspaceSync = shouldPush
       ? await syncWorkspaces(
           userId,
-          allWorkspaces,
+          merged.workspaces,
           remoteWorkspacesResult.workspaces,
           remoteWorkspacesResult.revisions,
         )
@@ -770,6 +784,7 @@ async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<A
           pushed: 0,
           revisions: remoteWorkspacesResult.revisions,
           confirmedDeletedIds: new Set<string>(),
+          failedWorkspaceIds: new Set<string>(),
         };
 
     const preferencesSync = shouldPush
@@ -781,21 +796,27 @@ async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<A
           remotePreferencesResult.updatedAt,
           meta,
         )
-      : { pushed: false, revision: remotePreferencesResult.revision };
+      : { pushed: false, revision: remotePreferencesResult.revision, failed: false };
 
-    const finalWorkspaces = mergeWorkspaces(merged.workspaces, remoteWorkspacesResult.workspaces);
+    const ackableOpIds = new Set(
+      [...appliedOpIds].filter((opId) => {
+        const operation = pendingOps.find((candidate) => candidate.opId === opId);
+        if (!operation) return false;
+        if (isSettingsOperation(operation)) return !preferencesSync.failed;
+        const workspaceId = getOperationWorkspaceId(operation);
+        return !workspaceId || !workspaceSync.failedWorkspaceIds.has(workspaceId);
+      }),
+    );
 
-    merged = { ...merged, workspaces: finalWorkspaces };
-
-    if (appliedOpIds.size > 0) {
-      markOperationsCommitted(appliedOpIds, userId);
+    if (ackableOpIds.size > 0) {
+      markOperationsCommitted(ackableOpIds, userId);
       try {
         const highestWorkspaceRevision = Math.max(
           0,
           ...Object.values(workspaceSync.revisions),
           preferencesSync.revision,
         );
-        await ackOperations(appliedOpIds, highestWorkspaceRevision, userId);
+        await ackOperations(ackableOpIds, highestWorkspaceRevision, userId);
       } catch {
         logError('ackOperations', new Error('ackOperations failed after push'));
       }
@@ -818,6 +839,12 @@ async function fullSyncCycle(userId: string, incomingLocal?: AppData): Promise<A
     }
     merged = preserveLocalOnly(merged, live);
 
+    const remoteDeletedIds = new Set(
+      remoteWorkspacesResult.workspaces
+        .filter((workspace) => workspace.deletedAt)
+        .filter((workspace) => merged.workspaces.some((candidate) => candidate.id === workspace.id && candidate.deletedAt))
+        .map((workspace) => workspace.id),
+    );
     const confirmedDeletedIds = new Set([...remoteDeletedIds, ...workspaceSync.confirmedDeletedIds]);
     merged = purgeConfirmedDeletedWorkspaces(merged, confirmedDeletedIds);
 

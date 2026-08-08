@@ -1,6 +1,14 @@
 import type { AppData, Workspace } from '@shared/types';
 import { DEFAULT_WALLPAPERS } from '@shared/types/constants';
 
+/**
+ * Identity: workspace.id.
+ *
+ * - Same ID => the version with the higher `updatedAt` wins.
+ *   On a tie, remote wins.
+ * - Different IDs => union — both appear as independent tabs.
+ *   Widgets are never mixed across workspaces and no third tab is created.
+ */
 export function mergeWorkspaces(local: Workspace[], remote: Workspace[]): Workspace[] {
   const map = new Map<string, Workspace>();
 
@@ -21,7 +29,8 @@ export function mergeWorkspaces(local: Workspace[], remote: Workspace[]): Worksp
 }
 
 function mergeWorkspace(local: Workspace, remote: Workspace): Workspace {
-  return local.updatedAt > remote.updatedAt ? local : remote;
+  if (local.updatedAt > remote.updatedAt) return local;
+  return remote;
 }
 
 export function mergeAppData(local: AppData, remote: AppData): AppData {
