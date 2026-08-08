@@ -51,7 +51,7 @@ Your collection is waiting in every new tab, ready when the next task starts.
 
 ## Build From Source
 
-This repository contains the editable source code for Prismi Dashboard v1.5.0. It does not include vendored third-party libraries or production build output.
+This repository contains the editable source code for Prismi Dashboard v1.6.0. It does not include vendored third-party libraries or production build output.
 
 ### Requirements
 
