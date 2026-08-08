@@ -26,13 +26,14 @@ function formatPlanPrice(
   price: ProPlanPrice | null,
   locale: string,
   getText: (key: string) => string,
+  multiplier = 1,
 ): string | null {
   if (!price || price.unit_amount === null) return null;
 
   const amount = new Intl.NumberFormat(locale === 'pt-BR' ? 'pt-BR' : 'en-US', {
     style: 'currency',
     currency: price.currency.toUpperCase(),
-  }).format(price.unit_amount / 100);
+  }).format((price.unit_amount * multiplier) / 100);
   const interval = price.recurring?.interval === 'year'
     ? getText('payment.perYear')
     : getText('payment.perMonth');
@@ -57,12 +58,14 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
   const [syncAccess, setSyncAccess] = useState(false);
   const [loadingSubscription, setLoadingSubscription] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutPending, setCheckoutPending] = useState(false);
   const [portalLoading, setPortalLoading] = useState(false);
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponCode, setCouponCode] = useState('');
   const [error, setError] = useState('');
   const [couponSuccess, setCouponSuccess] = useState(false);
   const prevSyncAccessRef = useRef(false);
+  const subscriptionRefreshTimerRef = useRef<number | null>(null);
 
   const refreshSubscription = async (syncOnAccessChange = false) => {
     setLoadingSubscription(true);
@@ -71,6 +74,7 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
       setSubscription(nextSubscription);
       setSyncAccess(nextSyncAccess);
       const nextHasPaidAccess = nextSyncAccess || Boolean(nextSubscription && paidStatuses.has(nextSubscription.status));
+      if (nextHasPaidAccess) setCheckoutPending(false);
       if (nextHasPaidAccess) {
         setProPrice(null);
       } else {
@@ -87,20 +91,58 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
     }
   };
 
+  const stopSubscriptionRefresh = () => {
+    if (subscriptionRefreshTimerRef.current === null) return;
+    window.clearInterval(subscriptionRefreshTimerRef.current);
+    subscriptionRefreshTimerRef.current = null;
+  };
+
+  const startSubscriptionRefresh = () => {
+    stopSubscriptionRefresh();
+    let attempts = 0;
+
+    subscriptionRefreshTimerRef.current = window.setInterval(() => {
+      attempts += 1;
+      void refreshSubscription();
+
+      if (attempts >= 12) {
+        stopSubscriptionRefresh();
+        setCheckoutPending(false);
+      }
+    }, 5_000);
+  };
+
   useEffect(() => {
     setError('');
     setCouponSuccess(false);
     // Track access for a possible transition after coupon redemption.
     prevSyncAccessRef.current = false;
     void refreshSubscription();
+
+    const refreshOnReturn = () => {
+      if (document.visibilityState !== 'visible') return;
+      void refreshSubscription();
+    };
+
+    window.addEventListener('focus', refreshOnReturn);
+    document.addEventListener('visibilitychange', refreshOnReturn);
+
+    return () => {
+      window.removeEventListener('focus', refreshOnReturn);
+      document.removeEventListener('visibilitychange', refreshOnReturn);
+      stopSubscriptionRefresh();
+    };
   }, [session.user.id]);
 
   const handleCheckout = async () => {
     setError('');
+    setCheckoutPending(true);
     setCheckoutLoading(true);
     try {
       await openUrl(await createCheckoutSession(), true);
+      startSubscriptionRefresh();
     } catch (err: unknown) {
+      setCheckoutPending(false);
       setError(t(getPaymentErrorKey(err)));
     } finally {
       setCheckoutLoading(false);
@@ -112,6 +154,7 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
     setPortalLoading(true);
     try {
       await openUrl(await createPortalSession(), true);
+      startSubscriptionRefresh();
     } catch (err: unknown) {
       setError(t(getPaymentErrorKey(err)));
     } finally {
@@ -137,9 +180,10 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
   };
 
   const hasPaidAccess = syncAccess || Boolean(subscription && paidStatuses.has(subscription.status));
-  const formattedProPrice = formatPlanPrice(proPrice, locale, t);
   const isFreeSelected = !loadingSubscription && !hasPaidAccess;
   const isProSelected = !loadingSubscription && hasPaidAccess;
+  const formattedOriginalProPrice = formatPlanPrice(proPrice, locale, t);
+  const formattedFirstMonthProPrice = formatPlanPrice(proPrice, locale, t, 0.5);
 
   return (
     <div className="mt-6 border-t border-panel-border-subtle pt-6">
@@ -181,9 +225,17 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
               <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-panel-accent-text"><Sparkles size={13} aria-hidden="true" />{t('payment.proPlan')}</span>
               <h3 className="mt-1 text-lg font-semibold tracking-[-0.02em] text-panel-text">{t('payment.proPlanTitle')}</h3>
               {!hasPaidAccess && (
-                <span className="mt-1 block text-sm font-semibold text-panel-text">
-                  {loadingSubscription ? t('payment.loading') : formattedProPrice || t('payment.priceUnavailable')}
-                </span>
+                loadingSubscription ? (
+                  <span className="mt-1 block text-sm font-semibold text-panel-text">{t('payment.loading')}</span>
+                ) : formattedOriginalProPrice && formattedFirstMonthProPrice ? (
+                  <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5" aria-label={`${formattedFirstMonthProPrice} ${t('payment.firstMonthOffer')}`}>
+                    <span className="text-sm font-medium text-panel-text-muted line-through decoration-panel-text-muted/70">{formattedOriginalProPrice}</span>
+                    <span className="text-base font-bold text-panel-text">{formattedFirstMonthProPrice}</span>
+                    <span className="basis-full text-[0.68rem] font-semibold text-panel-accent-text">{t('payment.firstMonthOffer')}</span>
+                  </div>
+                ) : (
+                  <span className="mt-1 block text-sm font-semibold text-panel-text">{t('payment.priceUnavailable')}</span>
+                )
               )}
             </div>
             <span className={`rounded-full border px-2 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.08em] ${isProSelected ? 'border-panel-success/35 bg-panel-success/10 text-panel-success' : 'border-panel-accent-text/20 bg-panel-accent-text/10 text-panel-accent-text'}`}>
@@ -203,12 +255,12 @@ export function PaymentPanel({ session }: PaymentPanelProps) {
             type="button"
             className={`${hasPaidAccess ? uiButtonSecondaryClass : uiButtonPrimaryClass} mt-5 w-full`}
             onClick={hasPaidAccess ? handlePortal : handleCheckout}
-            disabled={(hasPaidAccess ? portalLoading : checkoutLoading) || loadingSubscription}
+            disabled={(hasPaidAccess ? portalLoading : checkoutLoading || checkoutPending) || loadingSubscription}
           >
             <ExternalLink size={15} aria-hidden="true" />
             {hasPaidAccess
               ? portalLoading ? t('payment.loading') : t('payment.manage')
-              : checkoutLoading ? t('payment.loading') : t('payment.subscribe')}
+              : checkoutLoading ? t('payment.loading') : checkoutPending ? t('payment.verifying') : t('payment.subscribe')}
           </button>
         </div>
       </div>
