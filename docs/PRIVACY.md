@@ -22,7 +22,7 @@ A extensão faz requisições de rede às seguintes APIs exclusivamente para fun
 | **Open-Meteo** (`api.open-meteo.com`) | Coordenadas geográficas (latitude/longitude) ou nome da cidade | Obter previsão do tempo |
 | **Open-Meteo Geocoding** (`geocoding-api.open-meteo.com`) | Nome da cidade digitado pelo usuário | Converter nome de cidade em coordenadas |
 | **BigDataCloud** (`api.bigdatacloud.net`) | Coordenadas geográficas (latitude/longitude) | Converter coordenadas em nome de cidade |
-| **Mecanismo de busca escolhido** (Google, Yahoo, Bing ou DuckDuckGo) | Consulta de busca digitada pelo usuário | Sugestões de autocomplete na barra de pesquisa |
+| **Provedor de busca padrão do navegador** | Consulta de busca digitada pelo usuário | Executar a busca solicitada pelo usuário via API oficial, sem alterar o provedor padrão |
 | **Supabase** | Workspaces e preferências sincronizáveis, somente após login | Sincronizar os dados entre dispositivos do mesmo usuário |
 
 ### Geolocalização

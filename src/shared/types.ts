@@ -17,7 +17,6 @@ export type {
   StoredBackground,
   WallpaperSetting,
   TopWidgetType,
-  SearchEngine,
   TopWidgetConfig,
   AppData,
   SyncMeta,
@@ -26,7 +25,6 @@ export type {
 export {
   DEFAULT_THEME,
   DARK_THEME,
-  SEARCH_ENGINES,
   DEFAULT_WALLPAPERS,
   LOCAL_ONLY_SETTINGS_KEYS,
 } from './types/constants';

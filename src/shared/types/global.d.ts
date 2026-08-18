@@ -15,3 +15,14 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+interface ChromeSearchApi {
+  query(options: {
+    text: string;
+    disposition: 'CURRENT_TAB' | 'NEW_TAB' | 'NEW_WINDOW';
+  }): Promise<void> | void;
+}
+
+declare const chrome: {
+  search?: ChromeSearchApi;
+};

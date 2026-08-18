@@ -127,12 +127,10 @@ export const en: Record<string, string> = {
   'newTab.create': 'Create',
 
   // SearchBar
-  'searchBar.changeEngine': 'Change search engine',
-  'searchBar.placeholder': 'Search or type URL...',
+  'searchBar.placeholder': 'Search...',
   'searchBar.clearSearch': 'Clear search',
   'searchBar.sectionSearch': 'Search',
   'searchBar.sectionLinks': 'Links',
-  'searchBar.sectionSuggestions': 'Recommended from web',
   'searchBar.sectionRecent': 'Recent searches',
   'searchBar.removeSearch': 'Remove search "{text}"',
 

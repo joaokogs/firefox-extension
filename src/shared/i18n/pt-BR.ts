@@ -127,12 +127,10 @@ export const ptBR: Record<string, string> = {
   'newTab.create': 'Criar',
 
   // SearchBar
-  'searchBar.changeEngine': 'Alterar buscador',
-  'searchBar.placeholder': 'Pesquisar ou digitar URL...',
+  'searchBar.placeholder': 'Pesquisar...',
   'searchBar.clearSearch': 'Limpar busca',
   'searchBar.sectionSearch': 'Pesquisar',
   'searchBar.sectionLinks': 'Links',
-  'searchBar.sectionSuggestions': 'Recomendados da web',
   'searchBar.sectionRecent': 'Buscas recentes',
   'searchBar.removeSearch': 'Remover busca "{text}"',
 

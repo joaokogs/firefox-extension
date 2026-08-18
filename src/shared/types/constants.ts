@@ -1,4 +1,4 @@
-import type { ThemeConfig, WallpaperSetting, SearchEngine, AppSettings } from './index';
+import type { ThemeConfig, WallpaperSetting, AppSettings } from './index';
 
 export const LOCAL_ONLY_SETTINGS_KEYS: (keyof AppSettings)[] = [
   'wallpaper',
@@ -25,13 +25,6 @@ export const DARK_THEME: ThemeConfig = {
   boardBlur: 16,
   derivedFromWallpaper: true
 };
-
-export const SEARCH_ENGINES: { id: SearchEngine; name: string; url: string; icon: string; autocomplete: string }[] = [
-  { id: 'google', name: 'Google', url: 'https://www.google.com/search?q=', icon: 'https://www.google.com/favicon.ico', autocomplete: 'https://suggestqueries.google.com/complete/search?client=firefox&q=' },
-  { id: 'yahoo', name: 'Yahoo', url: 'https://search.yahoo.com/search?p=', icon: 'https://s.yimg.com/rz/l/favicon.ico', autocomplete: 'https://suggestqueries.google.com/complete/search?client=firefox&q=' },
-  { id: 'bing', name: 'Bing', url: 'https://www.bing.com/search?q=', icon: 'https://www.bing.com/favicon.ico', autocomplete: 'https://api.bing.com/osjson.aspx?query=' },
-  { id: 'duckduckgo', name: 'DuckDuckGo', url: 'https://duckduckgo.com/?q=', icon: 'https://duckduckgo.com/favicon.ico', autocomplete: 'https://duckduckgo.com/ac/?q=' }
-];
 
 export const DEFAULT_WALLPAPERS: WallpaperSetting[] = [
   { type: 'gradient', value: 'linear-gradient(160deg, #4a90e2 0%, #7bb7f0 40%, #a8d5f0 70%, #d4e9f7 100%)' },

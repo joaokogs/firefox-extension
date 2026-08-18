@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { Settings, Menu, Plus, Palette, User, Check } from 'lucide-preact';
-import type { AppData, ThemeConfig, UploadedBackground, Widget, WidgetType, TopWidgetConfig, SearchEngine } from '@shared/types';
-import { DEFAULT_WALLPAPERS, SEARCH_ENGINES, LOCAL_ONLY_SETTINGS_KEYS } from '@shared/types/constants';
+import type { AppData, ThemeConfig, UploadedBackground, Widget, WidgetType, TopWidgetConfig } from '@shared/types';
+import { DEFAULT_WALLPAPERS, LOCAL_ONLY_SETTINGS_KEYS } from '@shared/types/constants';
 import { getDefaultData } from '@shared/types/defaults';
 import { useI18n, setLocale as setI18nLocale } from '@shared/i18n';
 import {
@@ -34,7 +34,7 @@ import { BookmarkFolderPicker, type BookmarkFolder } from './components/dialogs/
 import { useThemeStore, type ThemeState } from './store/useThemeStore';
 import { notifyMenuOpened, subscribeToMenuClose } from './utils/menu';
 import { computeThemeVariables } from '@shared/theme';
-import { browser, openUrl } from '@shared/browser';
+import { browser, openUrl, searchWithDefaultProvider } from '@shared/browser';
 import type { Bookmarks, Storage } from 'webextension-polyfill';
 import {
   initializeSync,
@@ -51,10 +51,6 @@ import { migrateAppData } from '@shared/sync/migrate';
 import { recordOperation } from '@shared/sync/outbox';
 import { mergeWorkspaces } from '@shared/sync/merge';
 import './styles/index.css';
-
-function looksLikeUrl(str: string): boolean {
-  return /^https?:\/\//i.test(str) || /^[a-z0-9][-a-z0-9]*\.[a-z]{2,}(\/|$)/i.test(str);
-}
 
 function ensureProtocol(str: string): string {
   if (/^https?:\/\//i.test(str)) return str;
@@ -150,7 +146,6 @@ export function App() {
   const [showBookmarkFolders, setShowBookmarkFolders] = useState(false);
   const [bookmarkFolders, setBookmarkFolders] = useState<BookmarkFolder[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [searchEngine, setSearchEngine] = useState<SearchEngine>('google');
   const [wallpaperObjectUrl, setWallpaperObjectUrl] = useState<string | null>(null);
   const [initialSyncPending, setInitialSyncPending] = useState(true);
   const [syncToastKind, setSyncToastKind] = useState<SyncToastKind>('syncing');
@@ -399,13 +394,6 @@ export function App() {
   }, [menuOpen]);
 
   useEffect(() => {
-    const searchWidget = data?.settings.topWidgets?.find((w) => w.type === 'search');
-    if (searchWidget?.searchEngine) {
-      setSearchEngine(searchWidget.searchEngine);
-    }
-  }, [data?.settings.topWidgets]);
-
-  useEffect(() => {
     const unsub = useThemeStore.subscribe((state, prev) => {
       if (state.themeConfig === prev.themeConfig) return;
       if (initSyncPendingRef.current) return;
@@ -475,19 +463,6 @@ export function App() {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [wallpaperType, wallpaperValue]);
-
-  const handleEngineChange = (engine: SearchEngine) => {
-    setSearchEngine(engine);
-    const currentTopWidgets = data?.settings.topWidgets || [];
-    const next = currentTopWidgets.map((w) =>
-      w.type === 'search' ? { ...w, searchEngine: engine } : w
-    );
-    if (!next.some((w) => w.type === 'search')) {
-      next.push({ type: 'search', searchEngine: engine });
-    }
-    safeRecordOperation('topWidgets', 'topWidgets', 'patch', next);
-    handleSettingsChange({ topWidgets: next });
-  };
 
   const activeBoard = useMemo(
     () => (data && activeBoardId ? getBoardById(data, activeBoardId) : undefined),
@@ -950,12 +925,9 @@ export function App() {
   const handleSearch = (query: string) => {
     const q = query.trim();
     if (!q) return;
-    if (looksLikeUrl(q)) {
-      void openUrl(ensureProtocol(q), data.settings.openInNewTab !== false).catch(() => undefined);
-    } else {
-      const engineUrl = SEARCH_ENGINES.find((e) => e.id === searchEngine)?.url || SEARCH_ENGINES[0].url;
-      void openUrl(`${engineUrl}${encodeURIComponent(q)}`, data.settings.openInNewTab !== false).catch(() => undefined);
-    }
+    void searchWithDefaultProvider(q).catch((err) => {
+      console.error('[App] search failed:', err instanceof Error ? err.message : String(err));
+    });
     setData((prev) => (prev ? addRecentSearch(prev, q) : prev));
   };
 
@@ -1018,8 +990,6 @@ export function App() {
           <SearchBar
             searchQuery={searchQuery}
             onSearchQueryChange={setSearchQuery}
-            searchEngine={searchEngine}
-            onEngineChange={handleEngineChange}
             onSearch={handleSearch}
             onOpenLink={(url) => {
               void openUrl(ensureProtocol(url), data.settings.openInNewTab !== false).catch(() => undefined);

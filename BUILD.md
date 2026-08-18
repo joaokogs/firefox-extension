@@ -1,4 +1,4 @@
-# Build Instructions — Prismi Dashboard v16.1.1
+# Build Instructions — Prismi Dashboard v16.1.2
 
 ## System Requirements
 
@@ -58,7 +58,7 @@ npm run build:chrome
 The unpacked Chrome extension is written to `dist-chrome/`. The ZIP is written to:
 
 ```
-release/prismi-dashboard-v16.1.1-chrome.zip
+release/prismi-dashboard-v16.1.2-chrome.zip
 ```
 
 The ZIP contains `manifest.json` at its root and excludes Firefox-only metadata.

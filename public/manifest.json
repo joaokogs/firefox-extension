@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_appName__",
-  "version": "16.1.1",
+  "version": "16.1.2",
   "default_locale": "en",
   "description": "__MSG_appDescription__",
   "author": "João Pedro Koguishi",
@@ -17,16 +17,13 @@
     "storage",
     "activeTab",
     "bookmarks",
-    "identity"
+    "identity",
+    "search"
   ],
   "host_permissions": [
-    "*://www.google.com/",
-    "*://suggestqueries.google.com/*",
     "*://api.open-meteo.com/*",
     "*://geocoding-api.open-meteo.com/*",
     "*://api.bigdatacloud.net/*",
-    "*://api.bing.com/*",
-    "*://duckduckgo.com/*",
     "https://*.supabase.co/*"
   ],
   "chrome_url_overrides": {

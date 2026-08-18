@@ -108,14 +108,11 @@ export interface WallpaperSetting {
 
 export type TopWidgetType = 'clock' | 'weather' | 'search';
 
-export type SearchEngine = 'google' | 'yahoo' | 'bing' | 'duckduckgo';
-
 export interface TopWidgetConfig {
   type: TopWidgetType;
   city?: string;
   timezone?: string;
   label?: string;
-  searchEngine?: SearchEngine;
 }
 
 export interface AppData {

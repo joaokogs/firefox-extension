@@ -254,9 +254,6 @@ function normalizeTopWidgets(value: unknown): TopWidgetConfig[] | undefined {
     if (typeof entry.city === 'string') widget.city = entry.city;
     if (typeof entry.timezone === 'string') widget.timezone = entry.timezone;
     if (typeof entry.label === 'string') widget.label = entry.label;
-    if (entry.searchEngine === 'google' || entry.searchEngine === 'yahoo' || entry.searchEngine === 'bing' || entry.searchEngine === 'duckduckgo') {
-      widget.searchEngine = entry.searchEngine;
-    }
     return [widget];
   });
 

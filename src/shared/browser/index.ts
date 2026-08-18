@@ -2,6 +2,22 @@ import browserApi from 'webextension-polyfill';
 
 export const browser = browserApi;
 
+export async function searchWithDefaultProvider(query: string): Promise<void> {
+  if (typeof chrome !== 'undefined' && typeof chrome.search?.query === 'function') {
+    await chrome.search.query({
+      text: query,
+      disposition: 'CURRENT_TAB'
+    });
+    return;
+  }
+
+  // Firefox exposes the equivalent default-provider API as browser.search.search.
+  await browser.search.search({
+    query,
+    disposition: 'CURRENT_TAB'
+  });
+}
+
 function sanitizeExternalUrl(url: string): string {
   let parsed: URL;
   try {
